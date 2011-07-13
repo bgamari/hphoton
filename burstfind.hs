@@ -178,6 +178,8 @@ main = do --fname:_ <- getArgs
           --print $ V.take 1100 dts
           --print $ take 1500 bursts
           
+          if length bursts == 0 then print "No bursts found"
+                                else return ()
           let cspans = compressFuzzySpans bursts 15
               cspans' = filter (\(a,b)->(b-a) > 15) cspans
           f <- openFile "spans" WriteMode
