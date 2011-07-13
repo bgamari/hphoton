@@ -28,6 +28,11 @@ type Prob = Double
 --jiffy = 3.33e-8 :: RealTime
 jiffy = 10000 :: RealTime
 
+testTauBG = round $ jiffy/20
+modelTauBG = round $ jiffy/20
+testTauBurst = round $ jiffy/60
+modelTauBurst = round $ jiffy/60
+
 --------------------------------------
 -- LogP: Represents a log probability
 --------------------------------------
@@ -57,8 +62,8 @@ data ModelParams = ModelParams { prob_b :: Prob
 prob_nb = (1-) . prob_b
 
 def_mp = ModelParams { prob_b = 0.05
-                     , tau_bg = round  $ jiffy/15
-                     , tau_burst = round  $ jiffy/60
+                     , tau_bg = modelTauBG
+                     , tau_burst = modelTauBurst
                      }
 
 exp_pdf :: Double -> Double -> Prob
@@ -93,9 +98,6 @@ compressSpans ts = let f :: (Time, Time, [(Time,Time)]) -> Time -> (Time, Time, 
                                 | otherwise = (t, t, (startT, lastT):conseqs)
                        (_,_,compressed) = foldl' f (-1, -1, []) ts
                    in tail $ reverse compressed
-
-testTauBG = round $ jiffy/15
-testTauBurst = round $ jiffy/60
 
 testData :: [Time]
 testData = let v = (replicate 900 testTauBG) ++ (replicate 100 testTauBurst)
