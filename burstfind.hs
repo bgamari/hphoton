@@ -1,3 +1,4 @@
+{-# LANGUAGE PackageImports, TupleSections #-}
 
 module Main (main) where
 
@@ -9,12 +10,16 @@ import qualified Data.Binary.Get as B
 import qualified Data.ByteString.Lazy as BS
 import Data.Word
 import System.Environment
-import Debug.Trace
 import System.IO
+import Text.Printf
 
 import Data.Random
 import qualified System.Random.MWC as MWC
 import Data.Random.Distribution.Exponential
+
+import Graphics.Rendering.Chart
+import "data-accessor" Data.Accessor
+import Debug.Trace
 
 type Time = Int
 type RealTime = Double
@@ -120,6 +125,18 @@ readStamps path = do
             stampsToPackedVec v = V.fromList $ map fromIntegral v
         return $ stampsToPackedVec $ reverse $ B.runGet (readStamp []) contents
 
+spansChart spans = layout
+                   where
+                   coords :: [(Double, (Double,Double))]
+                   coords = concat $ map f spans
+                            where f (a,b) = let a' = realToFrac a
+                                                b' = realToFrac b
+                                            in [(a', (0,0)), (a', (0,1)), (b', (0,1)), (b', (0,0))]
+                   fill = plot_fillbetween_values ^= coords
+                        $ defaultPlotFillBetween
+                   -- photonPoints = plot_points_values ^= map (1,) dts
+                   layout = layout1_plots ^= [Left $ toPlot fill]
+                          $ defaultLayout1
 main :: IO ()
 main = do --fname:_ <- getArgs
           --stamps <- readStamps fname
@@ -131,12 +148,20 @@ main = do --fname:_ <- getArgs
           let accept t = beta n dts def_mp t > 2 -- TODO: Why is this so small?
               bursts = filter accept [0..V.length dts-n-1]
 
-          f <- openFile "hi" WriteMode
-          let printT t = show t ++ "\t" ++ show (dts!t) ++ "\t" ++ (show $ beta n dts def_mp t)
-          hPutStr f $ unlines $ take 10000 $ map printT [0..V.length dts-n-1]
+          f <- openFile "points" WriteMode
+          let printT t = hPrintf f "%9u\t%9u\t%1.5e\n" t (dts!t) (beta n dts def_mp t)
+          mapM_ printT [1..10000]
           hClose f
 
           print def_mp
           --print $ V.take 1100 dts
           --print $ take 1500 bursts
-          print $ compressSpans bursts
+          
+          let cspans = compressSpans bursts
+          f <- openFile "spans" WriteMode
+          mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans
+          hClose f
+
+          renderableToPNGFile (toRenderable $ spansChart (take 10 cspans)) 1600 1200 "spans.png"
+          return ()
+
