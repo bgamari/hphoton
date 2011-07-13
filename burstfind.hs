@@ -89,14 +89,20 @@ findBursts :: Int -> V.Vector Time -> ModelParams -> [Time]
 findBursts n dts mp = let accept t = beta n dts mp t > 2 -- TODO: Why is this so small?
                     in filter accept [0..(V.length dts - n)]
 
+data CompressSpansState = CSpansState { startT :: Time
+                                      , lastT  :: Time
+                                      , conseqs :: [(Time,Time)]
+                                      } deriving Show
+
 -- | Reduce a list of times to a list of (startTime, endTime) spans
 compressSpans :: [Time] -> [(Time, Time)]
-compressSpans ts = let f :: (Time, Time, [(Time,Time)]) -> Time -> (Time, Time, [(Time,Time)])
-                       f (startT, lastT, conseqs) t
-                                | t == lastT = error $ "compressSpans: Uh oh! dt=0 at " ++ show t
-                                | t == lastT + 1 = (startT, t, conseqs)
-                                | otherwise = (t, t, (startT, lastT):conseqs)
-                       (_,_,compressed) = foldl' f (-1, -1, []) ts
+compressSpans ts = let f :: CompressSpansState -> Time -> CompressSpansState
+                       f s t
+                                | t == lastT s = error $ "compressSpans: Uh oh! dt=0 at " ++ show t
+                                | t == lastT s + 1 = s {lastT=t}
+                                | otherwise = s {startT=t, lastT=t, conseqs=(startT s, lastT s):conseqs s}
+                       s = CSpansState {startT = -1, lastT = -1, conseqs = []}
+                       CSpansState _ _ compressed = foldl' f s ts
                    in tail $ reverse compressed
 
 -- | A perfectly periodic set of inter-arrival times
