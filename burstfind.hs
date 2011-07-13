@@ -49,6 +49,9 @@ instance (Real a, Floating a) => Fractional (LogP a) where
         LogP x / LogP y = LogP (x - y)
         fromRational x  = LogP (log (fromRational x))
 
+instance (Real a, Floating a) => Real (LogP a) where
+        toRational (LogP x) = toRational $ exp x
+
 -- | Output the value x along with a message
 trace1 msg x = trace (msg ++ " " ++ show x) x
 
