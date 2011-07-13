@@ -31,7 +31,7 @@ jiffy = 10000 :: RealTime
 testTauBG = round $ jiffy/20
 modelTauBG = round $ jiffy/20
 testTauBurst = round $ jiffy/60
-modelTauBurst = round $ jiffy/60
+modelTauBurst = round $ jiffy/30
 
 -- | LogP: Represents a log probability
 data LogP a = LogP a deriving (Eq, Ord, Show)
@@ -158,14 +158,15 @@ spansChart spans = layout
                    -- photonPoints = plot_points_values ^= map (1,) dts
                    layout = layout1_plots ^= [Left $ toPlot fill]
                           $ defaultLayout1
+
 main :: IO ()
-main = do --fname:_ <- getArgs
-          --stamps <- readStamps fname
+main = do fname:_ <- getArgs
           let n = 15
 
-          td <- testData2
-          --let td = testData
-          let dts = V.fromList td
+          stamps <- readStamps fname
+          let dts = V.map (uncurry (-)) $ V.zip stamps (V.tail stamps)
+          --dts <- (liftM V.fromList) testData2
+          --let dts = V.fromList testData
           let accept t = beta n dts def_mp t > 2 -- TODO: Why is this so small?
               bursts = filter accept [0..V.length dts-n-1]
 
@@ -180,10 +181,10 @@ main = do --fname:_ <- getArgs
           
           if length bursts == 0 then print "No bursts found"
                                 else return ()
-          let cspans = compressFuzzySpans bursts 15
+          let cspans = compressFuzzySpans bursts 35
               cspans' = filter (\(a,b)->(b-a) > 15) cspans
           f <- openFile "spans" WriteMode
-          mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans
+          mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans'
           hClose f
 
           renderableToPNGFile (toRenderable $ spansChart (take 10 cspans)) 1600 1200 "spans.png"

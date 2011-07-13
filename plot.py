@@ -16,7 +16,7 @@ pl.xlim(xmax=np.max(dts[:,0]))
 
 pl.subplot(212)
 pl.semilogy(dts[:,2], '+')
-pl.axhline(2)
+pl.axhline(2, color='g')
 pl.ylabel(r'$\beta$')
 
 pl.show()
