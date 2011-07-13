@@ -106,11 +106,11 @@ compressSpans ts = let f :: CompressSpansState -> Time -> CompressSpansState
                    in tail $ reverse compressed
 
 -- | Reduce a list of times to a list of (startTime, endTime) spans with fuzz
-compressSpansFuzzy :: [Time] -> Time -> [(Time, Time)]
-compressSpansFuzzy ts fuzz = let f :: CompressSpansState -> Time -> CompressSpansState
+compressFuzzySpans :: [Time] -> Time -> [(Time, Time)]
+compressFuzzySpans ts fuzz = let f :: CompressSpansState -> Time -> CompressSpansState
                                  f s t
                                           | t == lastT s = error $ "compressSpans: Uh oh! dt=0 at " ++ show t
-                                          | t - lastT s < fuzz = s {lastT=t}
+                                          | t - lastT s <= fuzz = s {lastT=t}
                                           | otherwise = s {startT=t, lastT=t, conseqs=(startT s, lastT s):conseqs s}
                                  s = CSpansState {startT = -1, lastT = -1, conseqs = []}
                                  CSpansState _ _ compressed = foldl' f s ts
@@ -178,7 +178,8 @@ main = do --fname:_ <- getArgs
           --print $ V.take 1100 dts
           --print $ take 1500 bursts
           
-          let cspans = compressSpans bursts
+          let cspans = compressFuzzySpans bursts 15
+              cspans' = filter (\(a,b)->(b-a) > 15) cspans
           f <- openFile "spans" WriteMode
           mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans
           hClose f
