@@ -33,10 +33,7 @@ modelTauBG = round $ jiffy/20
 testTauBurst = round $ jiffy/60
 modelTauBurst = round $ jiffy/60
 
---------------------------------------
--- LogP: Represents a log probability
---------------------------------------
-
+-- | LogP: Represents a log probability
 data LogP a = LogP a deriving (Eq, Ord, Show)
 
 instance (Real a, Floating a) => Num (LogP a) where
@@ -55,17 +52,20 @@ instance (Real a, Floating a) => Fractional (LogP a) where
 -- | Output the value x along with a message
 trace1 msg x = trace (msg ++ " " ++ show x) x
 
+-- | Encapsulates the parameters of the burst model
 data ModelParams = ModelParams { prob_b :: Prob
                                , tau_burst :: Time
                                , tau_bg :: Time }
                                deriving (Show)
 prob_nb = (1-) . prob_b
 
+-- | Default model parameters
 def_mp = ModelParams { prob_b = 0.05
                      , tau_bg = modelTauBG
                      , tau_burst = modelTauBurst
                      }
 
+-- | The PDF of an exponential distribution with inverse rate tau
 exp_pdf :: Double -> Double -> Prob
 exp_pdf tau t = 1/tau * exp(-t/tau)
 
@@ -99,10 +99,12 @@ compressSpans ts = let f :: (Time, Time, [(Time,Time)]) -> Time -> (Time, Time, 
                        (_,_,compressed) = foldl' f (-1, -1, []) ts
                    in tail $ reverse compressed
 
+-- | A perfectly periodic set of inter-arrival times
 testData :: [Time]
 testData = let v = (replicate 900 testTauBG) ++ (replicate 100 testTauBurst)
            in take 100000 $ cycle v
 
+-- | Produce realistic inter-arrival times
 testData2 :: IO [Time]
 testData2 = do mwc <- MWC.create
                let sample :: Int -> Double -> IO [Double]
