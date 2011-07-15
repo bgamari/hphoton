@@ -99,6 +99,7 @@ data CompressSpansState = CSpansState { startT :: Time
 
 -- | Reduce a list of times to a list of (startTime, endTime) spans
 compressSpans :: [Time] -> [(Time, Time)]
+compressSpans [] = error "Can't compress an empty list"
 compressSpans ts = let f :: CompressSpansState -> Time -> CompressSpansState
                        f s t
                                 | t == lastT s = error $ "compressSpans: Uh oh! dt=0 at " ++ show t
@@ -106,10 +107,12 @@ compressSpans ts = let f :: CompressSpansState -> Time -> CompressSpansState
                                 | otherwise = s {startT=t, lastT=t, conseqs=(startT s, lastT s):conseqs s}
                        s = CSpansState {startT = -1, lastT = -1, conseqs = []}
                        CSpansState _ _ compressed = foldl' f s ts
-                   in tail $ reverse compressed
+                   in if null compressed then error "No spans found"
+                                         else tail $ reverse compressed 
 
 -- | Reduce a list of times to a list of (startTime, endTime) spans with fuzz
 compressFuzzySpans :: [Time] -> Time -> [(Time, Time)]
+compressFuzzySpans [] _ = error "Can't compress an empty list"
 compressFuzzySpans ts fuzz = let f :: CompressSpansState -> Time -> CompressSpansState
                                  f s t
                                           | t == lastT s = error $ "compressSpans: Uh oh! dt=0 at " ++ show t
@@ -117,7 +120,8 @@ compressFuzzySpans ts fuzz = let f :: CompressSpansState -> Time -> CompressSpan
                                           | otherwise = s {startT=t, lastT=t, conseqs=(startT s, lastT s):conseqs s}
                                  s = CSpansState {startT = -1, lastT = -1, conseqs = []}
                                  CSpansState _ _ compressed = foldl' f s ts
-                             in tail $ reverse compressed
+                             in if null compressed then error "No spans found"
+                                                   else tail $ reverse compressed 
 
 -- | A perfectly periodic set of inter-arrival times
 testData :: [Time]
