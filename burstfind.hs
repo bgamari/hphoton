@@ -16,6 +16,7 @@ import Text.Printf
 import Data.Random
 import qualified System.Random.MWC as MWC
 import Data.Random.Distribution.Exponential
+import Bin
 
 import Graphics.Rendering.Chart
 import "data-accessor" Data.Accessor
@@ -25,13 +26,14 @@ type Time = Int
 type RealTime = Double
 type Prob = Double
 
---jiffy = 3.33e-8 :: RealTime
-jiffy = 10000 :: RealTime
+jiffy = 1/128e6 :: RealTime
+--jiffy = 10000 :: RealTime -- | 1/clockrate
 
-testTauBG = round $ jiffy/20
-modelTauBG = round $ jiffy/20
-testTauBurst = round $ jiffy/60
-modelTauBurst = round $ jiffy/30
+realRateToTau rate = round $ 1/(rate*jiffy)
+testTauBG = realRateToTau 20
+modelTauBG = realRateToTau 700
+testTauBurst = realRateToTau 60
+modelTauBurst = realRateToTau 2500
 
 -- | LogP: Represents a log probability
 data LogP a = LogP a deriving (Eq, Ord, Show)
@@ -138,6 +140,22 @@ testData2 = do mwc <- MWC.create
                a <- replicateM 100 sCycle
                return $ map ceiling $ join a
 
+mean, stdev :: (RealFrac a) => [a] -> a
+mean v = sum v / (realToFrac $ length v)
+stdev v = let m = mean v
+              ss = sum $ map (\x->(m-x)^2) v
+          in ss / (realToFrac $ length v)
+
+guessTaus :: V.Vector Time -> (Time, Time)
+guessTaus dts = let width = round (1e-3/jiffy) :: Time
+                    bins = binTimes (V.toList $ V.scanl1' (+) dts) width
+                    rbins = map realToFrac bins :: [Double]
+                    thresh = mean rbins + 1*stdev rbins
+                    bg_tau = realToFrac width / (mean $ filter (<thresh) rbins)
+                    burst_tau = realToFrac width / (mean $ filter (>thresh) rbins)
+                in (round bg_tau, round burst_tau)
+
+
 -- | Read 64-bit unsigned timestamps from file
 readStamps :: FilePath -> IO (V.Vector Time)
 readStamps path = do
@@ -167,19 +185,33 @@ spansChart spans = layout
                           $ defaultLayout1
 
 main :: IO ()
-main = do fname:_ <- getArgs
-          let n = 15
+main = do let n = 15
+          fname:_ <- getArgs
+          process fname n
 
+process :: FilePath -> Int -> IO ()
+process fname n = do
           stamps <- readStamps fname
-          let dts = V.map (uncurry (-)) $ V.zip stamps (V.tail stamps)
+          printf "Read %u timestamps\n" (V.length stamps)
+          let head_t = V.head stamps
+              last_t = V.last stamps
+              duration = (jiffy * (fromIntegral $ last_t-head_t))
+          printf "Timestamp range %u..%u : %4.2e seconds\n" head_t last_t duration
+          printf "Average rate %1.3f photons/second\n" $ (fromIntegral $ V.length stamps) / duration
+
+          let dts = V.map (uncurry (-)) $ V.zip (V.tail stamps) stamps
           --dts <- (liftM V.fromList) testData2
           --let dts = V.fromList testData
           let accept t = beta n dts def_mp t > 2 -- TODO: Why is this so small?
               bursts = filter accept [0..V.length dts-n-1]
 
+          let (bg_tau, burst_tau) = guessTaus dts
+              bg_real_rate = 1 / (jiffy * fromIntegral bg_tau)
+              burst_real_rate = 1 / (jiffy * fromIntegral burst_tau)
+          printf "Background: %f\nBurst: %f\n" bg_real_rate burst_real_rate
+
           f <- openFile "points" WriteMode
-          let printT t = hPrintf f "%9u\t%9u\t%1.5e\n" t (dts!t) (beta n dts def_mp t)
-          mapM_ printT [1..10000]
+          mapM_ (\t->hPrintf f "%9u\t%9u\t%1.5e\n" t (dts!t) (beta n dts def_mp t)) [1..10000]
           hClose f
 
           print def_mp
@@ -187,13 +219,14 @@ main = do fname:_ <- getArgs
           --print $ take 1500 bursts
           
           if length bursts == 0 then print "No bursts found"
-                                else return ()
+                                else printf "Found %u burst photons\n" (length bursts)
           let cspans = compressFuzzySpans bursts 35
               cspans' = filter (\(a,b)->(b-a) > 15) cspans
+
           f <- openFile "spans" WriteMode
           mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans'
           hClose f
 
-          renderableToPNGFile (toRenderable $ spansChart (take 10 cspans)) 1600 1200 "spans.png"
+          --renderableToPNGFile (toRenderable $ spansChart (take 10 cspans)) 1600 1200 "spans.png"
           return ()
 
