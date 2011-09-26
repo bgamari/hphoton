@@ -26,14 +26,20 @@ type Time = Int
 type RealTime = Double
 type Prob = Double
 
-jiffy = 1/128e6 :: RealTime
---jiffy = 10000 :: RealTime -- | 1/clockrate
-
 realRateToTau rate = round $ 1/(rate*jiffy)
-testTauBG = realRateToTau 20
+tauToRealRate tau = 1 / (tau / jiffy)
+
+-- For real data
+jiffy = 1/128e6 :: RealTime  -- | 1/clockrate
 modelTauBG = realRateToTau 700
-testTauBurst = realRateToTau 60
-modelTauBurst = realRateToTau 2500
+modelTauBurst = realRateToTau 10000
+
+-- For testing
+--jiffy = 1e-3 :: RealTime
+--modelTauBG = realRateToTau 30
+--modelTauBurst = realRateToTau 120
+testTauBG = realRateToTau 20
+testTauBurst = realRateToTau 100
 
 -- | LogP: Represents a log probability
 data LogP a = LogP a deriving (Eq, Ord, Show)
@@ -125,35 +131,24 @@ compressFuzzySpans ts fuzz = let f :: CompressSpansState -> Time -> CompressSpan
                              in if null compressed then error "No spans found"
                                                    else tail $ reverse compressed 
 
--- | A perfectly periodic set of inter-arrival times
-testData :: [Time]
-testData = let v = (replicate 900 testTauBG) ++ (replicate 100 testTauBurst)
-           in take 100000 $ cycle v
-
--- | Produce realistic inter-arrival times
-testData2 :: IO [Time]
-testData2 = do mwc <- MWC.create
-               let sample :: Int -> Double -> IO [Double]
-                   sample n tau = replicateM n $ sampleFrom mwc $ exponential tau
-                   sCycle :: IO [Double]
-                   sCycle = liftM join $ sequence [sample 900 $ realToFrac testTauBG, sample 100 $ realToFrac testTauBurst]
-               a <- replicateM 100 sCycle
-               return $ map ceiling $ join a
-
 mean, stdev :: (RealFrac a) => [a] -> a
+mean [] = error "Can't take mean of zero length array"
 mean v = sum v / (realToFrac $ length v)
 stdev v = let m = mean v
               ss = sum $ map (\x->(m-x)^2) v
           in ss / (realToFrac $ length v)
 
-guessTaus :: V.Vector Time -> (Time, Time)
+guessTaus :: V.Vector Time -> IO (Time, Time)
 guessTaus dts = let width = round (1e-3/jiffy) :: Time
                     bins = binTimes (V.toList $ V.scanl1' (+) dts) width
                     rbins = map realToFrac bins :: [Double]
                     thresh = mean rbins + 1*stdev rbins
                     bg_tau = realToFrac width / (mean $ filter (<thresh) rbins)
                     burst_tau = realToFrac width / (mean $ filter (>thresh) rbins)
-                in (round bg_tau, round burst_tau)
+                in do 
+                    print $ "Threshold: " ++ show thresh
+                    return (round bg_tau, round burst_tau)
+                    printf "Background: %f\nBurst: %f\n" (1 / jiffy / fromIntegral bg_tau) (1 / jiffy / fromIntegral burst_tau)
 
 
 -- | Read 64-bit unsigned timestamps from file
@@ -169,7 +164,25 @@ readStamps path = do
 
         let stampsToPackedVec :: [Word64] -> V.Vector Time
             stampsToPackedVec v = V.fromList $ map fromIntegral v
-        return $ stampsToPackedVec $ reverse $ B.runGet (readStamp []) contents
+            stamps = stampsToPackedVec $ reverse $ B.runGet (readStamp []) contents
+        printf "Read %u timestamps\n" (V.length stamps)
+        return stamps
+
+-- | A perfectly periodic set of inter-arrival times
+testData :: [Time]
+testData = let v = (replicate 900 testTauBG) ++ (replicate 100 testTauBurst)
+           in take 100000 $ cycle v
+
+-- | Produce realistic inter-arrival times
+testData2 :: IO [Time]
+testData2 = do mwc <- MWC.create
+               let sample :: Int -> Double -> IO [Double]
+                   sample n tau = replicateM n $ sampleFrom mwc $ exponential tau
+                   sCycle :: IO [Double]
+                   sCycle = liftM join $ sequence [sample 900 $ realToFrac testTauBG, sample 100 $ realToFrac testTauBurst]
+               a <- replicateM 100 sCycle
+               return $ map ceiling $ join a
+
 
 spansChart spans = layout
                    where
@@ -186,29 +199,26 @@ spansChart spans = layout
 
 main :: IO ()
 main = do let n = 15
-          fname:_ <- getArgs
-          process fname n
+          --fname:_ <- getArgs
+          --stamps <- readStamps fname
+          
+          --let dts = V.map (uncurry (-)) $ V.zip (V.tail stamps) stamps
+          dts <- (liftM V.fromList) testData2
+          --let dts = V.fromList testData
+          process dts n
 
-process :: FilePath -> Int -> IO ()
-process fname n = do
-          stamps <- readStamps fname
-          printf "Read %u timestamps\n" (V.length stamps)
-          let head_t = V.head stamps
-              last_t = V.last stamps
+process :: V.Vector Time -> Int -> IO ()
+process dts n = do
+          let head_t = 0
+              last_t = V.foldl1' (+) dts
               duration = (jiffy * (fromIntegral $ last_t-head_t))
           printf "Timestamp range %u..%u : %4.2e seconds\n" head_t last_t duration
-          printf "Average rate %1.3f photons/second\n" $ (fromIntegral $ V.length stamps) / duration
+          printf "Average rate %1.3f photons/second\n" $ (fromIntegral $ V.length dts) / duration
 
-          let dts = V.map (uncurry (-)) $ V.zip (V.tail stamps) stamps
-          --dts <- (liftM V.fromList) testData2
-          --let dts = V.fromList testData
           let accept t = beta n dts def_mp t > 2 -- TODO: Why is this so small?
               bursts = filter accept [0..V.length dts-n-1]
 
-          let (bg_tau, burst_tau) = guessTaus dts
-              bg_real_rate = 1 / (jiffy * fromIntegral bg_tau)
-              burst_real_rate = 1 / (jiffy * fromIntegral burst_tau)
-          printf "Background: %f\nBurst: %f\n" bg_real_rate burst_real_rate
+          (bg_tau, burst_tau) <- guessTaus dts
 
           f <- openFile "points" WriteMode
           mapM_ (\t->hPrintf f "%9u\t%9u\t%1.5e\n" t (dts!t) (beta n dts def_mp t)) [1..10000]
@@ -218,15 +228,17 @@ process fname n = do
           --print $ V.take 1100 dts
           --print $ take 1500 bursts
           
-          if length bursts == 0 then print "No bursts found"
-                                else printf "Found %u burst photons\n" (length bursts)
-          let cspans = compressFuzzySpans bursts 35
-              cspans' = filter (\(a,b)->(b-a) > 15) cspans
+          if length bursts == 0
+             then putStrLn "No bursts found"
+             else do printf "Found %u burst photons\n" (length bursts)
+                     let cspans = compressFuzzySpans bursts 35
+                         cspans' = filter (\(a,b)->(b-a) > 15) cspans
 
-          f <- openFile "spans" WriteMode
-          mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans'
-          hClose f
+                     f <- openFile "spans" WriteMode
+                     mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans
+                     hClose f
 
-          --renderableToPNGFile (toRenderable $ spansChart (take 10 cspans)) 1600 1200 "spans.png"
+                    --renderableToPNGFile (toRenderable $ spansChart (take 10 cspans)) 1600 1200 "spans.png"
+
           return ()
 
