@@ -1,6 +1,6 @@
 {-# LANGUAGE PackageImports, TupleSections #-}
 
-module Main (main) where
+module HPhoton.BayesBurstFind (main) where
 
 import Control.Monad
 import Data.List
@@ -16,13 +16,13 @@ import Text.Printf
 import Data.Random
 import qualified System.Random.MWC as MWC
 import Data.Random.Distribution.Exponential
-import Bin
+import HPhoton.Types
+import HPhoton.Bin
 
 import Graphics.Rendering.Chart
 import "data-accessor" Data.Accessor
 import Debug.Trace
 
-type Time = Int
 type RealTime = Double
 type Prob = Double
 
@@ -148,7 +148,7 @@ guessTaus dts = let width = round (1e-3/jiffy) :: Time
                 in do 
                     print $ "Threshold: " ++ show thresh
                     return (round bg_tau, round burst_tau)
-                    printf "Background: %f\nBurst: %f\n" (1 / jiffy / fromIntegral bg_tau) (1 / jiffy / fromIntegral burst_tau)
+                    printf "Background: %f\nBurst: %f\n" (1 / jiffy / bg_tau) (1 / jiffy / burst_tau)
 
 
 -- | Read 64-bit unsigned timestamps from file
@@ -176,11 +176,13 @@ testData = let v = (replicate 900 testTauBG) ++ (replicate 100 testTauBurst)
 -- | Produce realistic inter-arrival times
 testData2 :: IO [Time]
 testData2 = do mwc <- MWC.create
-               let sample :: Int -> Double -> IO [Double]
-                   sample n tau = replicateM n $ sampleFrom mwc $ exponential tau
-                   sCycle :: IO [Double]
-                   sCycle = liftM join $ sequence [sample 900 $ realToFrac testTauBG, sample 100 $ realToFrac testTauBurst]
-               a <- replicateM 100 sCycle
+               let -- | Inter-arrival time
+                   iaa :: Time -> RVar Double
+                   iaa = exponential . realToFrac
+                   sCycle :: RVar [Double]
+                   sCycle = liftM join $ sequence [ replicateM 900 (iaa testTauBG)
+                                                  , replicateM 100 (iaa testTauBurst) ]
+               a <- sampleFrom mwc $ replicateM 100 sCycle
                return $ map ceiling $ join a
 
 
