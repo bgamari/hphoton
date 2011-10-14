@@ -1,5 +1,7 @@
 module HPhoton.Types ( Time
                      ) where
 
-type Time = Int
+import Data.Word
+
+type Time = Word64
 
