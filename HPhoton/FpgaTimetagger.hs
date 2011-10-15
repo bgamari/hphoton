@@ -2,9 +2,9 @@ module HPhoton.FpgaTimetagger ( Channel(..)
                               , Record(..)
                               , readRecords
                               , strobeChTimes
-                              , FretChannel
-                              , AlexChannels
-                              , Alex
+                              , FretChannel(..)
+                              , AlexChannels(..)
+                              , Alex(..)
                               , alexTimes
                               ) where
 
@@ -112,5 +112,6 @@ alexTimes offset chs = fst . foldl' f (Alex [] [] [] [], Nothing)
                         Donor    | achAem chs `elem` ch   -> (ts {alexDexcAem=t : alexDexcAem ts}, a)
                         Donor    | achDem chs `elem` ch   -> (ts {alexDexcDem=t : alexDexcDem ts}, a)
                                  | otherwise              -> (ts, a)
-                | otherwise = (ts, a)
+                | otherwise  = (ts, a)
+              f (ts, Nothing) _  = (ts, Nothing)
 
