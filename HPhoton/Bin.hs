@@ -5,20 +5,22 @@ module HPhoton.Bin ( binTimes
 
 import HPhoton.Types
 import Control.Monad
-import Data.List
+import qualified Data.Vector.Unboxed as V
 
-binTimes :: [Time] -> Time -> [Int]
-binTimes ts width = binTimes' ts width Nothing ((head ts) `quot` width) 0
+binTimes :: V.Vector Time -> Time -> V.Vector Int
+binTimes ts width =
+        V.fromList $ binTimes' (V.toList ts) width Nothing (fromIntegral $ V.head ts `quot` width) 0
 
-binTimesWithRange :: [Time] -> Time -> (Time, Time) -> [Int]
-binTimesWithRange ts width (start_t, end_t) = binTimes' ts width (Just end_t) (start_t `quot` width) 0
+binTimesWithRange :: V.Vector Time -> Time -> (Time, Time) -> V.Vector Int
+binTimesWithRange ts width (start_t, end_t) =
+        V.fromList $ binTimes' (V.toList ts) width (Just end_t) (fromIntegral $ start_t `quot` width) 0
 
 binTimes' :: [Time] -> Time -> Maybe Time -> Int -> Int -> [Int]
 binTimes' (t:ts) width end_t !bin_n !count
         -- Make sure the current time is greater than start_t
-        | t < bin_n*width       = binTimes' ts width end_t bin_n count
+        | t < fromIntegral bin_n*width       = binTimes' ts width end_t bin_n count
         -- Make sure the current time isn't past end of the current bin
-        | t >= (bin_n+1)*width  = let
+        | t >= fromIntegral (bin_n+1)*width  = let
                                   rest = binTimes' (t:ts) width end_t (bin_n+1) 0 
                                   in
                                   count : rest
@@ -26,19 +28,17 @@ binTimes' (t:ts) width end_t !bin_n !count
         | otherwise             = binTimes' ts width end_t bin_n (count+1)
 
 binTimes' [] width (Just end_t) !bin_n !count
-        | end_t > bin_n*width   = let
-                                  rest = binTimes' [] width (Just end_t) (bin_n+1) 0
-                                  in
-                                  count : rest
-        | otherwise             = []
+        | end_t > fromIntegral bin_n*width   = let rest = binTimes' [] width (Just end_t) (bin_n+1) 0
+                                               in count : rest
+        | otherwise                          = []
 
-binTimes' [] width Nothing bin_n count = []
+binTimes' [] _ Nothing _ _ = []
 
-testTimes :: [Time]
-testTimes = [5*i | i <- [0..10*1000*1000]]
+testTimes :: V.Vector Time
+testTimes = V.generate (10*1000*1000) (\i->fromIntegral i*5)
 
 main :: IO ()
 main = do
         let binned = binTimes testTimes 10
-        forM_ binned $ \count -> print count
+        forM_ (V.toList binned) print
 
