@@ -1,12 +1,15 @@
 {-# LANGUAGE PackageImports, TupleSections #-}
 
-import Control.Monad (replicateM, liftM, join)
+import Control.Monad (replicateM, liftM, join, (<=<))
 import Data.List (foldl')
 import HPhoton.BayesBurstFind
 import HPhoton.Types
 import HPhoton.Bin
+
 import Graphics.Rendering.Chart
 import "data-accessor" Data.Accessor
+import Data.Colour.Names
+import Data.Colour
 
 import System.Environment
 import System.IO
@@ -17,8 +20,13 @@ import Data.Vector.Unboxed ((!))
 import qualified System.Random.MWC as MWC
 import Data.Random
 import Data.Random.Distribution.Exponential
+import HPhoton.FpgaTimetagger
+import Data.Vector.Algorithms.Merge (sort)
 
 type RealTime = Double
+
+n = 15
+betaThresh = 2
 
 -- For real data
 --jiffy = 1/128e6 :: RealTime  -- | 1/clockrate
@@ -27,8 +35,8 @@ type RealTime = Double
 
 -- For testing
 jiffy = 1e-3 :: RealTime
-modelTauBG = realRateToTau 30
-modelTauBurst = realRateToTau 120
+modelTauBG = realRateToTau 20
+modelTauBurst = realRateToTau 80
 testTauBG = realRateToTau 20
 testTauBurst = realRateToTau 100
 
@@ -92,44 +100,62 @@ testData2 = do mwc <- MWC.create
                    iaa = exponential . realToFrac
                    sCycle :: RVar [Double]
                    sCycle = liftM join $ sequence [ replicateM 900 (iaa testTauBG)
-                                                  , replicateM 100 (iaa testTauBurst) ]
+                                                  , replicateM 30 (iaa testTauBurst) ]
                a <- sampleFrom mwc $ replicateM 100 sCycle
                return $ map ceiling $ join a
 
 
-spansChart spans = layout
+spansChart spans betas = layout
                    where
                    coords :: [(Double, (Double,Double))]
                    coords = concat $ map f spans
                             where f (a,b) = let a' = realToFrac a
                                                 b' = realToFrac b
-                                            in [(a', (0,0)), (a', (0,1)), (b', (0,1)), (b', (0,0))]
+                                            in [ (a', (-100,-100)), (a', (-100,100))
+                                               , (b', (-100,100)), (b', (-100,-100)) ]
                    fill = plot_fillbetween_values ^= coords
+                        $ plot_fillbetween_title ^= "Detected bursts"
                         $ defaultPlotFillBetween
+                   betaPlot = plot_points_style ^= filledCircles 1 (opaque red)
+                            $ plot_points_values ^= V.toList (V.filter (\(x,y)->y > -100) $ V.map (\(x,y)->(realToFrac x,log y)) betas)
+                            $ plot_points_title ^= "log Beta"
+                            $ defaultPlotPoints
+                   threshold = hlinePlot "Beta threshold" (defaultPlotLineStyle { line_color_=opaque green }) betaThresh
                    -- photonPoints = plot_points_values ^= map (1,) dts
-                   layout = layout1_plots ^= [Left $ toPlot fill]
+                   layout = layout1_plots ^= [ Left $ toPlot fill 
+                                             , Left $ toPlot betaPlot 
+                                             , Left $ threshold ]
                           $ defaultLayout1
 
-main :: IO ()
-main = do let n = 15
-          --fname:_ <- getArgs
-          --stamps <- readStamps fname
-          
-          --let dts = V.map (uncurry (-)) $ V.zip (V.tail stamps) stamps
-          dts <- (liftM V.fromList) testData2
+mainFile, mainTest :: IO ()
+mainFile = do fname:_ <- getArgs
+              rs <- readRecords fname
+              let stampsA = strobeChTimes rs Ch1
+                  stampsD = strobeChTimes rs Ch2
+              stamps <- V.thaw $ V.concat [stampsA, stampsD]
+              sort stamps
+              stamps' <- V.freeze stamps
+              let dts = V.map (uncurry (-)) $ V.zip (V.tail stamps') stamps'
+              process dts n
+
+mainTest = do 
+          dts <- (liftM $ V.scanl' (+) 0 . V.fromList) testData2
           --let dts = V.fromList testData
           process dts n
 
+main = mainFile
+
 process :: V.Vector Time -> Int -> IO ()
-process dts n = do
-          let head_t = 0
+process times n = do
+          let dts = V.zipWith (-) (V.tail times) times
+              head_t = 0
               last_t = V.foldl1' (+) dts
               duration = (jiffy * (fromIntegral $ last_t-head_t))
           printf "Timestamp range %u..%u : %4.2e seconds\n" head_t last_t duration
           printf "Average rate %1.3f photons/second\n" $ (fromIntegral $ V.length dts) / duration
 
-          let accept t = beta n dts def_mp t > 2 -- TODO: Why is this so small?
-              bursts = V.filter accept $ V.generate (V.length dts-n) fromIntegral
+          let betas = V.map (\t->(t, beta n dts def_mp t)) $ V.generate (V.length dts-n) fromIntegral
+              bursts = V.map fst $ V.filter (\(x,y) -> y>betaThresh) betas
 
           (bg_tau, burst_tau) <- guessTaus dts
 
@@ -150,7 +176,7 @@ process dts n = do
                      mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans
                      hClose f
 
-                     renderableToPNGFile (toRenderable $ spansChart (take 10 cspans)) 1600 1200 "spans.png"
+                     renderableToPNGFile (toRenderable $ spansChart (take 10 cspans) (V.take 10000 betas)) 1600 1200 "spans.png"
                      return ()
 
 
