@@ -16,6 +16,7 @@ import Foreign.Storable
 import Foreign.Ptr
 import Data.Storable.Endian
 import qualified Data.Vector.Storable as V
+import qualified Data.Vector.Unboxed as VU
 import Data.Vector.Storable.MMap
 
 import Debug.Trace
@@ -75,8 +76,8 @@ instance Storable Record where
 readRecords :: FilePath -> IO (V.Vector Record)
 readRecords fname = unsafeMMapVector fname Nothing
 
-strobeChTimes :: V.Vector Record -> Channel -> V.Vector Time
-strobeChTimes recs ch = V.map recTime $ V.filter (\r->isStrobe r && ch `elem` recChannels r) recs
+strobeChTimes :: V.Vector Record -> Channel -> VU.Vector Time
+strobeChTimes recs ch = V.convert $ V.map recTime $ V.filter (\r->isStrobe r && ch `elem` recChannels r) recs
 
 data FretChannel = Acceptor | Donor deriving (Show, Eq)
 
