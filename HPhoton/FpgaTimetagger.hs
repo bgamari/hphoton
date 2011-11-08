@@ -48,7 +48,6 @@ isStrobe _ = False
 instance Storable Record where
         sizeOf _ = 6
         alignment _ = 1
-        poke _ _ = error "poke is not implemented"
         peek p =
              do BE a <- peek (castPtr (plusPtr p 4) :: Ptr (BigEndian Word64))
                 --traceShow (a,p) $ return ()
