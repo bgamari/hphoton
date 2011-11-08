@@ -1,7 +1,10 @@
 {-# LANGUAGE BangPatterns #-}
 
 module HPhoton.Bin ( binTimes
-                   , binTimesWithRange) where
+                   , binTimesWithTimes
+                   , binTimesInRange
+                   , binTimesInRangeWithTimes
+                   ) where
 
 import HPhoton.Types
 import Control.Monad
@@ -11,9 +14,21 @@ binTimes :: V.Vector Time -> Time -> V.Vector Int
 binTimes ts width =
         V.fromList $ binTimes' (V.toList ts) width Nothing (fromIntegral $ V.head ts `quot` width) 0
 
-binTimesWithRange :: V.Vector Time -> Time -> (Time, Time) -> V.Vector Int
-binTimesWithRange ts width (start_t, end_t) =
+binTimesWithTimes :: V.Vector Time -> Time -> V.Vector (Time, Int)
+binTimesWithTimes ts width = V.zip times bins
+        where bin0 = fromIntegral $ V.head ts `quot` width
+              bins = V.fromList $ binTimes' (V.toList ts) width Nothing bin0 0
+              times = V.generate (V.length bins) (\i->fromIntegral i*width + V.head ts)
+
+binTimesInRange :: V.Vector Time -> Time -> (Time, Time) -> V.Vector Int
+binTimesInRange ts width (start_t, end_t) =
         V.fromList $ binTimes' (V.toList ts) width (Just end_t) (fromIntegral $ start_t `quot` width) 0
+
+binTimesInRangeWithTimes :: V.Vector Time -> Time -> (Time, Time) -> V.Vector (Time, Int)
+binTimesInRangeWithTimes ts width (start_t, end_t) = V.zip times bins
+        where bin0 = fromIntegral $ start_t `quot` width
+              bins = V.fromList $ binTimes' (V.toList ts) width (Just end_t) bin0 0
+              times = V.generate (V.length bins) (\i->fromIntegral i*width + start_t)
 
 binTimes' :: [Time] -> Time -> Maybe Time -> Int -> Int -> [Int]
 binTimes' (t:ts) width end_t !bin_n !count
