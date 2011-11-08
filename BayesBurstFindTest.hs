@@ -247,7 +247,7 @@ burstFretCounts (tas,tds) mp =
            let dts = V.zipWith (-) (V.tail ctimes) ctimes
                bursts = V.filter (\(t,beta) -> beta>betaThresh)
                       $ V.map (\i->(ctimes ! fromIntegral i, beta n dts def_mp i))
-                      $ V.generate (V.length dts-n) fromIntegral
+                      $ V.enumFromN (fromIntegral n) (V.length dts-2*n)
                burstTimes = V.map fst bursts 
 
                spans = compressSpans (40*modelTauBurst) (V.toList burstTimes)
