@@ -2,6 +2,7 @@
 
 import Control.Monad (replicateM, liftM, join, (<=<))
 import Data.List (foldl')
+import Data.Maybe (mapMaybe)
 import HPhoton.BayesBurstFind
 import HPhoton.Types
 import HPhoton.Bin
@@ -108,35 +109,64 @@ testData2 = do mwc <- MWC.create
                return $ map ceiling $ join a
 
 
-spansChartRealTime spans betas maxT = spansChart spans' betas'
-        where betas' = V.takeWhile (\(x,y) -> x<maxT)
+spansChartRealTime :: [(Time,Time)] -> V.Vector (Time, Double) -> RealTime -> Layout1 Double Double
+spansChartRealTime spans betas maxTime = spansChart spans' betas'
+        where betas' = V.takeWhile (\(x,y) -> x<maxTime)
                      $ V.map (\(x,y)->(jiffy*realToFrac x, y)) betas
-              spans' = takeWhile (\(x,y) -> y<maxT)
+              spans' = takeWhile (\(x,y) -> y<maxTime)
                      $ map (\(x,y)->(jiffy*realToFrac x, jiffy*realToFrac y)) spans
 
+spansChart :: [(RealTime,RealTime)] -> V.Vector (RealTime, Double) -> Layout1 Double Double
 spansChart spans betas = layout
-                   where
-                   coords :: [(Double, (Double,Double))]
-                   coords = concat $ map f spans
-                            where f (a,b) = let a' = realToFrac a
-                                                b' = realToFrac b
-                                            in [ (a', (-100,-100)), (a', (-100,100))
-                                               , (b', (-100,100)), (b', (-100,-100)) ]
-                   fill = plot_fillbetween_values ^= coords
-                        $ plot_fillbetween_title ^= "Detected bursts"
-                        $ defaultPlotFillBetween
-                   betaPlot = plot_points_style ^= filledCircles 1 (opaque red)
-                            $ plot_points_values ^= V.toList ( V.filter (\(x,y)->y > -100)
-                                                             $ V.map (\(x,y)->(realToFrac x, log y))
-                                                             $ betas )
-                            $ plot_points_title ^= "log Beta"
-                            $ defaultPlotPoints
-                   threshold = hlinePlot "Beta threshold" (defaultPlotLineStyle { line_color_=opaque green }) betaThresh
-                   -- photonPoints = plot_points_values ^= map (1,) dts
-                   layout = layout1_plots ^= [ Left $ toPlot fill 
-                                             , Left $ toPlot betaPlot 
-                                             , Left $ threshold ]
-                          $ defaultLayout1
+        where
+        -- For model plot
+        coords :: [(Double, (Double,Double))]
+        coords = concat $ map f spans
+                 where f (a,b) = let a' = realToFrac a
+                                     b' = realToFrac b
+                                 in [ (a', (-100,-100)), (a', (-100,100))
+                                    , (b', (-100,100)), (b', (-100,-100)) ]
+        fill = plot_fillbetween_values ^= coords
+             $ plot_fillbetween_title  ^= "Detected bursts"
+             $ defaultPlotFillBetween
+        betaPlot = plot_points_style  ^= filledCircles 1 (opaque red)
+                 $ plot_points_values ^= V.toList ( V.filter (\(x,y)->y > -100)
+                                                  $ V.map (\(x,y)->(realToFrac x, log y))
+                                                  $ betas )
+                 $ plot_points_title ^= "log Beta"
+                 $ defaultPlotPoints
+        threshold = hlinePlot "Beta threshold" (defaultPlotLineStyle { line_color_=opaque green }) betaThresh
+        -- photonPoints = plot_points_values ^= map (1,) dts
+        layout = layout1_plots ^= [ Left $ toPlot fill 
+                                  , Left $ toPlot betaPlot 
+                                  , Left $ threshold ]
+               $ defaultLayout1
+
+binsChart :: V.Vector Time -> RealTime -> Layout1 Double Double
+binsChart times maxTime = layout
+        where
+        binSize = round $ 5e-3 / jiffy
+        times' = V.takeWhile (\t->t < round (maxTime / jiffy)) times
+        bins = binTimesWithTimes times' binSize
+        rbins = V.map (realToFrac . snd) bins :: V.Vector Double
+        thresh = 1.5 * mean rbins
+        lines cond = let f ((x1,y),(x2,_)) | cond y = Just [ (jiffy*realToFrac x1, realToFrac y)
+                                                           , (jiffy*realToFrac x2, realToFrac y) ]
+                         f _ = Nothing
+                     in mapMaybe f $ V.toList $ V.zip bins (V.tail bins)
+        burstCurve = plot_lines_style  ^= solidLine 2 (opaque red)
+                   $ plot_lines_values ^= lines ((>thresh) . realToFrac)
+                   $ plot_lines_title  ^= "Burst bins"
+                   $ defaultPlotLines
+        bgCurve = plot_lines_style ^= solidLine 2 (opaque green)
+                   $ plot_lines_values ^= lines ((<thresh) . realToFrac)
+                   $ plot_lines_title  ^= "Background bins"
+                   $ defaultPlotLines
+        threshold = hlinePlot "Threshold" (defaultPlotLineStyle { line_color_=opaque green }) thresh
+        layout = layout1_plots ^= [ Left $ toPlot burstCurve
+                                  , Left $ toPlot bgCurve
+                                  , Left $ threshold ]
+               $ defaultLayout1
 
 mainFile, mainTest :: IO ()
 mainFile = do fname:_ <- getArgs
@@ -146,6 +176,7 @@ mainFile = do fname:_ <- getArgs
               stamps <- V.thaw $ V.concat [stampsA, stampsD]
               sort stamps
               stamps' <- V.freeze stamps
+              --let stamps'' = V.map (- V.head stamps') stamps' 
               process stamps' n
 
 mainTest = do 
@@ -180,7 +211,7 @@ process times n = do
           if V.length bursts == 0
              then putStrLn "No bursts found"
              else do printf "Found %u burst photons\n" (V.length bursts)
-                     let cspans = compressSpans (100*modelTauBurst) (V.toList burstTimes)
+                     let cspans = compressSpans (40*modelTauBurst) (V.toList burstTimes)
                          cspans' = filter (\(a,b)->(b-a) > 15) cspans
                      printf "Average %f photons/burst\n" (realToFrac (V.length bursts) / realToFrac (length cspans) :: Double)
 
@@ -188,7 +219,9 @@ process times n = do
                      mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans
                      hClose f
 
-                     renderableToPNGFile (toRenderable $ spansChartRealTime cspans betas maxTime) 1600 1200 "spans.png"
+                     let r = renderLayout1sStacked [ withAnyOrdinate $ spansChartRealTime cspans betas maxTime
+                                                   , withAnyOrdinate $ binsChart times maxTime ]
+                     renderableToPNGFile r 1600 1200 "spans.png"
                      return ()
 
 
