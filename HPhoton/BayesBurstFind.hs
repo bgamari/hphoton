@@ -50,8 +50,9 @@ prob_dt__nb mp = exp_pdf (realToFrac $ tau_bg mp) . realToFrac
 beta :: Int -> V.Vector Time -> ModelParams -> Int -> Double
 beta n dts mp i
         | i+n >= V.length dts = error "Out of range"
-        | otherwise = let prob_b__dts = prob_b mp * (product $ map (\j->prob_dt__b mp (dts!(i+j))) [0..n])
-                          prob_nb__dts = prob_nb mp * (product $ map (\j->prob_dt__nb mp (dts!(i+j))) [0..n])
+        | i-n < 0             = error "Out of range"
+        | otherwise = let prob_b__dts = prob_b mp * (product $ map (\j->prob_dt__b mp (dts!(i+j))) [-n..n])
+                          prob_nb__dts = prob_nb mp * (product $ map (\j->prob_dt__nb mp (dts!(i+j))) [-n..n])
                       in prob_b__dts / prob_nb__dts
 
 -- | Find bursts

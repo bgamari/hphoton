@@ -28,7 +28,7 @@ import Data.Vector.Algorithms.Merge (sort)
 
 type RealTime = Double
 
-n = 20
+n = 10
 betaThresh = 2
 maxTime = 2 -- Seconds of data to plot
 
@@ -216,7 +216,7 @@ process times n = do
           print def_mp
 
           let betas = V.map (\i->(times ! fromIntegral i, beta n dts def_mp i))
-                    $ V.generate (V.length dts-n) fromIntegral
+                    $ V.enumFromN (fromIntegral n) (V.length dts-2*n)
               bursts = V.filter (\(t,beta) -> beta>betaThresh) betas
               burstTimes = V.map fst bursts 
 
