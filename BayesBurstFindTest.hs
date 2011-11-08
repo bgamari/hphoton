@@ -250,7 +250,7 @@ burstFretCounts (tas,tds) mp =
                       $ V.enumFromN (fromIntegral n) (V.length dts-2*n)
                burstTimes = V.map fst bursts 
 
-               spans = compressSpans (40*modelTauBurst) (V.toList burstTimes)
+               spans = filter (\(a,b)->a-b>0) $ compressSpans (40*modelTauBurst) (V.toList burstTimes)
 
                spanCounts :: (Time,Time) -> State (V.Vector Time, V.Vector Time) (Int,Int)
                spanCounts (start,end) = do (a,d) <- get
