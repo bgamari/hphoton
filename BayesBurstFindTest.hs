@@ -170,13 +170,18 @@ binsChart times maxTime = layout
 mainFile, mainTest :: IO ()
 mainFile = do fname:_ <- getArgs
               rs <- readRecords fname
-              let stampsA = strobeChTimes rs Ch1
-                  stampsD = strobeChTimes rs Ch2
-              stamps <- V.thaw $ V.concat [stampsA, stampsD]
-              sort stamps
-              stamps' <- V.freeze stamps
-              --let stamps'' = V.map (- V.head stamps') stamps' 
-              process stamps' n
+              let stampsA = strobeChTimes rs Ch0
+                  stampsD = strobeChTimes rs Ch1
+              stamps <- combineChannels [stampsA, stampsD]
+              process stamps n
+
+-- | Combine multiple timestamp channels
+combineChannels :: [V.Vector Time] -> IO (V.Vector Time)
+combineChannels chs = do stamps <- V.thaw $ V.concat chs
+                         sort stamps
+                         stamps' <- V.freeze stamps
+                         return stamps'
+                         --return $ V.map (- V.head stamps) stamps
 
 mainTest = do 
           stamps <- (liftM $ V.scanl' (+) 0 . V.fromList) testData2
