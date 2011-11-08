@@ -109,26 +109,32 @@ testData2 = do mwc <- MWC.create
                return $ map ceiling $ join a
 
 
-spansChartRealTime :: [(Time,Time)] -> V.Vector (Time, Double) -> RealTime -> Layout1 Double Double
-spansChartRealTime spans betas maxTime = spansChart spans' betas'
+chart :: [(Time,Time)] -> V.Vector Time -> V.Vector (Time, Double) -> RealTime -> Renderable ()
+chart spans times betas maxTime =
+        renderLayout1sStacked [ withAnyOrdinate $ spansChart spans' betas'
+                              , withAnyOrdinate $ binsChart spans' times' ]
         where betas' = V.takeWhile (\(x,y) -> x<maxTime)
                      $ V.map (\(x,y)->(jiffy*realToFrac x, y)) betas
               spans' = takeWhile (\(x,y) -> y<maxTime)
                      $ map (\(x,y)->(jiffy*realToFrac x, jiffy*realToFrac y)) spans
+              times' = V.takeWhile (\t->t < round (maxTime / jiffy)) times
+
+spansFill spans = fill
+        where coords :: [(Double, (Double,Double))]
+              coords = concat $ map f spans
+                      where f (a,b) = let a' = realToFrac a
+                                          b' = realToFrac b
+                                      in [ (a', (-100,-100)), (a', (-100,100))
+                                         , (b', (-100,100)), (b', (-100,-100)) ]
+              fill = plot_fillbetween_values ^= coords
+                   $ plot_fillbetween_title  ^= "Detected bursts"
+                   $ plot_fillbetween_style  ^= solidFillStyle (withOpacity blue 0.3)
+                   $ defaultPlotFillBetween
 
 spansChart :: [(RealTime,RealTime)] -> V.Vector (RealTime, Double) -> Layout1 Double Double
 spansChart spans betas = layout
         where
         -- For model plot
-        coords :: [(Double, (Double,Double))]
-        coords = concat $ map f spans
-                 where f (a,b) = let a' = realToFrac a
-                                     b' = realToFrac b
-                                 in [ (a', (-100,-100)), (a', (-100,100))
-                                    , (b', (-100,100)), (b', (-100,-100)) ]
-        fill = plot_fillbetween_values ^= coords
-             $ plot_fillbetween_title  ^= "Detected bursts"
-             $ defaultPlotFillBetween
         betaPlot = plot_points_style  ^= filledCircles 1 (opaque red)
                  $ plot_points_values ^= V.toList ( V.filter (\(x,y)->y > -100)
                                                   $ V.map (\(x,y)->(realToFrac x, log y))
@@ -137,17 +143,16 @@ spansChart spans betas = layout
                  $ defaultPlotPoints
         threshold = hlinePlot "Beta threshold" (defaultPlotLineStyle { line_color_=opaque green }) betaThresh
         -- photonPoints = plot_points_values ^= map (1,) dts
-        layout = layout1_plots ^= [ Left $ toPlot fill 
+        layout = layout1_plots ^= [ Left $ toPlot $ spansFill spans
                                   , Left $ toPlot betaPlot 
                                   , Left $ threshold ]
                $ defaultLayout1
 
-binsChart :: V.Vector Time -> RealTime -> Layout1 Double Double
-binsChart times maxTime = layout
+binsChart :: [(RealTime,RealTime)] -> V.Vector Time -> Layout1 Double Double
+binsChart spans times = layout
         where
         binSize = round $ 5e-3 / jiffy
-        times' = V.takeWhile (\t->t < round (maxTime / jiffy)) times
-        bins = binTimesWithTimes times' binSize
+        bins = binTimesWithTimes times binSize
         rbins = V.map (realToFrac . snd) bins :: V.Vector Double
         thresh = 1.5 * mean rbins
         lines cond = let f ((x1,y),(x2,_)) | cond y = Just [ (jiffy*realToFrac x1, realToFrac y)
@@ -165,7 +170,8 @@ binsChart times maxTime = layout
         threshold = hlinePlot "Threshold" (defaultPlotLineStyle { line_color_=opaque green }) thresh
         layout = layout1_plots ^= [ Left $ toPlot burstCurve
                                   , Left $ toPlot bgCurve
-                                  , Left $ threshold ]
+                                  , Left $ threshold
+                                  , Left $ toPlot $ spansFill spans ]
                $ defaultLayout1
 
 mainFile, mainTest :: IO ()
@@ -204,7 +210,7 @@ process times n = do
               head_t = 0
               last_t = V.foldl1' (+) dts
               duration = (jiffy * (fromIntegral $ last_t-head_t))
-          printf "%d photons" (V.length times)
+          printf "%d photons\n" (V.length times)
           printf "Timestamp range %u..%u : %4.2e seconds\n" head_t last_t duration
           printf "Average rate %1.3f photons/second\n" $ (fromIntegral $ V.length dts) / duration
           print def_mp
@@ -231,9 +237,7 @@ process times n = do
                      mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans
                      hClose f
 
-                     let r = renderLayout1sStacked [ withAnyOrdinate $ spansChartRealTime cspans betas maxTime
-                                                   , withAnyOrdinate $ binsChart times maxTime ]
-                     renderableToPNGFile r 1600 1200 "spans.png"
+                     renderableToPNGFile (chart cspans times betas maxTime) 1600 1200 "spans.png"
                      return ()
 
 -- | Return the FRET efficiencies for all bursts in a trajectory
