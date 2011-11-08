@@ -177,15 +177,15 @@ binsChart spans times = layout
 mainFile, mainTest :: IO ()
 mainFile = do fname:_ <- getArgs
               rs <- readRecords fname
-              let stampsA = strobeChTimes rs Ch0
-                  stampsD = strobeChTimes rs Ch1
+              let stampsA = strobeTimes rs Ch0
+                  stampsD = strobeTimes rs Ch1
               stamps <- combineChannels [stampsA, stampsD]
               process stamps n
 
 mainFile2 = do fname:_ <- getArgs
                rs <- readRecords fname
-               let stampsA = strobeChTimes rs Ch0
-                   stampsD = strobeChTimes rs Ch1
+               let stampsA = strobeTimes rs Ch0
+                   stampsD = strobeTimes rs Ch1
                counts <- burstFretCounts (stampsA,stampsD) def_mp
                forM counts (\(na,nd) -> printf "%3d %3d  %1.3f\n" na nd (realToFrac na / realToFrac (na+nd) :: Double))
 

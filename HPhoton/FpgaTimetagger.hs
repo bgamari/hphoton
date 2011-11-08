@@ -1,7 +1,7 @@
 module HPhoton.FpgaTimetagger ( Channel(..)
                               , Record(..)
                               , readRecords
-                              , strobeChTimes
+                              , strobeTimes
                               , FretChannel(..)
                               , AlexChannels(..)
                               , Alex(..)
@@ -18,8 +18,9 @@ import Data.Storable.Endian
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Unboxed as VU
 import Data.Vector.Storable.MMap
-
-import Debug.Trace
+import Control.Monad (liftM, when)
+import Control.Monad.ST
+import Data.STRef
 
 data Channel = Ch0 | Ch1 | Ch2 | Ch3
                deriving (Show, Eq)
@@ -50,7 +51,6 @@ instance Storable Record where
         alignment _ = 1
         peek p =
              do BE a <- peek (castPtr (plusPtr p 4) :: Ptr (BigEndian Word64))
-                --traceShow (a,p) $ return ()
                 let time = a .&. 0xfffffffff
                     chToMaybe ch False = Nothing
                     chToMaybe ch True = Just ch
@@ -73,10 +73,25 @@ instance Storable Record where
                                                   }
 
 readRecords :: FilePath -> IO (V.Vector Record)
-readRecords fname = unsafeMMapVector fname Nothing
+readRecords fname = liftM (V.drop 1024) -- Hack around hardware buffering issues
+                  $ unsafeMMapVector fname Nothing
 
-strobeChTimes :: V.Vector Record -> Channel -> VU.Vector Time
-strobeChTimes recs ch = V.convert $ V.map recTime $ V.filter (\r->isStrobe r && ch `elem` recChannels r) recs
+unwrapTimes :: V.Vector Time -> V.Vector Time
+unwrapTimes recs = runST (do offset <- newSTRef 0
+                             lastT <- newSTRef 0
+                             V.mapM (f offset lastT) recs)
+        where f :: STRef s Time -> STRef s Time -> Time -> ST s Time
+              f offset lastT t = do lastT' <- readSTRef lastT
+                                    when (t < lastT') (modifySTRef offset (+0x1000000000))
+                                    writeSTRef lastT t
+                                    o <- readSTRef offset
+                                    return $ t + o
+
+strobeRecords :: V.Vector Record -> Channel -> V.Vector Record
+strobeRecords recs ch = V.filter (\r->isStrobe r && ch `elem` recChannels r) recs
+
+strobeTimes :: V.Vector Record -> Channel -> VU.Vector Time
+strobeTimes recs ch = V.convert $ unwrapTimes $ V.map recTime $ strobeRecords recs ch
 
 data FretChannel = Acceptor | Donor deriving (Show, Eq)
 
