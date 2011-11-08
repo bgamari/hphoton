@@ -63,8 +63,7 @@ data CompressSpansState = CSpansState { startT :: Time
 compressSpans :: Time -> [Time] -> [(Time, Time)]
 compressSpans fuzz ts =
         let f :: CompressSpansState -> Time -> CompressSpansState
-            f s t  | t == lastT s         = error $ "compressSpans: Repeated photons at " ++ show t
-                   | t - lastT s <= fuzz  = s {lastT=t}
+            f s t  | t - lastT s <= fuzz  = s {lastT=t}
                    | otherwise = s {startT=t, lastT=t, result=(startT s,lastT s):result s}
             s = CSpansState {startT= -1, lastT= -1, result=[]}
             CSpansState _ _ compressed = foldl' f s ts
