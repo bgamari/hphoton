@@ -14,6 +14,7 @@ import Data.Colour
 import System.Environment
 import System.IO
 import Text.Printf
+import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as V
 import Data.Vector.Unboxed ((!))
 
@@ -25,18 +26,20 @@ import Data.Vector.Algorithms.Merge (sort)
 
 type RealTime = Double
 
-n = 15
+n = 20
 betaThresh = 2
+maxTime = 2 -- Seconds of data to plot
 
 -- For real data
---jiffy = 1/128e6 :: RealTime  -- | 1/clockrate
---modelTauBG = realRateToTau 700
---modelTauBurst = realRateToTau 10000
+jiffy = 1/128e6 :: RealTime  -- Clock period
+modelTauBG = realRateToTau 700
+modelTauBurst = realRateToTau 6000
 
 -- For testing
-jiffy = 1e-3 :: RealTime
-modelTauBG = realRateToTau 20
-modelTauBurst = realRateToTau 80
+--jiffy = 1e-3 :: RealTime
+--modelTauBG = realRateToTau 20
+--modelTauBurst = realRateToTau 80
+
 testTauBG = realRateToTau 20
 testTauBurst = realRateToTau 100
 
@@ -105,6 +108,12 @@ testData2 = do mwc <- MWC.create
                return $ map ceiling $ join a
 
 
+spansChartRealTime spans betas maxT = spansChart spans' betas'
+        where betas' = V.takeWhile (\(x,y) -> x<maxT)
+                     $ V.map (\(x,y)->(jiffy*realToFrac x, y)) betas
+              spans' = takeWhile (\(x,y) -> y<maxT)
+                     $ map (\(x,y)->(jiffy*realToFrac x, jiffy*realToFrac y)) spans
+
 spansChart spans betas = layout
                    where
                    coords :: [(Double, (Double,Double))]
@@ -117,7 +126,9 @@ spansChart spans betas = layout
                         $ plot_fillbetween_title ^= "Detected bursts"
                         $ defaultPlotFillBetween
                    betaPlot = plot_points_style ^= filledCircles 1 (opaque red)
-                            $ plot_points_values ^= V.toList (V.filter (\(x,y)->y > -100) $ V.map (\(x,y)->(realToFrac x,log y)) betas)
+                            $ plot_points_values ^= V.toList ( V.filter (\(x,y)->y > -100)
+                                                             $ V.map (\(x,y)->(realToFrac x, log y))
+                                                             $ betas )
                             $ plot_points_title ^= "log Beta"
                             $ defaultPlotPoints
                    threshold = hlinePlot "Beta threshold" (defaultPlotLineStyle { line_color_=opaque green }) betaThresh
@@ -135,13 +146,12 @@ mainFile = do fname:_ <- getArgs
               stamps <- V.thaw $ V.concat [stampsA, stampsD]
               sort stamps
               stamps' <- V.freeze stamps
-              let dts = V.map (uncurry (-)) $ V.zip (V.tail stamps') stamps'
-              process dts n
+              process stamps' n
 
 mainTest = do 
-          dts <- (liftM $ V.scanl' (+) 0 . V.fromList) testData2
-          --let dts = V.fromList testData
-          process dts n
+          stamps <- (liftM $ V.scanl' (+) 0 . V.fromList) testData2
+          --let stamps = V.fromList testData
+          process stamps n
 
 main = mainFile
 
@@ -151,32 +161,34 @@ process times n = do
               head_t = 0
               last_t = V.foldl1' (+) dts
               duration = (jiffy * (fromIntegral $ last_t-head_t))
+          printf "%d photons" (V.length times)
           printf "Timestamp range %u..%u : %4.2e seconds\n" head_t last_t duration
           printf "Average rate %1.3f photons/second\n" $ (fromIntegral $ V.length dts) / duration
-
-          let betas = V.map (\t->(t, beta n dts def_mp t)) $ V.generate (V.length dts-n) fromIntegral
-              bursts = V.map fst $ V.filter (\(x,y) -> y>betaThresh) betas
-
-          (bg_tau, burst_tau) <- guessTaus dts
-
-          f <- openFile "points" WriteMode
-          mapM_ (\i->hPrintf f "%9u\t%9u\t%1.5e\n" i (dts!i) (beta n dts def_mp (fromIntegral i))) [1..10000]
-          hClose f
-
           print def_mp
-          --print $ V.take 1100 dts
+
+          let betas = V.map (\i->(times ! fromIntegral i, beta n dts def_mp i))
+                    $ V.generate (V.length dts-n) fromIntegral
+              bursts = V.filter (\(t,beta) -> beta>betaThresh) betas
+              burstTimes = V.map fst bursts 
+
+          --(bg_tau, burst_tau) <- guessTaus dts
+
+          --f <- openFile "points" WriteMode
+          --mapM_ (\i->hPrintf f "%9u\t%9u\t%1.5e\n" i (dts!i) (beta n dts def_mp (fromIntegral i))) [1..10000]
+          --hClose f
           
           if V.length bursts == 0
              then putStrLn "No bursts found"
              else do printf "Found %u burst photons\n" (V.length bursts)
-                     let cspans = compressSpans 35 (V.toList bursts)
+                     let cspans = compressSpans (100*modelTauBurst) (V.toList burstTimes)
                          cspans' = filter (\(a,b)->(b-a) > 15) cspans
+                     printf "Average %f photons/burst\n" (realToFrac (V.length bursts) / realToFrac (length cspans) :: Double)
 
                      f <- openFile "spans" WriteMode
                      mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans
                      hClose f
 
-                     renderableToPNGFile (toRenderable $ spansChart (take 10 cspans) (V.take 10000 betas)) 1600 1200 "spans.png"
+                     renderableToPNGFile (toRenderable $ spansChartRealTime cspans betas maxTime) 1600 1200 "spans.png"
                      return ()
 
 
