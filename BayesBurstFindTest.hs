@@ -1,6 +1,7 @@
 {-# LANGUAGE PackageImports, TupleSections #-}
 
 import Control.Monad (replicateM, liftM, join, (<=<))
+import Control.Monad.State
 import Data.List (foldl')
 import Data.Maybe (mapMaybe)
 import HPhoton.BayesBurstFind
@@ -175,6 +176,13 @@ mainFile = do fname:_ <- getArgs
               stamps <- combineChannels [stampsA, stampsD]
               process stamps n
 
+mainFile2 = do fname:_ <- getArgs
+               rs <- readRecords fname
+               let stampsA = strobeChTimes rs Ch0
+                   stampsD = strobeChTimes rs Ch1
+               counts <- burstFretCounts (stampsA,stampsD) def_mp
+               forM counts (\(na,nd) -> printf "%3d %3d  %1.3f\n" na nd (realToFrac na / realToFrac (na+nd) :: Double))
+
 -- | Combine multiple timestamp channels
 combineChannels :: [V.Vector Time] -> IO (V.Vector Time)
 combineChannels chs = do stamps <- V.thaw $ V.concat chs
@@ -228,4 +236,23 @@ process times n = do
                      renderableToPNGFile r 1600 1200 "spans.png"
                      return ()
 
+-- | Return the FRET efficiencies for all bursts in a trajectory
+burstFretCounts :: (V.Vector Time, V.Vector Time) -> ModelParams -> IO [(Int,Int)]
+burstFretCounts (tas,tds) mp =
+        do ctimes <- combineChannels [tds,tas]
+           let dts = V.zipWith (-) (V.tail ctimes) ctimes
+               bursts = V.filter (\(t,beta) -> beta>betaThresh)
+                      $ V.map (\i->(ctimes ! fromIntegral i, beta n dts def_mp i))
+                      $ V.generate (V.length dts-n) fromIntegral
+               burstTimes = V.map fst bursts 
+
+               spans = compressSpans (40*modelTauBurst) (V.toList burstTimes)
+
+               spanCounts :: (Time,Time) -> State (V.Vector Time, V.Vector Time) (Int,Int)
+               spanCounts (start,end) = do (a,d) <- get
+                                           let (as,a') = V.span (<=end) $ V.dropWhile (<start) a
+                                               (ds,d') = V.span (<=end) $ V.dropWhile (<start) d
+                                           put (a', d')
+                                           return (V.length as, V.length ds)
+           return $ evalState (mapM spanCounts spans) (tas,tds)
 
