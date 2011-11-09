@@ -177,17 +177,19 @@ binsChart spans times = layout
 mainFile, mainTest :: IO ()
 mainFile = do fname:_ <- getArgs
               rs <- readRecords fname
-              let stampsA = strobeTimes rs Ch0
-                  stampsD = strobeTimes rs Ch1
+              let stampsA:stampsD:[] = zeroTimes [strobeTimes rs Ch0, strobeTimes rs Ch1]
               stamps <- combineChannels [stampsA, stampsD]
               process stamps n
 
 mainFile2 = do fname:_ <- getArgs
                rs <- readRecords fname
-               let stampsA = strobeTimes rs Ch0
-                   stampsD = strobeTimes rs Ch1
+               let stampsA:stampsD:[] = zeroTimes [strobeTimes rs Ch0, strobeTimes rs Ch1]
                counts <- burstFretCounts (stampsA,stampsD) def_mp
                forM counts (\(na,nd) -> printf "%3d %3d  %1.3f\n" na nd (realToFrac na / realToFrac (na+nd) :: Double))
+
+zeroTimes :: [V.Vector Time] -> [V.Vector Time]
+zeroTimes times = let offset = minimum $ map V.head times :: Time
+                  in map (V.map (\t->t-offset)) times
 
 -- | Combine multiple timestamp channels
 combineChannels :: [V.Vector Time] -> IO (V.Vector Time)
