@@ -7,6 +7,7 @@ import Data.Maybe (mapMaybe)
 import HPhoton.BayesBurstFind
 import HPhoton.Types
 import HPhoton.Bin
+import HPhoton.Utils
 
 import Graphics.Rendering.Chart
 import "data-accessor" Data.Accessor
@@ -24,7 +25,6 @@ import qualified System.Random.MWC as MWC
 import Data.Random
 import Data.Random.Distribution.Exponential
 import HPhoton.FpgaTimetagger
-import Data.Vector.Algorithms.Merge (sort)
 
 n = 10
 betaThresh = 2
@@ -184,18 +184,6 @@ mainFile2 = do fname:_ <- getArgs
                let stampsA:stampsD:[] = zeroTimes [strobeTimes rs Ch0, strobeTimes rs Ch1]
                counts <- burstFretCounts (stampsA,stampsD) def_mp
                forM counts (\(na,nd) -> printf "%3d %3d  %1.3f\n" na nd (realToFrac na / realToFrac (na+nd) :: Double))
-
-zeroTimes :: [V.Vector Time] -> [V.Vector Time]
-zeroTimes times = let offset = minimum $ map V.head times :: Time
-                  in map (V.map (\t->t-offset)) times
-
--- | Combine multiple timestamp channels
-combineChannels :: [V.Vector Time] -> IO (V.Vector Time)
-combineChannels chs = do stamps <- V.thaw $ V.concat chs
-                         sort stamps
-                         stamps' <- V.freeze stamps
-                         return stamps'
-                         --return $ V.map (- V.head stamps) stamps
 
 mainTest = do 
           stamps <- (liftM $ V.scanl' (+) 0 . V.fromList) testData2
