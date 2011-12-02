@@ -48,7 +48,7 @@ Executable bayes-burst-find
   Main-is:           BayesBurstFindTest.hs
   
   -- Packages needed in order to build this package.
-  Build-depends:     base, vector-algorithms, vector-mmap, random-fu, Chart, vector, storable-endian, mwc-random, colour, bytestring, data-accessor
+  Build-depends:     base, vector-algorithms, vector-mmap, random-fu, Chart, vector, storable-endian, mwc-random, colour, bytestring, data-accessor, mtl
   
   -- Modules not exported by this package.
   -- Other-modules:       
