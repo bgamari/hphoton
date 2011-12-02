@@ -46,15 +46,6 @@ Library
   Exposed-Modules: HPhoton.Bin, HPhoton.FpgaTimetagger, HPhoton.Types, HPhoton.RawTimestamps
 
 Executable bayes-burst-find
-  -- .hs or .lhs file containing the Main module.
-  Main-is:           BayesBurstFindTest.hs
-  
-  -- Packages needed in order to build this package.
-  Build-depends:     base, vector-algorithms, vector-mmap, random-fu, Chart, vector, storable-endian, mwc-random, colour, bytestring, data-accessor, mtl
-  
-  -- Modules not exported by this package.
-  -- Other-modules:       
-  
-  -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
-  -- Build-tools:         
-  
+  Main-is:           BayesBurstFind.hs
+  Build-depends:     base, vector-algorithms, vector-mmap, random-fu, vector, storable-endian, mwc-random, cmdargs, bytestring
+
