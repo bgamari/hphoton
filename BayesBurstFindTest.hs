@@ -26,8 +26,6 @@ import Data.Random.Distribution.Exponential
 import HPhoton.FpgaTimetagger
 import Data.Vector.Algorithms.Merge (sort)
 
-type RealTime = Double
-
 n = 10
 betaThresh = 2
 maxTime = 2 -- Seconds of data to plot
