@@ -1,4 +1,5 @@
-module HPhoton.Utils ( zeroTimes
+module HPhoton.Utils ( zeroTime
+                     , zeroTimes
                      , combineChannels
                      ) where
 
@@ -8,7 +9,7 @@ import HPhoton.Types
 
 -- | Find the earliest time of a set of photon arrival times
 zeroTime :: [V.Vector Time] -> Time
-zeroTime = minimum $ map V.head times
+zeroTime = minimum . map V.head
 
 -- | Offset a set of arrival times such that the first photon arrives at t=0
 zeroTimes :: [V.Vector Time] -> [V.Vector Time]
