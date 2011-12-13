@@ -1,6 +1,7 @@
 module HPhoton.RawTimestamps (readStamps) where
 
 import HPhoton.Types
+import Data.Vector.Storable as V
 import Data.Vector.Storable.MMap
 
 -- | Real 64-bit unsigned timestamps from file
