@@ -49,6 +49,7 @@ isStrobe _ = False
 instance Storable Record where
         sizeOf _ = 6
         alignment _ = 1
+        poke _ _ = error "Poke not supported"
         peek p =
              do BE a <- peek (castPtr (plusPtr p 4) :: Ptr (BigEndian Word64))
                 let time = a .&. 0xfffffffff
@@ -75,7 +76,8 @@ instance Storable Record where
 readRecords :: FilePath -> IO (V.Vector Record)
 readRecords fname = liftM (V.drop 1024) -- Hack around hardware buffering issues
                   $ unsafeMMapVector fname Nothing
-
+                    
+-- | Fix timing wraparounds
 unwrapTimes :: V.Vector Time -> V.Vector Time
 unwrapTimes recs = runST (do offset <- newSTRef 0
                              lastT <- newSTRef 0
