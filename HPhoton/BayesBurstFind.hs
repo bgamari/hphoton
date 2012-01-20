@@ -6,7 +6,10 @@ import Data.Vector.Unboxed ((!), Vector)
 import qualified Data.Vector.Unboxed as V
 import qualified Data.ByteString.Lazy as BS
 import HPhoton.Types
+import Data.List (foldl')
 
+  
+type PhotonIdx = Int
 type Prob = Double
 
 -- | LogP: Represents a log probability
@@ -33,6 +36,7 @@ data ModelParams = ModelParams { prob_b :: Prob
                                , tau_burst :: Time
                                , tau_bg :: Time }
                                deriving (Show)
+                                        
 prob_nb = (1-) . prob_b
 
 -- | The PDF of an exponential distribution with inverse rate tau
@@ -55,8 +59,28 @@ beta n dts mp i
                           prob_nb__dts = prob_nb mp * (product $ map (\j->prob_dt__nb mp (dts!(i+j))) [-n..n])
                       in prob_b__dts / prob_nb__dts
 
--- | Find bursts
-findBursts :: Int -> V.Vector Time -> ModelParams -> [Int]
-findBursts n dts mp = let accept i = beta n dts mp i > 2
-                      in filter accept [0..(fromIntegral $ V.length dts - n)]
+-- | Find photons attributable to a burst
+findBurstPhotons :: Int -> V.Vector Time -> ModelParams -> [PhotonIdx]
+findBurstPhotons n dts mp =
+  let accept i = beta n dts mp i > 2
+  in filter accept [0..(fromIntegral $ V.length dts - n)]
 
+data CompressSpansState = CSpansState { startT :: Time
+                                      , lastT  :: Time
+                                      , result :: [(Time,Time)]
+                                      } deriving Show
+
+-- | Reduce a list of times to a list of '(startTime, endTime, count)' spans
+compressSpans :: Time -> [Time] -> [(Time, Time)]
+compressSpans fuzz ts =
+  let f :: CompressSpansState -> Time -> CompressSpansState
+      f s t  | t - lastT s <= fuzz  = s { lastT=t }
+             | otherwise = s { startT=t
+                             , lastT=t
+                             , result=(startT s, lastT s):result s }
+      s = CSpansState { startT= -1
+                      , lastT= -1
+                      , result=[] }
+      spans = result $ foldl' f s ts
+  in if null spans then []
+                   else tail $ reverse spans 

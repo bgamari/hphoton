@@ -32,8 +32,8 @@ maxTime = 2 -- Seconds of data to plot
 
 -- For real data
 jiffy = 1/128e6 :: RealTime  -- Clock period
-modelTauBG = realRateToTau 700
-modelTauBurst = realRateToTau 6000
+modelTauBG = realRateToTau 1000
+modelTauBurst = realRateToTau 4000
 
 -- For testing
 --jiffy = 1e-3 :: RealTime
@@ -52,22 +52,6 @@ def_mp = ModelParams { prob_b = 0.05
                      , tau_bg = modelTauBG
                      , tau_burst = modelTauBurst
                      }
-
-data CompressSpansState = CSpansState { startT :: Time
-                                      , lastT  :: Time
-                                      , result :: [(Time,Time)]
-                                      } deriving Show
-
--- | Reduce a list of times to a list of (startTime, endTime) spans
-compressSpans :: Time -> [Time] -> [(Time, Time)]
-compressSpans fuzz ts =
-        let f :: CompressSpansState -> Time -> CompressSpansState
-            f s t  | t - lastT s <= fuzz  = s {lastT=t}
-                   | otherwise = s {startT=t, lastT=t, result=(startT s,lastT s):result s}
-            s = CSpansState {startT= -1, lastT= -1, result=[]}
-            CSpansState _ _ compressed = foldl' f s ts
-        in if null compressed then []
-                              else tail $ reverse compressed 
 
 mean, stdev :: (RealFrac a, V.Unbox a) => V.Vector a -> a
 mean v | V.null v = error "Can't take mean of zero length array"
@@ -179,16 +163,30 @@ mainFile = do fname:_ <- getArgs
               stamps <- combineChannels [stampsA, stampsD]
               process stamps n
 
-mainFile2 = do fname:_ <- getArgs
-               rs <- readRecords fname
-               let stampsA:stampsD:[] = zeroTimes [strobeTimes rs Ch0, strobeTimes rs Ch1]
-               counts <- burstFretCounts (stampsA,stampsD) def_mp
-               forM counts (\(na,nd) -> printf "%3d %3d  %1.3f\n" na nd (realToFrac na / realToFrac (na+nd) :: Double))
+mainFret = do fname:_ <- getArgs
+              rs <- readRecords fname
+              let stampsA:stampsD:[] = zeroTimes [strobeTimes rs Ch0, strobeTimes rs Ch1]
+              counts <- burstFretCounts (stampsA,stampsD) def_mp
+              forM counts (\(na,nd) -> printf "%3d %3d  %1.3f\n" na nd (realToFrac na / realToFrac (na+nd) :: Double))
+
 
 mainTest = do 
           stamps <- (liftM $ V.scanl' (+) 0 . V.fromList) testData2
           --let stamps = V.fromList testData
           process stamps n
+
+mainBurstStats =
+        do fname:_ <- getArgs
+           rs <- readRecords fname
+           let tds:tas:[] = zeroTimes [strobeTimes rs Ch0, strobeTimes rs Ch1]
+           ctimes <- combineChannels [tds,tas]
+           let dts = V.zipWith (-) (V.tail ctimes) ctimes
+               bursts = V.filter (\(t,beta) -> beta>betaThresh)
+                      $ V.map (\i->(ctimes ! fromIntegral i, beta n dts def_mp i))
+                      $ V.enumFromN (fromIntegral n) (V.length dts-2*n)
+               burstTimes = V.map fst bursts 
+               spans = filter (\(a,b)->b-a>0) $ compressSpans (40*modelTauBurst) (V.toList burstTimes)
+           mapM_ (\(a,b)-> print $ b-a) spans
 
 main = mainFile
 
@@ -238,7 +236,7 @@ burstFretCounts (tas,tds) mp =
                       $ V.enumFromN (fromIntegral n) (V.length dts-2*n)
                burstTimes = V.map fst bursts 
 
-               spans = filter (\(a,b)->a-b>0) $ compressSpans (40*modelTauBurst) (V.toList burstTimes)
+               spans = filter (\(a,b)->b-a>0) $ compressSpans (40*modelTauBurst) (V.toList burstTimes)
 
                spanCounts :: (Time,Time) -> State (V.Vector Time, V.Vector Time) (Int,Int)
                spanCounts (start,end) = do (a,d) <- get

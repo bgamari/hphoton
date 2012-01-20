@@ -47,5 +47,5 @@ Library
 
 Executable bayes-burst-find
   Main-is:           BayesBurstFind.hs
-  Build-depends:     base, vector-algorithms, vector-mmap, random-fu, vector, storable-endian, mwc-random, cmdargs, bytestring
+  Build-depends:     base, vector-algorithms, vector-mmap, random-fu, vector, storable-endian, mwc-random, cmdargs, bytestring, transformers
 

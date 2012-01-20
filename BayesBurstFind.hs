@@ -11,8 +11,7 @@ import Data.Vector.Algorithms.Merge (sort)
 import HPhoton.FpgaTimetagger
 import Text.Printf
 import Data.List (foldl')
-
-type RealTime = Double
+import Control.Monad.Trans.State
 
 data BurstFind = BurstFind { fname :: FilePath
                            , bg_rate :: RealTime
@@ -20,9 +19,10 @@ data BurstFind = BurstFind { fname :: FilePath
                            , jiffy :: RealTime
                            , burst_length :: Int
                            , beta_thresh :: Double
-                           } deriving (Show, Data, Typeable)
+                           } 
+               deriving (Show, Data, Typeable)
 
-burstfind = BurstFind { fname = def &= typFile &= argPos 0
+burstFind = BurstFind { fname = def &= typFile &= argPos 0
                       , bg_rate = 1000 &= help "Background count rate (Hz)"
                       , burst_rate = 4000 &= help "Burst count rate (Hz)"
                       , jiffy = (1/128e6) &= help "Clock period (s)"
@@ -31,22 +31,6 @@ burstfind = BurstFind { fname = def &= typFile &= argPos 0
                       }
                       &= summary "Bayesian Burst Find"
 
-data CompressSpansState = CSpansState { startT :: Time
-                                      , lastT  :: Time
-                                      , result :: [(Time,Time)]
-                                      } deriving Show
-
--- | Reduce a list of times to a list of (startTime, endTime) spans
-compressSpans :: Time -> [Time] -> [(Time, Time)]
-compressSpans fuzz ts =
-        let f :: CompressSpansState -> Time -> CompressSpansState
-            f s t  | t - lastT s <= fuzz  = s {lastT=t}
-                   | otherwise = s {startT=t, lastT=t, result=(startT s,lastT s):result s}
-            s = CSpansState {startT= -1, lastT= -1, result=[]}
-            CSpansState _ _ compressed = foldl' f s ts
-        in if null compressed then []
-                              else tail $ reverse compressed 
-
 -- | Combine multiple timestamp channels
 combineChannels :: [V.Vector Time] -> IO (V.Vector Time)
 combineChannels chs = do stamps <- V.thaw $ V.concat chs
@@ -54,7 +38,16 @@ combineChannels chs = do stamps <- V.thaw $ V.concat chs
                          stamps' <- V.freeze stamps
                          return stamps'
 
-main = do args <- cmdArgs burstfind
+-- | 'spansPhotons ts spans' returns the photons in a set of spans
+spansPhotons :: V.Vector Time -> [(Time,Time)] -> [V.Vector Time]
+spansPhotons ts spans = evalState (mapM f spans) ts
+  where f :: (Time,Time) -> State (V.Vector Time) (V.Vector Time)
+        f (start,end) = do ts <- get
+                           let (a,b) = V.span (<=end) $ V.dropWhile (<start) ts
+                           put b
+                           return a
+  
+main = do args <- cmdArgs burstFind
           let realRateToTau rate = round $ 1/(rate*jiffy args)
               n = burst_length args
               mp = ModelParams { prob_b = 0.05
@@ -82,10 +75,11 @@ main = do args <- cmdArgs burstfind
              then putStrLn "No bursts found"
              else do printf "Found %u burst photons\n" (V.length bursts)
                      let cspans = compressSpans (40*tau_burst mp) (V.toList burstTimes)
-                         cspans' = filter (\(a,b)->(b-a) > 15) cspans
                      printf "Average %f photons/burst\n" (realToFrac (V.length bursts) / realToFrac (length cspans) :: Double)
 
-                     f <- openFile (fname args++".spans") WriteMode
-                     mapM_ (uncurry $ hPrintf f "%9u\t%9u\n") cspans
-                     hClose f
+                     fSpans <- openFile (fname args++".spans") WriteMode
+                     let printSpan ((start,end), aCount, dCount) = hPrintf fSpans "%9u\t%9u\t%4u\t%4u\n" start end aCount dCount
+                     mapM_ printSpan $ zip3 cspans (map V.length $ spansPhotons stampsA cspans) (map V.length $ spansPhotons stampsD cspans)
+                     hClose fSpans
+       
 
