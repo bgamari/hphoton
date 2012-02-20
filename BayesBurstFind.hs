@@ -12,7 +12,6 @@ import Data.Vector.Algorithms.Merge (sort)
 import HPhoton.FpgaTimetagger
 import Text.Printf
 import Data.List (foldl')
-import Control.Monad.Trans.State
 
 data BurstFind = BurstFind { fname :: FilePath
                            , bg_rate :: RealTime
@@ -32,15 +31,6 @@ burstFind = BurstFind { fname = def &= typFile &= argPos 0
                       }
                       &= summary "Bayesian Burst Find"
 
--- | 'spansPhotons ts spans' returns the photons in a set of spans
-spansPhotons :: V.Vector Time -> [(Time,Time)] -> [V.Vector Time]
-spansPhotons ts spans = evalState (mapM f spans) ts
-  where f :: (Time,Time) -> State (V.Vector Time) (V.Vector Time)
-        f (start,end) = do ts <- get
-                           let (a,b) = V.span (<=end) $ V.dropWhile (<start) ts
-                           put b
-                           return a
-  
 main = do args <- cmdArgs burstFind
           let realRateToTau rate = round $ 1/(rate*jiffy args)
               n = burst_length args

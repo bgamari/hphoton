@@ -2,10 +2,12 @@ module HPhoton.Utils ( zeroTime
                      , zeroTimes
                      , timesToInterarrivals
                      , combineChannels
+                     , spansPhotons
                      ) where
 
 import qualified Data.Vector.Unboxed as V
 import Data.Vector.Algorithms.Merge (sort)
+import Control.Monad.Trans.State
 import HPhoton.Types
 
 -- | Find the earliest time of a set of photon arrival times
@@ -26,4 +28,12 @@ combineChannels chs = do stamps <- V.thaw $ V.concat chs
                          sort stamps
                          stamps' <- V.freeze stamps
                          return stamps'
-                         --return $ V.map (- V.head stamps) stamps
+
+-- | 'spansPhotons ts spans' returns the photons in a set of spans
+spansPhotons :: V.Vector Time -> [(Time,Time)] -> [V.Vector Time]
+spansPhotons ts spans = evalState (mapM f spans) ts
+  where f :: (Time,Time) -> State (V.Vector Time) (V.Vector Time)
+        f (start,end) = do ts <- get
+                           let (a,b) = V.span (<=end) $ V.dropWhile (<start) ts
+                           put b
+                           return a
