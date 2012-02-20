@@ -3,6 +3,7 @@
 import HPhoton.BayesBurstFind
 import HPhoton.Types
 import HPhoton.Bin
+import HPhoton.Utils
 import System.Console.CmdArgs
 import System.IO
 import qualified Data.Vector.Unboxed as V
@@ -30,13 +31,6 @@ burstFind = BurstFind { fname = def &= typFile &= argPos 0
                       , beta_thresh = 2 &= help "Acceptance threshold on beta"
                       }
                       &= summary "Bayesian Burst Find"
-
--- | Combine multiple timestamp channels
-combineChannels :: [V.Vector Time] -> IO (V.Vector Time)
-combineChannels chs = do stamps <- V.thaw $ V.concat chs
-                         sort stamps
-                         stamps' <- V.freeze stamps
-                         return stamps'
 
 -- | 'spansPhotons ts spans' returns the photons in a set of spans
 spansPhotons :: V.Vector Time -> [(Time,Time)] -> [V.Vector Time]
