@@ -109,6 +109,13 @@ data Alex a = Alex { alexAexcAem :: a
                    , alexDexcDem :: a
                    } deriving (Show, Eq)
 
+instance Functor Alex where
+  fmap f a = Alex { alexAexcAem = f $ alexAexcAem a
+                  , alexAexcDem = f $ alexAexcDem a
+                  , alexDexcDem = f $ alexDexcDem a
+                  , alexDexcAem = f $ alexDexcAem a
+                  }
+
 -- | Extract timestamps for alternating laser excitation analysis
 alexTimes :: Time -> AlexChannels -> V.Vector Record -> Alex (V.Vector Time)
 alexTimes offset chs recs =
