@@ -33,8 +33,8 @@ burstFind = BurstFind { fname = def &= typFile &= argPos 0
 
 main = do args <- cmdArgs burstFind
           let realRateToTau rate = round $ 1/(rate*jiffy args)
-              n = burst_length args
-              mp = ModelParams { prob_b = 0.05
+              mp = ModelParams { window = burst_length args
+                               , prob_b = 0.05
                                , tau_bg = realRateToTau (bg_rate args)
                                , tau_burst = realRateToTau (burst_rate args)
                                }

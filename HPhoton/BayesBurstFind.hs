@@ -32,7 +32,8 @@ instance (Real a, Floating a) => Real (LogP a) where
         toRational (LogP x) = toRational $ exp x
 
 -- | Encapsulates the parameters of the burst model
-data ModelParams = ModelParams { prob_b :: Prob
+data ModelParams = ModelParams { window :: Int
+                               , prob_b :: Prob
                                , tau_burst :: Time
                                , tau_bg :: Time }
                                deriving (Show)
@@ -51,19 +52,22 @@ prob_dt__b mp dt = 1/tau * exp(-realToFrac dt / tau) -- TODO: There should be a 
 prob_dt__nb mp = exp_pdf (realToFrac $ tau_bg mp) . realToFrac
 
 -- | Compute the Bayes factor beta_n for a given photon i
-beta :: Int -> V.Vector TimeDelta -> ModelParams -> Int -> Double
-beta n dts mp i
+beta :: ModelParams -> V.Vector TimeDelta -> Int -> Double
+beta mp dts i
         | i+n >= V.length dts = error "Out of range"
         | i-n < 0             = error "Out of range"
         | otherwise = let prob_b__dts = prob_b mp * (product $ map (\j->prob_dt__b mp (dts!(i+j))) [-n..n])
                           prob_nb__dts = prob_nb mp * (product $ map (\j->prob_dt__nb mp (dts!(i+j))) [-n..n])
                       in prob_b__dts / prob_nb__dts
+        where n = window mp
 
+-- | Compute beta for each photon in a stream
+betas :: ModelParams -> V.Vector TimeDelta -> [(PhotonIdx, Double)]
+betas = map (beta mp dts) [n..(fromIntegral $ V.length dts - 2*window mp)]
+         
 -- | Find photons attributable to a burst
-findBurstPhotons :: Int -> V.Vector TimeDelta -> ModelParams -> [PhotonIdx]
-findBurstPhotons n dts mp =
-  let accept i = beta n dts mp i > 2
-  in filter accept [0..(fromIntegral $ V.length dts - n)]
+findBurstPhotons :: ModelParams -> V.Vector TimeDelta -> [PhotonIdx]
+findBurstPhotons mp dts = map fst $ filter (\(idx,beta)->beta > 2) $ betas mp dts
 
 data CompressSpansState = CSpansState { startT :: Time
                                       , lastT  :: Time
@@ -84,3 +88,4 @@ compressSpans fuzz ts =
       spans = result $ foldl' f s ts
   in if null spans then []
                    else tail $ reverse spans 
+                        
