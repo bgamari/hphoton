@@ -1,5 +1,6 @@
 module HPhoton.Utils ( zeroTime
                      , zeroTimes
+                     , timesToInterarrivals
                      , combineChannels
                      ) where
 
@@ -14,6 +15,10 @@ zeroTime = minimum . map V.head
 -- | Offset a set of arrival times such that the first photon arrives at t=0
 zeroTimes :: [V.Vector Time] -> [V.Vector Time]
 zeroTimes times = map (V.map (\t->t-zeroTime times)) times
+
+-- | Map a list of arrival times to the corresponding interarrival times
+timesToInterarrivals :: V.Vector Time -> V.Vector TimeDelta
+timesToInterarrivals times = V.zipWith (-) (V.tail times) times
 
 -- | Combine multiple timestamp channels
 combineChannels :: [V.Vector Time] -> IO (V.Vector Time)

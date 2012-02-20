@@ -1,4 +1,5 @@
 module HPhoton.Types ( Time
+                     , TimeDelta
                      , RealTime
                      , timeToRealTime
                      , realTimeToTime
@@ -6,7 +7,10 @@ module HPhoton.Types ( Time
 
 import Data.Word
 
+-- | A time in instrument-dependent ticks
 type Time = Word64
+-- | A difference between times in instrument-dependent ticks
+type TimeDelta = Word64
 
 type RealTime = Double
 

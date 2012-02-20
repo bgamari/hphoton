@@ -43,7 +43,7 @@ prob_nb = (1-) . prob_b
 exp_pdf :: Double -> Double -> Prob
 exp_pdf tau t = 1/tau * exp(-t/tau)
 
-prob_dt__b, prob_dt__nb :: ModelParams -> Time -> Prob
+prob_dt__b, prob_dt__nb :: ModelParams -> TimeDelta -> Prob
 -- | P(dt | Burst)
 prob_dt__b mp dt = 1/tau * exp(-realToFrac dt / tau) -- TODO: There should be a distribution over tau_burst?
                    where tau = realToFrac $ tau_burst mp
@@ -51,7 +51,7 @@ prob_dt__b mp dt = 1/tau * exp(-realToFrac dt / tau) -- TODO: There should be a 
 prob_dt__nb mp = exp_pdf (realToFrac $ tau_bg mp) . realToFrac
 
 -- | Compute the Bayes factor beta_n for a given photon i
-beta :: Int -> V.Vector Time -> ModelParams -> Int -> Double
+beta :: Int -> V.Vector TimeDelta -> ModelParams -> Int -> Double
 beta n dts mp i
         | i+n >= V.length dts = error "Out of range"
         | i-n < 0             = error "Out of range"
@@ -60,7 +60,7 @@ beta n dts mp i
                       in prob_b__dts / prob_nb__dts
 
 -- | Find photons attributable to a burst
-findBurstPhotons :: Int -> V.Vector Time -> ModelParams -> [PhotonIdx]
+findBurstPhotons :: Int -> V.Vector TimeDelta -> ModelParams -> [PhotonIdx]
 findBurstPhotons n dts mp =
   let accept i = beta n dts mp i > 2
   in filter accept [0..(fromIntegral $ V.length dts - n)]

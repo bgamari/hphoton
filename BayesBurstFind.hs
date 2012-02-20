@@ -53,7 +53,7 @@ main = do args <- cmdArgs burstFind
           let (stampsA, stampsD) = (strobeTimes rs Ch0, strobeTimes rs Ch1)
           times <- combineChannels [stampsA, stampsD]
 
-          let dts = V.zipWith (-) (V.tail times) times
+          let dts = timesToInterarrivals times
               duration = (jiffy args * fromIntegral (V.last times - V.head times))
           printf "%d photons\n" (V.length times)
           printf "Timestamp range %u..%u : %4.2e seconds\n" (V.head times) (V.last times) duration
