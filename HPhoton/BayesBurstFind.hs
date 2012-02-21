@@ -52,7 +52,7 @@ prob_dt__b mp dt = 1/tau * exp(-realToFrac dt / tau) -- TODO: There should be a 
 prob_dt__nb mp = exp_pdf (realToFrac $ tau_bg mp) . realToFrac
 
 -- | Compute the Bayes factor beta_n for a given photon i
-beta :: ModelParams -> V.Vector TimeDelta -> Int -> Double
+beta :: ModelParams -> V.Vector TimeDelta -> PhotonIdx -> Double
 beta mp dts i
         | i+n >= V.length dts = error "Out of range"
         | i-n < 0             = error "Out of range"
@@ -62,12 +62,16 @@ beta mp dts i
         where n = window mp
 
 -- | Compute beta for each photon in a stream
-betas :: ModelParams -> V.Vector TimeDelta -> [(PhotonIdx, Double)]
-betas = map (beta mp dts) [n..(fromIntegral $ V.length dts - 2*window mp)]
+betas :: ModelParams -> V.Vector TimeDelta -> V.Vector (PhotonIdx, Double)
+betas mp dts = V.map (\i->(i,beta mp dts i))
+               $ V.enumFromN (fromIntegral n) (fromIntegral $ V.length dts - 2*n)
+  where n = window mp
          
 -- | Find photons attributable to a burst
-findBurstPhotons :: ModelParams -> V.Vector TimeDelta -> [PhotonIdx]
-findBurstPhotons mp dts = map fst $ filter (\(idx,beta)->beta > 2) $ betas mp dts
+findBurstPhotons :: ModelParams -> Double -> V.Vector TimeDelta -> V.Vector PhotonIdx
+findBurstPhotons mp thresh dts = V.map fst
+                                 $ V.filter (\(idx,beta)->beta > thresh)
+                                 $ betas mp dts
 
 data CompressSpansState = CSpansState { startT :: Time
                                       , lastT  :: Time
