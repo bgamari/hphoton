@@ -50,20 +50,20 @@ main = do args <- cmdArgs burstFind
           printf "Average rate %1.3f photons/second\n" $ (fromIntegral $ V.length dts) / duration
           print mp
 
-          let betas = V.map (\i->(times ! fromIntegral i, beta n dts mp i))
-                    $ V.enumFromN (fromIntegral n) (V.length dts-2*n)
-              bursts = V.filter (\(t,beta) -> beta > beta_thresh args) betas
-              burstTimes = V.map fst bursts 
-
-          if V.length bursts == 0
+          let burstTimes = V.map (times!) $ findBurstPhotons mp (beta_thresh args) dts
+              nBurst = V.length burstTimes
+          if nBurst == 0
              then putStrLn "No bursts found"
-             else do printf "Found %u burst photons\n" (V.length bursts)
+             else do printf "Found %u burst photons\n" nBurst
                      let cspans = compressSpans (40*tau_burst mp) (V.toList burstTimes)
-                     printf "Average %f photons/burst\n" (realToFrac (V.length bursts) / realToFrac (length cspans) :: Double)
-
-                     fSpans <- openFile (fname args++".spans") WriteMode
-                     let printSpan ((start,end), aCount, dCount) = hPrintf fSpans "%9u\t%9u\t%4u\t%4u\n" start end aCount dCount
-                     mapM_ printSpan $ zip3 cspans (map V.length $ spansPhotons stampsA cspans) (map V.length $ spansPhotons stampsD cspans)
-                     hClose fSpans
+                         aCounts = map V.length $ spansPhotons stampsA cspans
+                         dCounts = map V.length $ spansPhotons stampsD cspans
+                     printf "Average %f photons/burst\n"
+                       (realToFrac nBurst / realToFrac (length cspans) :: Double)
        
+                     let printSpan (start,end) aCount dCount =
+                           printf "%9u\t%9u\t%4u\t%4u" start end aCount dCount
+                     writeFile (fname args) $ unlines
+                       $ zipWith3 printSpan cspans aCounts dCounts
+                     
 
