@@ -82,9 +82,9 @@ compressSpans fuzz ts =
              | otherwise = s { startT=t
                              , lastT=t
                              , result=(startT s, lastT s):result s }
-      s = CSpansState { startT= -1
-                      , lastT= -1
-                      , result=[] }
+      s = CSpansState { startT = -1
+                      , lastT  = -1
+                      , result = [] }
       spans = result $ foldl' f s ts
   in if null spans then []
                    else tail $ reverse spans 
