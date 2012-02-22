@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternGuards #-}
+
 module HPhoton.FpgaTimetagger.Alex ( FretChannel(..)
                                    , AlexChannels(..)
                                    , Alex(..)
@@ -32,20 +34,24 @@ instance Functor Alex where
 -- | Extract timestamps for alternating laser excitation analysis
 alexTimes :: Time -> AlexChannels -> V.Vector Record -> Alex (V.Vector Time)
 alexTimes offset chs recs =
-  Alex { alexAexcAem = getTimes (achAexc chs) (achAem chs)
-       , alexDexcAem = getTimes (achDexc chs) (achAem chs)
-       , alexAexcDem = getTimes (achAexc chs) (achDem chs)
-       , alexDexcDem = getTimes (achDexc chs) (achDem chs)
+  Alex { alexAexcAem = doAlex (achAexc chs) (achAem chs)
+       , alexDexcAem = doAlex (achDexc chs) (achAem chs)
+       , alexAexcDem = doAlex (achAexc chs) (achDem chs)
+       , alexDexcDem = doAlex (achDexc chs) (achDem chs)
        }
-  where f :: Channel -> Channel -> ([Time], Maybe Time) -> Record -> ([Time], Maybe Time)
-        f excCh _ (ts,_) (DeltaRecord {recChannels=newExcChs, recTime=t})
-          | excCh `elem` newExcChs        = (ts, Just (t+offset))
-          | otherwise                     = (ts, Nothing)
-        f _ emCh (ts, a@(Just startT)) (StrobeRecord {recChannels=ch, recTime=t})
-          | t > startT && emCh `elem` ch  = (t : ts, a)
-          | otherwise                     = (ts, a)
-        f _ _ (ts, Nothing) _             = (ts, Nothing)
-        initial = ([], Nothing)
-        getTimes excCh emCh = V.reverse $ V.fromList $ fst
-                              $ V.foldl' (f excCh emCh) initial recs
-
+  where doAlex exc em = getTimes offset exc em recs
+        
+getTimes :: Time -> Channel -> Channel -> V.Vector Record -> V.Vector Time
+getTimes offset excCh emCh recs = V.unfoldr f (Nothing,recs)
+  where f :: (Maybe Time, V.Vector Record) -> Maybe (Time, (Maybe Time, V.Vector Record))
+        f (_, recs) | V.null recs  = Nothing
+        f (Nothing, recs)
+          | DeltaRecord {recChannels=newExcChs, recTime=t} <- V.head recs
+          , excCh `elem` newExcChs  = f (Just $ t+offset, V.tail recs)
+          | otherwise  = f (Nothing, V.dropWhile (not . isDelta) $ V.tail recs)
+        f (Just startT, recs)
+          | DeltaRecord {recChannels=newExcChs} <- V.head recs
+          , excCh `notElem` newExcChs  = f (Nothing, V.tail recs)
+          | StrobeRecord {recChannels=ch, recTime=t} <- V.head recs
+          , t > startT, emCh `elem` ch  = Just (t-startT, (Just startT, V.tail recs))
+          | otherwise  = f (Just startT, V.tail recs)

@@ -28,12 +28,12 @@ import Control.Monad.Trans.State
 data Channel = Ch0 | Ch1 | Ch2 | Ch3 deriving (Show, Eq)
 
 data Record = DeltaRecord { recTime :: !Time
-                          , recChannels :: ![Channel]
+                          , recChannels :: [Channel]
                           , recWrap :: !Bool
                           , recLost :: !Bool
                           }
             | StrobeRecord { recTime :: !Time
-                           , recChannels :: ![Channel]
+                           , recChannels :: [Channel]
                            , recWrap :: !Bool
                            , recLost :: !Bool
                            }
