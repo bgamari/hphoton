@@ -1,10 +1,15 @@
 {-# LANGUAGE BangPatterns, TypeFamilies, MultiParamTypeClasses #-}
 
 module HPhoton.FpgaTimetagger ( Channel(..)
-                              , Record(..)
+                                -- * Timetag Record
+                              , Record
+                              , recDelta, recStrobe
+                              , recTime
+                              , recChannel, recChannels
+                              , recLost, recWrap
+                                         
                               , readRecords
                               , strobeTimes
-                              , isDelta, isStrobe
                               ) where
 
 import Data.Maybe (catMaybes)
@@ -25,20 +30,43 @@ import qualified Data.ByteString as BS
 import Control.Monad (liftM, when)
 import Control.Monad.Trans.State
 
-data Channel = Ch0 | Ch1 | Ch2 | Ch3 deriving (Show, Eq)
+data Channel = Ch0 | Ch1 | Ch2 | Ch3 deriving (Show, Eq, Enum, Bounded)
 
-data Record = DeltaRecord { recTime :: !Time
-                          , recChannels :: [Channel]
-                          , recWrap :: !Bool
-                          , recLost :: !Bool
-                          }
-            | StrobeRecord { recTime :: !Time
-                           , recChannels :: [Channel]
-                           , recWrap :: !Bool
-                           , recLost :: !Bool
-                           }
-            deriving (Show, Eq)
+newtype Record = Record (Time,Word8) deriving (Eq)
+                                              
+recTime (Record (time,_)) = time
+recFlags (Record (_,flags)) = flags
                      
+instance Show Record where
+  show rec = "buildRecord" 
+             ++" "++show (recDelta rec)
+             ++" "++show (recTime rec)
+             ++" "++show (recChannels rec)
+             ++" "++show (recWrap rec)
+             ++" "++show (recLost rec)
+  
+buildRecord :: Bool -> Word64 -> [Channel] -> Bool -> Bool -> Record
+buildRecord isDelta time channels isWrap isLost = Record (time,flags)
+  where flags = foldl' (.|.) 0 $ 
+                [ flag bitDelta isDelta 
+                , flag bitWrap isWrap
+                , flag bitLost isLost
+                ] ++ map (bit . bitCh) channels
+        flag _ False = 0
+        flag a True  = bit a
+                         
+recDelta, recStrobe, recWrap, recLost :: Record -> Bool
+recDelta rec = recFlags rec `testBit` bitDelta
+recStrobe = not . recDelta
+recWrap rec = recFlags rec `testBit` bitWrap
+recLost rec = recFlags rec `testBit` bitLost
+              
+recChannel :: Record -> Channel -> Bool
+recChannel rec ch = recFlags rec `testBit` bitCh ch
+
+recChannels :: Record -> [Channel]
+recChannels rec = filter (recChannel rec) $ enumFrom minBound
+
 bitDelta = 1
 bitLost = 2
 bitWrap = 3
@@ -51,30 +79,10 @@ boolToList a False = []
 boolToList a True = [a]
                     
 pack :: Record -> (Time, Word8)
-pack rec = (recTime rec, delta .|. lost .|. wrap .|. chs)
-  where delta = case rec of DeltaRecord {}  -> bit bitDelta
-                            StrobeRecord {} -> 0
-        lost = if recLost rec then bit bitLost else 0
-        wrap = if recWrap rec then bit bitWrap else 0
-        chs = foldl' (\b ch->b .|. bit (bitCh ch)) 0 $ recChannels rec
+pack (Record a) = a
         
 unpack :: (Time, Word8) -> Record
-unpack (time,flags)
-  | flags `testBit` bitDelta =
-    DeltaRecord { recTime = time
-                , recChannels = chs
-                , recWrap = wrap
-                , recLost = lost
-                }
-  | otherwise =
-    StrobeRecord { recTime = time
-                 , recChannels = chs
-                 , recWrap = wrap
-                 , recLost = lost
-                 }
-  where chs = concatMap (\ch->boolToList ch $ testBit flags $ bitCh ch) [Ch0,Ch1,Ch2,Ch3]
-        wrap = flags `testBit` bitWrap
-        lost = flags `testBit` bitLost
+unpack a = Record a
         
 newtype instance MVector s Record = MV_Record (MVector s (Time, Word8))
 newtype instance Vector    Record = V_Record  (Vector    (Time, Word8))
@@ -124,12 +132,6 @@ instance G.Vector Vector Record where
 --instance Ord Record where
 --        compare = compare `of` recTime
 
-isDelta, isStrobe :: Record -> Bool
-isDelta (DeltaRecord _ _ _ _) = True
-isDelta _ = False
-isStrobe (StrobeRecord _ _ _ _) = True
-isStrobe _ = False
-
 -- | Get a record
 getRecord :: BS.ByteString -> Record
 getRecord bs =
@@ -144,17 +146,7 @@ getRecord bs =
       delta = flags1 `testBit` 5
       wrap =  flags1 `testBit` 6
       lost =  flags1 `testBit` 7
-  in case delta of
-    True -> DeltaRecord { recTime = time
-                        , recChannels = chs
-                        , recWrap = wrap
-                        , recLost = lost
-                        }
-    False -> StrobeRecord { recTime = time
-                          , recChannels = chs
-                          , recWrap = wrap
-                          , recLost = lost
-                          }
+  in buildRecord delta time chs wrap lost
 
 readRecords :: FilePath -> IO (Vector Record)
 readRecords fname = do
@@ -165,19 +157,18 @@ readRecords fname = do
     
 -- | Fix timing wraparounds
 unwrapTimes :: Vector Record -> Vector Record
-unwrapTimes recs = recs --evalState (G.mapM f recs) (0,0)
+unwrapTimes recs = evalState (G.mapM f recs) (0,0)
   where f :: Record -> State (Time,Time) Record
-        f rec = do
-          let t = recTime rec
+        f (Record (t,flags)) = do
           (offset,lastT) <- get
           let offset' = if t < lastT
                            then offset+0x1000000000
                            else offset
           put (offset', t)
-          return $! rec {recTime = t + offset'}
+          return $! Record (t + offset', flags)
 
 strobeRecords :: Vector Record -> Channel -> Vector Record
-strobeRecords recs ch = G.filter (\r->isStrobe r && ch `elem` recChannels r) recs
+strobeRecords recs ch = G.filter (\r->recStrobe r && ch `elem` recChannels r) recs
 
 strobeTimes :: Vector Record -> Channel -> Vector Time
 strobeTimes recs ch = G.map recTime $ strobeRecords recs ch
