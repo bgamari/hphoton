@@ -8,8 +8,12 @@ module HPhoton.FpgaTimetagger ( Channel(..)
                               , recChannel, recChannels
                               , recLost, recWrap
                                          
+                                -- * Reading
                               , readRecords
                               , strobeTimes
+                                
+                                -- * Utilities
+                              , buildRecord
                               ) where
 
 import Data.Maybe (catMaybes)
