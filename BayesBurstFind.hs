@@ -41,7 +41,7 @@ main = do args <- cmdArgs burstFind
 
           rs <- readRecords (fname args)
           let (stampsA, stampsD) = (strobeTimes rs Ch0, strobeTimes rs Ch1)
-          times <- combineChannels [stampsA, stampsD]
+              times = combineChannels [stampsA, stampsD]
 
           let dts = timesToInterarrivals times
               duration = (jiffy args * fromIntegral (V.last times - V.head times))

@@ -9,6 +9,7 @@ import qualified Data.Vector.Unboxed as V
 import Data.Vector.Algorithms.Merge (sort)
 import Control.Monad.Trans.State
 import HPhoton.Types
+import Control.Monad.ST
 
 -- | Find the earliest time of a set of photon arrival times
 zeroTime :: [V.Vector Time] -> Time
@@ -23,11 +24,12 @@ timesToInterarrivals :: V.Vector Time -> V.Vector TimeDelta
 timesToInterarrivals times = V.zipWith (-) (V.tail times) times
 
 -- | Combine multiple timestamp channels
-combineChannels :: [V.Vector Time] -> IO (V.Vector Time)
-combineChannels chs = do stamps <- V.thaw $ V.concat chs
-                         sort stamps
-                         stamps' <- V.freeze stamps
-                         return stamps'
+combineChannels :: [V.Vector Time] -> V.Vector Time
+combineChannels chs =
+  runST $ do stamps <- V.thaw $ V.concat chs
+             sort stamps
+             stamps' <- V.freeze stamps
+             return stamps'
 
 -- | 'spansPhotons ts spans' returns the photons in a set of spans
 spansPhotons :: V.Vector Time -> [(Time,Time)] -> [V.Vector Time]
