@@ -4,6 +4,7 @@ module HPhoton.FpgaTimetagger ( Channel(..)
                               , Record(..)
                               , readRecords
                               , strobeTimes
+                              , isDelta, isStrobe
                               ) where
 
 import Data.Maybe (catMaybes)
