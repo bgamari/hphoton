@@ -41,17 +41,30 @@ alexTimes offset chs recs =
        }
   where doAlex exc em = getTimes offset exc em recs
         
+data AlexState = AlexState { sAccept :: !Bool
+                           , sDiscardT :: !Time
+                           , sStartT :: !Time
+                           , sRecords :: V.Vector Record
+                           }
+                 
 getTimes :: Time -> Channel -> Channel -> V.Vector Record -> V.Vector Time
-getTimes offset excCh emCh recs = V.unfoldr f (Nothing,recs)
-  where f :: (Maybe Time, V.Vector Record) -> Maybe (Time, (Maybe Time, V.Vector Record))
-        f (_, recs) | V.null recs  = Nothing
-        f (Nothing, recs)
-          | DeltaRecord {recChannels=newExcChs, recTime=t} <- V.head recs
-          , excCh `elem` newExcChs  = f (Just $ t+offset, V.tail recs)
-          | otherwise  = f (Nothing, V.dropWhile (not . isDelta) $ V.tail recs)
-        f (Just startT, recs)
-          | DeltaRecord {recChannels=newExcChs} <- V.head recs
-          , excCh `notElem` newExcChs  = f (Nothing, V.tail recs)
-          | StrobeRecord {recChannels=ch, recTime=t} <- V.head recs
-          , t > startT, emCh `elem` ch  = Just (t-startT, (Just startT, V.tail recs))
-          | otherwise  = f (Just startT, V.tail recs)
+getTimes offset excCh emCh recs =
+  V.unfoldr f $ AlexState {sAccept=False, sDiscardT=0, sStartT=0, sRecords=recs}
+  where f :: AlexState -> Maybe (Time, AlexState)
+        f state | V.null $ sRecords state  = Nothing
+        f state@(AlexState {sAccept=False, sRecords=recs})
+          | rec <- V.head recs, recDelta rec, recChannel rec excCh =
+              f $ state { sAccept=True
+                        , sStartT=recTime rec + offset
+                        , sDiscardT=sDiscardT state + recTime rec - sStartT state
+                        , sRecords=V.tail recs
+                        }
+          | otherwise  =
+              f $ state { sRecords=V.dropWhile (not . recDelta) $ V.tail recs }
+        f state@(AlexState {sAccept=True, sRecords=recs})
+          | rec <- V.head recs, recDelta rec, not $ recChannel rec excCh =
+              f $ state { sAccept=False, sRecords=V.tail recs }
+          | rec <- V.head recs, recTime rec > sStartT state, recChannel rec emCh =
+              Just (recTime rec - sDiscardT state, state {sRecords=V.tail recs})
+          | otherwise  =
+              f $ state {sRecords=V.tail recs}
