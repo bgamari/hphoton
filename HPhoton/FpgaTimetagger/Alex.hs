@@ -8,7 +8,9 @@ module HPhoton.FpgaTimetagger.Alex ( FretChannel(..)
 
 import HPhoton.Types
 import HPhoton.FpgaTimetagger
+--import Data.DList
 import qualified Data.Vector.Unboxed as V
+import Control.Monad.Trans.State.Strict
                                      
 data FretChannel = Acceptor | Donor deriving (Show, Eq)
 
@@ -44,27 +46,32 @@ alexTimes offset chs recs =
 data AlexState = AlexState { sAccept :: !Bool
                            , sDiscardT :: !Time
                            , sStartT :: !Time
-                           , sRecords :: V.Vector Record
+                           , sResult :: V.Vector Time
                            }
                  
 getTimes :: Time -> Channel -> Channel -> V.Vector Record -> V.Vector Time
 getTimes offset excCh emCh recs =
-  V.unfoldr f $ AlexState {sAccept=False, sDiscardT=0, sStartT=0, sRecords=recs}
-  where f :: AlexState -> Maybe (Time, AlexState)
-        f state | V.null $ sRecords state  = Nothing
-        f state@(AlexState {sAccept=False, sRecords=recs})
-          | rec <- V.head recs, recDelta rec, recChannel rec excCh =
-              f $ state { sAccept=True
-                        , sStartT=recTime rec + offset
-                        , sDiscardT=sDiscardT state + recTime rec - sStartT state
-                        , sRecords=V.tail recs
-                        }
-          | otherwise  =
-              f $ state { sRecords=V.dropWhile (not . recDelta) $ V.tail recs }
-        f state@(AlexState {sAccept=True, sRecords=recs})
-          | rec <- V.head recs, recDelta rec, not $ recChannel rec excCh =
-              f $ state { sAccept=False, sRecords=V.tail recs }
-          | rec <- V.head recs, recTime rec > sStartT state, recChannel rec emCh =
-              Just (recTime rec - sDiscardT state, state {sRecords=V.tail recs})
-          | otherwise  =
-              f $ state {sRecords=V.tail recs}
+  sResult $ execState (V.mapM_ f recs) initial
+  where initial = AlexState { sAccept = False
+                            , sDiscardT = 0
+                            , sStartT = 0
+                            , sResult = V.empty
+                            }
+        f :: Record -> State AlexState ()
+        f rec = do
+          state <- get
+          case sAccept state of
+            False | recDelta rec && recChannel rec excCh ->
+              put $! state { sAccept = True
+                           , sStartT = recTime rec + offset
+                           , sDiscardT = sDiscardT state + recTime rec - sStartT state
+                           }
+            False -> return ()
+            True | recDelta rec && not (recChannel rec excCh) -> do
+              put $! state { sAccept = False
+                           , sStartT = recTime rec
+                           }
+            True | recStrobe rec && recTime rec > sStartT state && recChannel rec emCh -> do
+              put $! state { sResult = sResult state V.++ V.singleton (recTime rec - sDiscardT state) }
+            otherwise -> return ()
+
