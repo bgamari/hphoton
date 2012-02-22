@@ -3,6 +3,7 @@ module HPhoton.Utils ( zeroTime
                      , timesToInterarrivals
                      , combineChannels
                      , spansPhotons
+                     , photonsDuration
                      ) where
 
 import qualified Data.Vector.Unboxed as V
@@ -28,8 +29,7 @@ combineChannels :: [V.Vector Time] -> V.Vector Time
 combineChannels chs =
   runST $ do stamps <- V.thaw $ V.concat chs
              sort stamps
-             stamps' <- V.freeze stamps
-             return stamps'
+             V.freeze stamps
 
 -- | 'spansPhotons ts spans' returns the photons in a set of spans
 spansPhotons :: V.Vector Time -> [(Time,Time)] -> [V.Vector Time]
@@ -39,3 +39,7 @@ spansPhotons ts spans = evalState (mapM f spans) ts
                            let (a,b) = V.span (<=end) $ V.dropWhile (<start) ts
                            put b
                            return a
+        
+-- | The duration in RealTime of a stream of photons
+photonsDuration :: RealTime -> V.Vector Time -> RealTime
+photonsDuration jiffy times = (realToFrac $ V.last times - V.head times) * jiffy
