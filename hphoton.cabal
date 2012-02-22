@@ -43,9 +43,23 @@ Build-type:          Simple
 Cabal-version:       >=1.2
 
 Library
-  Exposed-Modules: HPhoton.Bin, HPhoton.FpgaTimetagger, HPhoton.Types, HPhoton.RawTimestamps
+  Exposed-Modules:   HPhoton.Bin,
+                     HPhoton.FpgaTimetagger,
+		     HPhoton.FpgaTimetagger.Alex,
+		     HPhoton.Types,
+		     HPhoton.RawTimestamps
 
 Executable bayes-burst-find
   Main-is:           BayesBurstFind.hs
-  Build-depends:     base, vector-algorithms, vector-mmap, random-fu, vector, storable-endian, mwc-random, cmdargs, bytestring, transformers
+  Build-depends:     base,
+		     vector-algorithms,
+		     random-fu,
+		     vector,
+		     storable-endian,
+		     mwc-random,
+		     cmdargs,
+		     bytestring,
+		     transformers,
+		     cereal,
+		     vector-mmap
 
