@@ -95,3 +95,23 @@ Executable alex-analysis
                      Chart,
                      chart-histogram
 
+Executable fret-analysis
+  Main-is:           FretAnalysis.hs
+  Build-depends:     base,
+                     directory,
+                     filepath,
+                     ghc-prim,
+                     vector-algorithms,
+                     random-fu,
+                     vector,
+                     storable-endian,
+                     mwc-random,
+                     cmdargs,
+                     bytestring,
+                     transformers,
+                     cereal,
+                     vector-mmap,
+                     statistics,
+                     data-accessor,
+                     Chart,
+                     chart-histogram
