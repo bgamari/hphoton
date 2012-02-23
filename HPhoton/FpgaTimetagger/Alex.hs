@@ -1,7 +1,6 @@
 {-# LANGUAGE PatternGuards, DeriveGeneric, FlexibleInstances #-}
 
-module HPhoton.FpgaTimetagger.Alex ( FretChannel(..)
-                                   , AlexChannels(..)
+module HPhoton.FpgaTimetagger.Alex ( AlexChannels(..)
                                    , alexTimes
                                      
                                      -- * ALEX cache
@@ -22,8 +21,6 @@ import System.FilePath
 import System.Directory
 import Control.Monad
                                      
-data FretChannel = Acceptor | Donor deriving (Show, Eq)
-
 data AlexChannels = AlexChannels { achAexc :: Channel
                                  , achDexc :: Channel
                                  , achAem :: Channel

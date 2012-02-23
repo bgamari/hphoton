@@ -13,7 +13,7 @@ import Graphics.Rendering.Chart.Simple.Histogram
 
 jiffy = 1/128e6 -- s
 beta_thresh = 2
-burstRate = 1000 -- 1/s
+burstRate = 4000 -- 1/s
 bgRate = 200 -- 1/s
 
 mp = ModelParams { window = 10
@@ -65,8 +65,15 @@ main = do
         let counts = V.fromList $ map (realToFrac . V.length) bursts
         in (mean counts, stdDev counts)
   print $ fmap burstStats bursts
-  simpleHist "hi.png" 20 $ filter (<100) $ map (realToFrac . V.length) $ alexAexcAem bursts
+  simpleHist "da.png" 20 $ filter (<100) $ map (realToFrac . V.length) $ alexDexcAem bursts
+  simpleHist "aa.png" 20 $ filter (<100) $ map (realToFrac . V.length) $ alexAexcAem bursts
+  simpleHist "ad.png" 20 $ filter (<100) $ map (realToFrac . V.length) $ alexAexcDem bursts
+  simpleHist "dd.png" 20 $ filter (<100) $ map (realToFrac . V.length) $ alexDexcDem bursts
   
+  let separate = separateBursts bursts
+  mapM_ print separate
+  simpleHist "fret_eff.png" 20 $ map proxRatio separate
+  simpleHist "stoiciometry.png" 20 $ map stoiciometry separate
   return ()
   
 separateBursts :: Alex [V.Vector Time] -> [Alex Double]

@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module HPhoton.Fret.Alex ( Alex(..)
-                         , proximityRatio
+                         , proxRatio
                          , fretEff
                          , stoiciometry
                          ) where
@@ -30,7 +30,7 @@ fretEff gamma alex = iA / (iA + gamma*iD)
   where iA = alexDexcAem alex
         iD = alexDexcDem alex
         
-proximityRatio = fretEff 1
+proxRatio = fretEff 1
 
 stoiciometry :: Alex Double -> Double 
 stoiciometry alex = (iDexcDem + iDexcAem) / (iDexcDem + iDexcAem + iAexcDem + iAexcAem)
