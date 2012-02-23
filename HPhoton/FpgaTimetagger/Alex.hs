@@ -1,6 +1,7 @@
 {-# LANGUAGE PatternGuards, DeriveGeneric, FlexibleInstances #-}
 
-module HPhoton.FpgaTimetagger.Alex ( AlexChannels(..)
+module HPhoton.FpgaTimetagger.Alex ( Fret(..)
+                                   , AlexChannels(..)
                                    , alexTimes
                                      
                                      -- * ALEX cache
@@ -9,6 +10,7 @@ module HPhoton.FpgaTimetagger.Alex ( AlexChannels(..)
                                    ) where
 
 import HPhoton.Types
+import HPhoton.Fret (Fret(..))
 import HPhoton.Fret.Alex
 import HPhoton.FpgaTimetagger
 import qualified Data.Vector.Unboxed as V
@@ -21,25 +23,23 @@ import System.FilePath
 import System.Directory
 import Control.Monad
                                      
-data AlexChannels = AlexChannels { achAexc :: Channel
-                                 , achDexc :: Channel
-                                 , achAem :: Channel
-                                 , achDem :: Channel
-                                 } deriving (Show, Eq)
-
+data AlexChannels = AlexChannels { alexExc, alexEm :: Fret Channel }
+                    deriving (Show, Eq)
+                    
 instance (V.Unbox a, S.Serialize a) => S.Serialize (V.Vector a) where
   put = S.put . V.toList
   get = V.fromList `liftM` S.get
                               
 -- | Extract timestamps for alternating laser excitation analysis
 alexTimes :: Time -> AlexChannels -> V.Vector Record -> Alex (V.Vector Time)
-alexTimes offset chs recs =
-  Alex { alexAexcAem = doAlex (achAexc chs) (achAem chs)
-       , alexDexcAem = doAlex (achDexc chs) (achAem chs)
-       , alexAexcDem = doAlex (achAexc chs) (achDem chs)
-       , alexDexcDem = doAlex (achDexc chs) (achDem chs)
+alexTimes offset channels recs =
+  Alex { alexAexcAem = doAlex (fretA excChs) (fretA emChs)
+       , alexDexcAem = doAlex (fretD excChs) (fretA emChs)
+       , alexAexcDem = doAlex (fretA excChs) (fretD emChs)
+       , alexDexcDem = doAlex (fretD excChs) (fretD emChs)
        }
   where doAlex exc em = getTimes offset exc em recs
+        AlexChannels { alexExc=excChs, alexEm=emChs } = channels
         
 data AlexState = AlexState { sAccept :: !Bool
                            , sDiscardT :: !Time

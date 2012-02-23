@@ -15,6 +15,13 @@ jiffy = 1/128e6 -- s
 beta_thresh = 2
 burstRate = 4000 -- 1/s
 bgRate = 200 -- 1/s
+alexChs = AlexChannels { alexExc = Fret { fretA = Ch0
+                                        , fretD = Ch1
+                                        }
+                       , alexEm =  Fret { fretA = Ch0
+                                        , fretD = Ch1
+                                        }
+                       }
 
 mp = ModelParams { window = 10
                  , prob_b = 0.1
@@ -44,11 +51,7 @@ alexBursts d =
 main = do
   (fname:_) <- getArgs
   recs <- readRecords fname
-  let alexChs = AlexChannels { achAexc = Ch0
-                             , achDexc = Ch1
-                             , achAem = Ch0
-                             , achDem = Ch1
-                             }
+  
   summary "Raw" $ V.map recTime recs
   cachedAlex <- getCachedAlex fname
   let alex = maybe (alexTimes 0 alexChs recs) id cachedAlex
@@ -71,7 +74,6 @@ main = do
   simpleHist "dd.png" 20 $ filter (<100) $ map (realToFrac . V.length) $ alexDexcDem bursts
   
   let separate = separateBursts bursts
-  mapM_ print separate
   simpleHist "fret_eff.png" 20 $ map proxRatio separate
   simpleHist "stoiciometry.png" 20 $ map stoiciometry separate
   return ()
