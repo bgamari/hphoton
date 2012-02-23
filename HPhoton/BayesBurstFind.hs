@@ -32,13 +32,13 @@ instance (Real a, Floating a) => Real (LogP a) where
         toRational (LogP x) = toRational $ exp x
 
 -- | Encapsulates the parameters of the burst model
-data ModelParams = ModelParams { window :: Int
-                               , prob_b :: Prob
-                               , tau_burst :: Time
-                               , tau_bg :: Time }
+data ModelParams = ModelParams { mpWindow :: Int
+                               , mpProbB :: Prob
+                               , mpTauBurst :: Time
+                               , mpTauBg :: Time }
                                deriving (Show)
                                         
-prob_nb = (1-) . prob_b
+mpProbNB = (1-) . mpProbB
 
 -- | The PDF of an exponential distribution with inverse rate tau
 exp_pdf :: Double -> Double -> Prob
@@ -47,25 +47,25 @@ exp_pdf tau t = 1/tau * exp(-t/tau)
 prob_dt__b, prob_dt__nb :: ModelParams -> TimeDelta -> Prob
 -- | P(dt | Burst)
 prob_dt__b mp dt = 1/tau * exp(-realToFrac dt / tau) -- TODO: There should be a distribution over tau_burst?
-                   where tau = realToFrac $ tau_burst mp
+                   where tau = realToFrac $ mpTauBurst mp
 -- | P(dt | !Burst)
-prob_dt__nb mp = exp_pdf (realToFrac $ tau_bg mp) . realToFrac
+prob_dt__nb mp = exp_pdf (realToFrac $ mpTauBg mp) . realToFrac
 
 -- | Compute the Bayes factor beta_n for a given photon i
 beta :: ModelParams -> V.Vector TimeDelta -> PhotonIdx -> Double
 beta mp dts i
         | i+n >= V.length dts = error "Out of range"
         | i-n < 0             = error "Out of range"
-        | otherwise = let prob_b__dts = prob_b mp * (product $ map (\j->prob_dt__b mp (dts!(i+j))) [-n..n])
-                          prob_nb__dts = prob_nb mp * (product $ map (\j->prob_dt__nb mp (dts!(i+j))) [-n..n])
+        | otherwise = let prob_b__dts = mpProbB mp * (product $ map (\j->prob_dt__b mp (dts!(i+j))) [-n..n])
+                          prob_nb__dts = mpProbNB mp * (product $ map (\j->prob_dt__nb mp (dts!(i+j))) [-n..n])
                       in prob_b__dts / prob_nb__dts
-        where n = window mp
+        where n = mpWindow mp
 
 -- | Compute beta for each photon in a stream
 betas :: ModelParams -> V.Vector TimeDelta -> V.Vector (PhotonIdx, Double)
 betas mp dts = V.map (\i->(i,beta mp dts i))
                $ V.enumFromN (fromIntegral n) (fromIntegral $ V.length dts - 2*n)
-  where n = window mp
+  where n = mpWindow mp
          
 -- | Find photons attributable to a burst
 findBurstPhotons :: ModelParams -> Double -> V.Vector TimeDelta -> V.Vector PhotonIdx

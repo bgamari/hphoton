@@ -39,12 +39,10 @@ fretBursts d =
       burstTimes = V.map (combined V.!)
                    $ findBurstPhotons mp beta_thresh
                    $ timesToInterarrivals combined
-      spans = compressSpans (40*tau_burst mp) (V.toList burstTimes)
+      spans = compressSpans (40*mpTauBurst mp) (V.toList burstTimes)
   in fmap (flip spansPhotons $ spans) d
      
 main = do
-  (fname:_) <- getArgs
-  recs <- readRecords fname
   
   summary "Raw" $ V.map recTime recs
   let fret = fmap (strobeTimes recs) fretChs

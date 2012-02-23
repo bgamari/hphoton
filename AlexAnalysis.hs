@@ -23,10 +23,10 @@ alexChs = AlexChannels { alexExc = Fret { fretA = Ch0
                                         }
                        }
 
-mp = ModelParams { window = 10
-                 , prob_b = 0.1
-                 , tau_burst = round $ 1 / burstRate / jiffy
-                 , tau_bg = round $ 1 / bgRate / jiffy
+mp = ModelParams { mpWindow = 10
+                 , mpProbB = 0.1
+                 , mpTauBurst = round $ 1 / burstRate / jiffy
+                 , mpTauBg = round $ 1 / bgRate / jiffy
                  }
      
 summary label photons =
@@ -45,7 +45,7 @@ alexBursts d =
       burstTimes = V.map (combined V.!)
                    $ findBurstPhotons mp beta_thresh
                    $ timesToInterarrivals combined
-      spans = compressSpans (40*tau_burst mp) (V.toList burstTimes)
+      spans = compressSpans (40*mpTauBurst mp) (V.toList burstTimes)
   in fmap (flip spansPhotons $ spans) d
   
 main = do

@@ -33,10 +33,10 @@ burstFind = BurstFind { fname = def &= typFile &= argPos 0
 
 main = do args <- cmdArgs burstFind
           let realRateToTau rate = round $ 1/(rate*jiffy args)
-              mp = ModelParams { window = burst_length args
-                               , prob_b = 0.05
-                               , tau_bg = realRateToTau (bg_rate args)
-                               , tau_burst = realRateToTau (burst_rate args)
+              mp = ModelParams { mpWindow = burst_length args
+                               , mpProbB = 0.05
+                               , mpTauBg = realRateToTau (bg_rate args)
+                               , mpTauBurst = realRateToTau (burst_rate args)
                                }
 
           rs <- readRecords (fname args)
@@ -55,7 +55,7 @@ main = do args <- cmdArgs burstFind
           if nBurst == 0
              then putStrLn "No bursts found"
              else do printf "Found %u burst photons\n" nBurst
-                     let cspans = compressSpans (40*tau_burst mp) (V.toList burstTimes)
+                     let cspans = compressSpans (40*mpTauBurst mp) (V.toList burstTimes)
                          aCounts = map V.length $ spansPhotons stampsA cspans
                          dCounts = map V.length $ spansPhotons stampsD cspans
                      printf "Average %f photons/burst\n"
