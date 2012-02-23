@@ -37,21 +37,26 @@ Build-type:          Simple
 
 -- Extra files to be distributed with the package, such as examples or
 -- a README.
--- Extra-source-files:  
+-- Extra-source-files: 
 
 -- Constraint on the version of Cabal needed to build this package.
 Cabal-version:       >=1.2
 
 Library
   Exposed-Modules:   HPhoton.Bin,
+                     HPhoton.Fret.Alex,
                      HPhoton.FpgaTimetagger,
                      HPhoton.FpgaTimetagger.Alex,
                      HPhoton.Types,
-                     HPhoton.RawTimestamps
+                     HPhoton.RawTimestamps,
+                     Graphics.Rendering.Chart.Simple.Histogram
 
 Executable bayes-burst-find
   Main-is:           BayesBurstFind.hs
   Build-depends:     base,
+                     directory,
+                     filepath,
+                     ghc-prim,
                      vector-algorithms,
                      random-fu,
                      vector,
@@ -61,5 +66,30 @@ Executable bayes-burst-find
                      bytestring,
                      transformers,
                      cereal,
-                     vector-mmap
+                     vector-mmap,
+                     statistics,
+                     data-accessor,
+                     Chart,
+                     chart-histogram
+
+Executable alex-analysis
+  Main-is:           AlexAnalysis.hs
+  Build-depends:     base,
+                     directory,
+                     filepath,
+                     ghc-prim,
+                     vector-algorithms,
+                     random-fu,
+                     vector,
+                     storable-endian,
+                     mwc-random,
+                     cmdargs,
+                     bytestring,
+                     transformers,
+                     cereal,
+                     vector-mmap,
+                     statistics,
+                     data-accessor,
+                     Chart,
+                     chart-histogram
 

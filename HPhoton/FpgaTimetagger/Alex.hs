@@ -1,16 +1,26 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, DeriveGeneric, FlexibleInstances #-}
 
 module HPhoton.FpgaTimetagger.Alex ( FretChannel(..)
                                    , AlexChannels(..)
-                                   , Alex(..)
                                    , alexTimes
+                                     
+                                     -- * ALEX cache
+                                   , getCachedAlex
+                                   , putCachedAlex
                                    ) where
 
 import HPhoton.Types
+import HPhoton.Fret.Alex
 import HPhoton.FpgaTimetagger
---import Data.DList
 import qualified Data.Vector.Unboxed as V
 import Control.Monad.Trans.State.Strict
+  
+import GHC.Generics
+import qualified Data.ByteString as BS
+import qualified Data.Serialize as S
+import System.FilePath
+import System.Directory
+import Control.Monad
                                      
 data FretChannel = Acceptor | Donor deriving (Show, Eq)
 
@@ -20,19 +30,10 @@ data AlexChannels = AlexChannels { achAexc :: Channel
                                  , achDem :: Channel
                                  } deriving (Show, Eq)
 
-data Alex a = Alex { alexAexcAem :: a
-                   , alexAexcDem :: a
-                   , alexDexcAem :: a
-                   , alexDexcDem :: a
-                   } deriving (Show, Eq)
-
-instance Functor Alex where
-  fmap f a = Alex { alexAexcAem = f $ alexAexcAem a
-                  , alexAexcDem = f $ alexAexcDem a
-                  , alexDexcDem = f $ alexDexcDem a
-                  , alexDexcAem = f $ alexDexcAem a
-                  }
-
+instance (V.Unbox a, S.Serialize a) => S.Serialize (V.Vector a) where
+  put = S.put . V.toList
+  get = V.fromList `liftM` S.get
+                              
 -- | Extract timestamps for alternating laser excitation analysis
 alexTimes :: Time -> AlexChannels -> V.Vector Record -> Alex (V.Vector Time)
 alexTimes offset chs recs =
@@ -75,3 +76,23 @@ getTimes offset excCh emCh recs =
               put $! state { sResult = sResult state V.++ V.singleton (recTime rec - sDiscardT state) }
             otherwise -> return ()
 
+cachedAlexPath fname =
+  let cacheName = "."++takeFileName fname++".alex"
+  in  dropFileName fname </> cacheName
+                  
+getCachedAlex :: FilePath -> IO (Maybe (Alex (V.Vector Time)))
+getCachedAlex fname = do
+  exists <- doesFileExist cachePath
+  if exists
+    then do a <- S.decode `liftM` BS.readFile cachePath
+            return $ case a of
+              Left _  -> Nothing
+              Right a -> Just a
+    else return Nothing
+  where cachePath = cachedAlexPath fname
+  
+putCachedAlex :: FilePath -> Alex (V.Vector Time) -> IO ()
+putCachedAlex fname alex = 
+  BS.writeFile cachePath $ S.encode alex
+  where cachePath = cachedAlexPath fname
+  
