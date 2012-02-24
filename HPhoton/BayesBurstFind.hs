@@ -78,7 +78,7 @@ data CompressSpansState = CSpansState { startT :: !Time
                                       , result :: V.Vector (Time,Time)
                                       } deriving Show
 
--- | Reduce a list of times to a list of '(startTime, endTime, count)' spans
+-- | Reduce a list of times to a list of '(startTime, endTime)' spans
 compressSpans :: Time -> V.Vector Time -> V.Vector (Time, Time)
 compressSpans fuzz ts =
   let f :: CompressSpansState -> Time -> CompressSpansState
@@ -87,11 +87,11 @@ compressSpans fuzz ts =
                              , lastT  = t
                              , result = result s V.++ V.singleton (startT s, lastT s)
                              }
-      s = CSpansState { startT = -1
-                      , lastT  = -1
+      s = CSpansState { startT = V.head ts
+                      , lastT  = V.head ts
                       , result = V.empty
                       }
       spans = result $ V.foldl f s ts
   in if V.null spans then V.empty
-                     else V.tail spans 
+                     else spans 
                         
