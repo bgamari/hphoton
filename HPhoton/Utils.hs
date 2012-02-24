@@ -36,9 +36,11 @@ spansPhotons :: V.Vector Time -> [(Time,Time)] -> [V.Vector Time]
 spansPhotons ts spans = evalState (mapM f spans) ts
   where f :: (Time,Time) -> State (V.Vector Time) (V.Vector Time)
         f (start,end) = do ts <- get
-                           let (a,b) = V.span (<=end) $ V.dropWhile (<start) ts
-                           put $! b
-                           return $! a
+                           -- Note that we use fst $ span here instead
+                           -- of V.dropwhile due to bug http://trac.haskell.org/vector/ticket/78
+                           let (a,b) = V.span (<=end) $ fst $ V.span (<start) ts
+                           put b
+                           return a
         
 -- | The duration in RealTime of a stream of photons
 photonsDuration :: RealTime -> V.Vector Time -> RealTime
