@@ -25,7 +25,7 @@ data FretAnalysis = FretAnalysis { jiffy :: RealTime
                                  , burst_rate :: Rate
                                  , prob_b :: Double
                                  , window :: Int
-                                 , fname :: Maybe FilePath
+                                 , input :: Maybe FilePath
                                  }
                     deriving (Show, Eq, Data, Typeable)
                              
@@ -35,7 +35,7 @@ fretAnalysis = FretAnalysis { jiffy = 1/128e6 &= help "Jiffy time (s)"
                             , bg_rate = 200 &= help "Background rate (1/s)"
                             , window = 10 &= help "Burst window (photons)"
                             , prob_b = 0.01 &= help "Probability of burst"
-                            , fname = def &= argPos 0 &= typFile
+                            , input = def &= argPos 0 &= typFile
                             }
                
 alexChs = AlexChannels { alexExc = Fret { fretA = Ch0
@@ -76,13 +76,13 @@ alexBursts p d =
 main = do
   p <- cmdArgs fretAnalysis
   let mp = modelParamsFromParams p
-  guard $ isJust $ fname p
-  recs <- readRecords $ fromJust $ fname p
+  guard $ isJust $ input p
+  recs <- readRecords $ fromJust $ input p
   
   summary p "Raw" $ V.map recTime recs
-  cachedAlex <- getCachedAlex $ fromJust $ fname p
+  cachedAlex <- getCachedAlex $ fromJust $ input p
   let alex = maybe (alexTimes 0 alexChs recs) id cachedAlex
-  putCachedAlex (fromJust $ fname p) alex
+  putCachedAlex (fromJust $ input p) alex
           
   summary p "AexcAem" $ alexAexcAem alex
   summary p "AexcDem" $ alexAexcDem alex

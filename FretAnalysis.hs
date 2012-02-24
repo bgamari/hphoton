@@ -25,7 +25,8 @@ data FretAnalysis = FretAnalysis { jiffy :: RealTime
                                  , burst_rate :: Rate
                                  , prob_b :: Double
                                  , window :: Int
-                                 , fname :: Maybe FilePath
+                                 , input :: Maybe FilePath
+                                 , n_bins :: Int
                                  }
                     deriving (Show, Eq, Data, Typeable)
                              
@@ -35,7 +36,8 @@ fretAnalysis = FretAnalysis { jiffy = 1/128e6 &= help "Jiffy time (s)"
                             , bg_rate = 200 &= help "Background rate (1/s)"
                             , window = 10 &= help "Burst window (photons)"
                             , prob_b = 0.01 &= help "Probability of burst"
-                            , fname = def &= argPos 0 &= typFile
+                            , n_bins = 100 &= help "Number of bins in efficiency histogram"
+                            , input = def &= argPos 0 &= typFile
                             }
                
 fretChs = Fret { fretA = Ch0
@@ -62,14 +64,21 @@ fretBursts p d =
       burstTimes = V.map (combined V.!)
                    $ findBurstPhotons mp (beta_thresh p)
                    $ timesToInterarrivals combined
-      spans = V.toList $ compressSpans (40*mpTauBurst mp) burstTimes
+      spans = V.toList $ compressSpans (10*mpTauBurst mp) burstTimes
   in fmap (flip spansPhotons $ spans) d
      
+fretEffHist nbins e = layout
+  where hist = plot_hist_values  ^= [e]
+               $ plot_hist_range ^= Just (-0.1, 1.1)
+               $ defaultPlotHist
+        layout = layout1_plots ^= [Left (plotHist hist)]
+                 $ defaultLayout1
+        
 main = do
   p <- cmdArgs fretAnalysis
   let mp = modelParamsFromParams p
-  guard $ isJust $ fname p
-  recs <- readRecords $ fromJust $ fname p
+  guard $ isJust $ input p
+  recs <- readRecords $ fromJust $ input p
   
   summary p "Raw" $ V.map recTime recs
   let fret = fmap (strobeTimes recs) fretChs
