@@ -35,8 +35,8 @@ main = do args <- cmdArgs burstFind
           let realRateToTau rate = round $ 1/(rate*jiffy args)
               mp = ModelParams { mpWindow = burst_length args
                                , mpProbB = 0.05
-                               , mpTauBg = realRateToTau (bg_rate args)
-                               , mpTauBurst = realRateToTau (burst_rate args)
+                               , mpTauBg = realRateToTau $ bg_rate args
+                               , mpTauBurst = realRateToTau $ burst_rate args
                                }
 
           rs <- readRecords (fname args)
