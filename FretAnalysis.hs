@@ -58,14 +58,11 @@ summary p label photons =
 fretBursts :: FretAnalysis -> Fret (V.Vector Time) -> Fret [V.Vector Time]
 fretBursts p d =
   let mp = modelParamsFromParams p
-      combined = combineChannels [ fretD d
-                                 , fretA d
-                                 ]
-      
+      combined = combineChannels [fretD d, fretA d]
       burstTimes = V.map (combined V.!)
                    $ findBurstPhotons mp (beta_thresh p)
                    $ timesToInterarrivals combined
-      spans = compressSpans (40*mpTauBurst mp) (V.toList burstTimes)
+      spans = V.toList $ compressSpans (40*mpTauBurst mp) burstTimes
   in fmap (flip spansPhotons $ spans) d
      
 main = do
@@ -76,7 +73,6 @@ main = do
   
   summary p "Raw" $ V.map recTime recs
   let fret = fmap (strobeTimes recs) fretChs
-          
   summary p "A" $ fretA fret
   summary p "D" $ fretD fret
   

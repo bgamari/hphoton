@@ -73,23 +73,25 @@ findBurstPhotons mp thresh dts = V.map fst
                                  $ V.filter (\(idx,beta)->beta > thresh)
                                  $ betas mp dts
 
-data CompressSpansState = CSpansState { startT :: Time
-                                      , lastT  :: Time
-                                      , result :: [(Time,Time)]
+data CompressSpansState = CSpansState { startT :: !Time
+                                      , lastT  :: !Time
+                                      , result :: V.Vector (Time,Time)
                                       } deriving Show
 
 -- | Reduce a list of times to a list of '(startTime, endTime, count)' spans
-compressSpans :: Time -> [Time] -> [(Time, Time)]
+compressSpans :: Time -> V.Vector Time -> V.Vector (Time, Time)
 compressSpans fuzz ts =
   let f :: CompressSpansState -> Time -> CompressSpansState
       f s t  | t - lastT s <= fuzz  = s { lastT=t }
-             | otherwise = s { startT=t
-                             , lastT=t
-                             , result=(startT s, lastT s):result s }
+             | otherwise = s { startT = t
+                             , lastT  = t
+                             , result = result s V.++ V.singleton (startT s, lastT s)
+                             }
       s = CSpansState { startT = -1
                       , lastT  = -1
-                      , result = [] }
-      spans = result $ foldl' f s ts
-  in if null spans then []
-                   else tail $ reverse spans 
+                      , result = V.empty
+                      }
+      spans = result $ V.foldl f s ts
+  in if V.null spans then V.empty
+                     else V.tail spans 
                         

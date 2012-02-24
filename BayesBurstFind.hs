@@ -55,7 +55,7 @@ main = do args <- cmdArgs burstFind
           if nBurst == 0
              then putStrLn "No bursts found"
              else do printf "Found %u burst photons\n" nBurst
-                     let cspans = compressSpans (40*mpTauBurst mp) (V.toList burstTimes)
+                     let cspans = V.toList $ compressSpans (40*mpTauBurst mp) burstTimes
                          aCounts = map V.length $ spansPhotons stampsA cspans
                          dCounts = map V.length $ spansPhotons stampsD cspans
                      printf "Average %f photons/burst\n"

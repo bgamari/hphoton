@@ -8,7 +8,7 @@ module HPhoton.Utils ( zeroTime
 
 import qualified Data.Vector.Unboxed as V
 import Data.Vector.Algorithms.Merge (sort)
-import Control.Monad.Trans.State
+import Control.Monad.Trans.State.Strict
 import HPhoton.Types
 import Control.Monad.ST
 
@@ -37,8 +37,8 @@ spansPhotons ts spans = evalState (mapM f spans) ts
   where f :: (Time,Time) -> State (V.Vector Time) (V.Vector Time)
         f (start,end) = do ts <- get
                            let (a,b) = V.span (<=end) $ V.dropWhile (<start) ts
-                           put b
-                           return a
+                           put $! b
+                           return $! a
         
 -- | The duration in RealTime of a stream of photons
 photonsDuration :: RealTime -> V.Vector Time -> RealTime
