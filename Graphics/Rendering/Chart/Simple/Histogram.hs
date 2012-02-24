@@ -8,8 +8,7 @@ chart nbins xs = layout
         where hist = plot_hist_values  ^= [xs]
                      $ plot_hist_range ^= Just (minimum xs, maximum xs)
                      $ defaultPlotHist
-              layout = layout1_title ^= "Simple Histogram"
-                     $ layout1_plots ^= [Left (plotHist hist)]
+              layout = layout1_plots ^= [Left (plotHist hist)]
                      $ defaultLayout1
               
 simpleHist :: FilePath -> Int -> [Double] -> IO ()
