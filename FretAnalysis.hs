@@ -86,7 +86,10 @@ main = do
   simpleHist "a.png" 20 $ filter (<100) $ map (realToFrac . V.length) $ fretA bursts
   
   let separate = separateBursts bursts
-  printf "Found %d bursts" (length separate)
+  printf "Found %d bursts (%1.1f per second)\n"
+    (length separate)
+    (genericLength separate / photonsDuration (jiffy p) (V.map recTime recs))
+  
   simpleHist "fret_eff.png" 20 $ map proxRatio separate
   return ()
   
