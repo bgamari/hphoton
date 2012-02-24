@@ -32,12 +32,13 @@ combineChannels chs =
              V.freeze stamps
 
 -- | 'spansPhotons ts spans' returns the photons in a set of spans
-spansPhotons :: V.Vector Time -> [(Time,Time)] -> [V.Vector Time]
+spansPhotons :: V.Vector Time -> [Span] -> [V.Vector Time]
 spansPhotons ts spans = evalState (mapM f spans) ts
-  where f :: (Time,Time) -> State (V.Vector Time) (V.Vector Time)
+  where f :: Span -> State (V.Vector Time) (V.Vector Time)
         f (start,end) = do ts <- get
                            -- Note that we use fst $ span here instead
-                           -- of V.dropwhile due to bug http://trac.haskell.org/vector/ticket/78
+                           -- of V.dropwhile due to bug
+                           -- http://trac.haskell.org/vector/ticket/78
                            let (a,b) = V.span (<=end) $ fst $ V.span (<start) ts
                            put b
                            return a

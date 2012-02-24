@@ -75,11 +75,11 @@ findBurstPhotons mp thresh dts = V.map fst
 
 data CompressSpansState = CSpansState { startT :: !Time
                                       , lastT  :: !Time
-                                      , result :: V.Vector (Time,Time)
+                                      , result :: V.Vector Span
                                       } deriving Show
 
 -- | Reduce a list of times to a list of '(startTime, endTime)' spans
-compressSpans :: Time -> V.Vector Time -> V.Vector (Time, Time)
+compressSpans :: Time -> V.Vector Time -> V.Vector Span
 compressSpans fuzz ts =
   let f :: CompressSpansState -> Time -> CompressSpansState
       f s t  | t - lastT s <= fuzz  = s { lastT=t }
