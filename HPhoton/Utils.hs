@@ -39,7 +39,7 @@ spansPhotons ts spans = evalState (mapM f spans) ts
                            -- Note that we use fst $ span here instead
                            -- of V.dropwhile due to bug
                            -- http://trac.haskell.org/vector/ticket/78
-                           let (a,b) = V.span (<=end) $ fst $ V.span (<start) ts
+                           let (a,b) = V.span (<=end) $ snd $ V.span (<start) ts
                            put b
                            return a
         
