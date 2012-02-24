@@ -102,8 +102,8 @@ main = do
   
   let separate = separateBursts bursts
   printf "Found %d bursts" (length separate)
-  simpleHist "fret_eff.png" 20 $ map proxRatio separate
-  simpleHist "stoiciometry.png" 20 $ map stoiciometry separate
+  simpleHist "fret_eff.png" 80 $ map proxRatio separate
+  simpleHist "stoiciometry.png" 80 $ map stoiciometry separate
   return ()
   
 separateBursts :: Alex [V.Vector Time] -> [Alex Double]

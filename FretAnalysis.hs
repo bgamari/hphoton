@@ -12,6 +12,9 @@ import HPhoton.FpgaTimetagger
 import HPhoton.FpgaTimetagger.Alex
 import Statistics.Sample
 import qualified Data.Vector.Unboxed as V
+import Data.Accessor
+import Graphics.Rendering.Chart
+import Graphics.Rendering.Chart.Plot.Histogram
 import Graphics.Rendering.Chart.Simple.Histogram
 import System.Console.CmdArgs hiding (summary)
 import Control.Monad (guard)
@@ -99,7 +102,7 @@ main = do
     (length separate)
     (genericLength separate / photonsDuration (jiffy p) (V.map recTime recs))
   
-  simpleHist "fret_eff.png" 20 $ map proxRatio separate
+  renderableToPNGFile (toRenderable $ fretEffHist (n_bins p) $ map proxRatio separate) 640 480 "fret_eff.png"
   return ()
   
 separateBursts :: Fret [V.Vector Time] -> [Fret Double]
