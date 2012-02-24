@@ -38,11 +38,11 @@ fretAnalysis = FretAnalysis { jiffy = 1/128e6 &= help "Jiffy time (s)"
                             , input = def &= argPos 0 &= typFile
                             }
                
-alexChs = AlexChannels { alexExc = Fret { fretA = Ch0
-                                        , fretD = Ch1
+alexChs = AlexChannels { alexExc = Fret { fretA = Ch1
+                                        , fretD = Ch0
                                         }
-                       , alexEm =  Fret { fretA = Ch0
-                                        , fretD = Ch1
+                       , alexEm =  Fret { fretA = Ch1
+                                        , fretD = Ch0
                                         }
                        }
 

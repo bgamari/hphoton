@@ -40,8 +40,8 @@ fretAnalysis = FretAnalysis { jiffy = 1/128e6 &= help "Jiffy time (s)"
                             , input = def &= argPos 0 &= typFile
                             }
                
-fretChs = Fret { fretA = Ch0
-               , fretD = Ch1
+fretChs = Fret { fretA = Ch1
+               , fretD = Ch0
                }
 
 modelParamsFromParams :: FretAnalysis -> ModelParams
