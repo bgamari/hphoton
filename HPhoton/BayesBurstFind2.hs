@@ -37,16 +37,22 @@ type BDist = (LogFloat, LogFloat)
 -- | Compute P(B_i | tau_i) for all i
 computeProbBs :: Params -> V.Vector Time -> V.Vector BDist
 computeProbBs params dts =
-  let edgeProb True  True  = pProbBurstStickiness params
+  let -- P(b_i, b_i+1)
+      edgeProb True  True  = pProbBurstStickiness params
       edgeProb False False = pProbBGStickiness params
       edgeProb a     b     = 1 - edgeProb a (not b)
+      
+      -- P(tau_i, b_i)
       bToDist True = expDist (pTauBurst params)
       bToDist False = expDist (pTauBG params)
+      
+      -- P(b_i)
       probBurst :: Bool -> Prob
       probBurst True = pProbBurst params
       probBurst False = 1 - pProbBurst params
+      
       psi :: Bool -> Bool -> Time -> Prob
-      psi b1 b2 tau2 = bToDist b2 tau2 * edgeProb b1 b2
+      psi b1 b2 tau2 = probBurst b2 * bToDist b2 tau2 * edgeProb b1 b2
       marginalize :: (Bool -> Prob) -> Prob
       marginalize f = sum $ map f [True, False]
       cliques = V.zip dts $ V.tail dts
