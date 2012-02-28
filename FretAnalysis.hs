@@ -39,7 +39,7 @@ fretAnalysis = FretAnalysis { jiffy = 1/128e6 &= help "Jiffy time (s)"
                             , bg_rate = 200 &= help "Background rate (1/s)"
                             , window = 10 &= help "Burst window (photons)"
                             , prob_b = 0.01 &= help "Probability of burst"
-                            , n_bins = 100 &= help "Number of bins in efficiency histogram"
+                            , n_bins = 40 &= help "Number of bins in efficiency histogram"
                             , input = def &= argPos 0 &= typFile
                             }
                
@@ -73,6 +73,7 @@ fretBursts p d =
 fretEffHist nbins e = layout
   where hist = plot_hist_values  ^= [e]
                $ plot_hist_range ^= Just (-0.1, 1.1)
+               $ plot_hist_bins  ^= nbins
                $ defaultPlotHist
         layout = layout1_plots ^= [Left (plotHist hist)]
                  $ defaultLayout1
