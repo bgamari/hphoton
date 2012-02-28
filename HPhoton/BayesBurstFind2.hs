@@ -14,8 +14,8 @@ data ModelState = ModelState { msBs :: V.Vector Bool }
 
 type Prob = LogFloat
 
-data HyperParams = HyperParams { hpProbBurstStickiness :: (Double, Double)
-                               , hpProbBGStickiness :: (Double, Double)
+data HyperParams = HyperParams { hpBurstStickiness :: (Double, Double)
+                               , hpBGStickiness :: (Double, Double)
                                }
                    
 data Params = Params { pProbBurst :: Prob
@@ -46,7 +46,7 @@ computeProbBs params dts =
       probBurst True = pProbBurst params
       probBurst False = 1 - pProbBurst params
       psi :: Bool -> Bool -> Time -> Prob
-      psi b1 b2 tau2 = probBurst b2 * bToDist b2 tau2 * edgeProb b1 b2
+      psi b1 b2 tau2 = bToDist b2 tau2 * edgeProb b1 b2
       marginalize :: (Bool -> Prob) -> Prob
       marginalize f = sum $ map f [True, False]
       cliques = V.zip dts $ V.tail dts
@@ -86,9 +86,11 @@ inferBernoulli (a,b) v = realToFrac $ (a + h) / (a + b + n)
 inferParams :: HyperParams -> Params -> V.Vector Bool -> Params
 inferParams hypers params bs =
   params { --pProbBurst = inferBernoulli (0,0) bs
-           pProbBurstStickiness = inferBernoulli (10,1) $ V.map (uncurry (==))
+           pProbBurstStickiness = inferBernoulli (hpBurstStickiness hypers)
+                                  $ V.map (uncurry (==))
                                   $ V.filter (\(a,b)->a) $ V.zip bs (V.tail bs)
-         , pProbBGStickiness    = inferBernoulli (10,1) $ V.map (uncurry (==))
+         , pProbBGStickiness    = inferBernoulli (hpBGStickiness hypers)
+                                  $ V.map (uncurry (==))
                                   $ V.filter (\(a,b)->not a) $ V.zip bs (V.tail bs)
          }
         
