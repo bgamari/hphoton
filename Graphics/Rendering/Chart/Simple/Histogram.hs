@@ -7,6 +7,7 @@ import Graphics.Rendering.Chart.Plot.Histogram
 chart nbins xs = layout
         where hist = plot_hist_values  ^= [xs]
                      $ plot_hist_range ^= Just (minimum xs, maximum xs)
+                     $ plot_hist_bins  ^= nbins
                      $ defaultPlotHist
               layout = layout1_plots ^= [Left (plotHist hist)]
                      $ defaultLayout1
