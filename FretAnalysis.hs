@@ -25,6 +25,7 @@ type Rate = Double
 data FretAnalysis = FretAnalysis { jiffy :: RealTime
                                  , beta_thresh :: Double
                                  , bg_rate :: Rate
+                                 , burst_size :: Int
                                  , burst_rate :: Rate
                                  , prob_b :: Double
                                  , window :: Int
@@ -35,6 +36,7 @@ data FretAnalysis = FretAnalysis { jiffy :: RealTime
                              
 fretAnalysis = FretAnalysis { jiffy = 1/128e6 &= help "Jiffy time (s)"
                             , beta_thresh = 2 &= help "Beta threshold"
+                            , burst_size = 10 &= help "Minimum burst size"
                             , burst_rate = 4000 &= help "Burst rate (1/s)"
                             , bg_rate = 200 &= help "Background rate (1/s)"
                             , window = 10 &= help "Burst window (photons)"
@@ -58,7 +60,7 @@ modelParamsFromParams p =
 summary p label photons =
   let len = realToFrac $ V.length photons :: Double
       dur = photonsDuration (jiffy p) photons
-  in printf "%s: %1.1e photons, %1.2e sec, %1.2e Hz\n" label len dur (len/dur)
+  in printf "%-8s: %1.1e photons, %1.2e sec, %1.2e Hz\n" label len dur (len/dur)
      
 fretBursts :: FretAnalysis -> Fret (V.Vector Time) -> Fret [V.Vector Time]
 fretBursts p d =
@@ -98,7 +100,9 @@ main = do
   simpleHist "d.png" 20 $ filter (<100) $ map (realToFrac . V.length) $ fretD bursts
   simpleHist "a.png" 20 $ filter (<100) $ map (realToFrac . V.length) $ fretA bursts
   
-  let separate = separateBursts bursts
+  let separate = separateBursts
+                 $ fmap (filter (\burst->V.length burst > burst_size p))
+                 $ bursts
   printf "Found %d bursts (%1.1f per second)\n"
     (length separate)
     (genericLength separate / photonsDuration (jiffy p) (V.map recTime recs))
