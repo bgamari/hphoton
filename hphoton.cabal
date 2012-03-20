@@ -49,6 +49,8 @@ Library
                      HPhoton.Fret.Alex,
                      HPhoton.FpgaTimetagger,
                      HPhoton.FpgaTimetagger.Alex,
+                     HPhoton.BurstIdent.Bayes,
+                     HPhoton.BurstIdent.BinThreshold
                      HPhoton.Types,
                      HPhoton.RawTimestamps,
                      Graphics.Rendering.Chart.Simple.Histogram

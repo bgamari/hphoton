@@ -1,6 +1,6 @@
 {-# LANGUAGE PackageImports, TupleSections #-}
 
-module HPhoton.BayesBurstFind where
+module HPhoton.BurstIdent.Bayes where
 
 import Data.Vector.Unboxed ((!), Vector)
 import qualified Data.Vector.Unboxed as V

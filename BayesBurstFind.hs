@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
-import HPhoton.BayesBurstFind
+import HPhoton.BurstIdent.Bayes
 import HPhoton.Types
 import HPhoton.Bin
 import HPhoton.Utils

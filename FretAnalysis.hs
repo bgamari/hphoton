@@ -4,7 +4,7 @@ import Data.Maybe
 import Data.List
 import System.Environment
 import HPhoton.Types
-import HPhoton.BayesBurstFind
+import HPhoton.BurstIdent.Bayes
 import HPhoton.Utils
 import HPhoton.Fret
 import Text.Printf
