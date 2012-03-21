@@ -4,11 +4,17 @@ module HPhoton.Bin ( binTimes
                    , binTimesWithTimes
                    , binTimesInRange
                    , binTimesInRangeWithTimes
+                     -- * Tests
+                   , tests
                    ) where
 
+import Data.Label
 import HPhoton.Types
 import Control.Monad
 import qualified Data.Vector.Unboxed as V
+  
+import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.QuickCheck
 
 binTimes :: V.Vector Time -> Time -> V.Vector Int
 binTimes ts width =
@@ -56,3 +62,11 @@ main = do
         let binned = binTimes testTimes 10
         forM_ (V.toList binned) print
 
+prop_binning_conserves_photons :: Positive Time -> Timestamps -> Property
+prop_binning_conserves_photons (Positive width) ts =
+  printTestCase (show bins) $ V.foldl (+) 0 bins == V.length times
+  where times = get tsStamps ts
+        bins = binTimes times width
+
+tests = [ testProperty "binning conserves photons" prop_binning_conserves_photons
+        ]

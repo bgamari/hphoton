@@ -17,8 +17,7 @@ import Data.Label
 import Data.Word
 import qualified Data.Vector.Unboxed as V
   
-import Test.QuickCheck.Arbitrary
-import Test.QuickCheck.Modifiers
+import Test.QuickCheck
 import Data.List (sort)
 
 -- | A time in instrument-dependent ticks
