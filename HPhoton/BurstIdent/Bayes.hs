@@ -91,7 +91,8 @@ compressSpans fuzz ts =
                        , lastT  = V.head ts
                       , result = V.empty
                       }
-      spans = result $ V.foldl f s0 ts
+      res = V.foldl f s0 ts
+      spans = result res V.++ V.singleton (startT res, lastT res) 
   in if V.null spans then V.empty
                      else spans 
                         
