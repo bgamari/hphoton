@@ -4,6 +4,8 @@ module HPhoton.Utils ( zeroTime
                      , combineChannels
                      , spansPhotons
                      , photonsDuration
+                       -- * Tests
+                     , tests
                      ) where
 
 import qualified Data.Vector.Unboxed as V
@@ -12,6 +14,10 @@ import Control.Monad.Trans.State.Strict
 import HPhoton.Types
 import Control.Monad.ST
 
+import Test.Framework (testGroup)
+import Test.Framework.Providers.HUnit (testCase)
+import Test.HUnit hiding (State)
+  
 -- | Find the earliest time of a set of photon arrival times
 zeroTime :: [V.Vector Time] -> Time
 zeroTime = minimum . map V.head
@@ -47,3 +53,27 @@ spansPhotons ts spans = evalState (mapM f spans) ts
 photonsDuration :: RealTime -> V.Vector Time -> RealTime
 photonsDuration jiffy times = (realToFrac $ V.last times - V.head times) * jiffy
 
+
+-- * Tests
+testSpans :: [Span] -> [Test]
+testSpans spans = map (uncurry testCase)
+  [ ( "Number of spans"
+    , assertBool "Wrong number of spans"
+      $ length res == length spans
+    )
+  , ( "Number of timestamps"
+    , assertBool "Wrong number of photons in span"
+      $ all (\(start,end)->end-start == V.length res) spans
+    )
+  , ( "Timestamp ranges"
+    , assertBool "Excluded photon in span"
+      $ all (map (\((start,end), photons)->V.all (\x->x >= start && x < end) photons))
+      $ zip spans res
+    )
+  ]
+  where times = V.enumFromN 0 1000
+        res = spansPhotons times spans
+        
+tests = [ testGroup "Zero length span" $ testSpans [(0,0)]
+        , testGroup "One length span" $ testSpans [(0,1)]
+        ]
