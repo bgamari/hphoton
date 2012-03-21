@@ -14,12 +14,14 @@ import Control.Monad
 import qualified Data.Vector.Unboxed as V
   
 import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.Framework.Providers.HUnit (testCase)
+import Test.HUnit
 import Test.QuickCheck
 
 binTimes :: V.Vector Time -> Time -> V.Vector Int
 binTimes ts width =
         V.fromList $ binTimes' (V.toList ts) width Nothing (fromIntegral $ V.head ts `quot` width) 0
-
+                
 binTimesWithTimes :: V.Vector Time -> Time -> V.Vector (Time, Int)
 binTimesWithTimes ts width = V.zip times bins
         where bin0 = fromIntegral $ V.head ts `quot` width
@@ -64,9 +66,21 @@ main = do
 
 prop_binning_conserves_photons :: Positive Time -> Timestamps -> Property
 prop_binning_conserves_photons (Positive width) ts =
-  printTestCase (show bins) $ V.foldl (+) 0 bins == V.length times
+  printTestCase (show bins)
+  $ V.foldl (+) 0 bins == V.length takenTimes
   where times = get tsStamps ts
+        takenTimes = V.takeWhile (< (V.last times `quot` width) * width) times
         bins = binTimes times width
+        
+test_bins_have_correct_count :: Time -> Int -> Assertion
+test_bins_have_correct_count dt count =
+  assertBool "Bin with incorrect count" $ V.all (==count) bins
+  where times = V.enumFromStepN 0 dt (count*10)
+        bins = binTimes times width
+        width = fromIntegral count * dt
 
 tests = [ testProperty "binning conserves photons" prop_binning_conserves_photons
+        , testCase "bins have correct count (1,1)" $ test_bins_have_correct_count 1 1
+        , testCase "bins have correct count (2,1)" $ test_bins_have_correct_count 2 1
+        , testCase "bins have correct count (200,10)" $ test_bins_have_correct_count 200 10
         ]
