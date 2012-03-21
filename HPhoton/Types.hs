@@ -8,8 +8,8 @@ module HPhoton.Types ( -- * Time
                      , realTimeToTime
                      , Span
                        -- * Time stamps
-                     , Timestamps(..)
-                     , tsJiffy
+                     , Timestamps(Timestamps)
+                     , tsFreq, tsStamps, tsJiffy
                      , duration, realDuration
                      ) where
 
