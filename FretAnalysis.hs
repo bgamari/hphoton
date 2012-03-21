@@ -1,10 +1,13 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+import Debug.Trace
+import HPhoton.Bin
 
 import Data.Maybe
 import Data.List
 import System.Environment
 import HPhoton.Types
 import HPhoton.BurstIdent.Bayes
+import HPhoton.BurstIdent.BinThreshold
 import HPhoton.Utils
 import HPhoton.Fret
 import Text.Printf
@@ -22,27 +25,48 @@ import Control.Monad (guard)
 -- | A rate measured in real time
 type Rate = Double
 
+data BurstMode = Bayes | BinThresh deriving (Show, Eq, Data, Typeable)
 data FretAnalysis = FretAnalysis { jiffy :: RealTime
+                                 , n_bins :: Int
+                                 , input :: Maybe FilePath
+                                 , burst_mode :: BurstMode
+
+                                 , bin_width :: RealTime
+                                 , burst_thresh :: Double
+                                 
                                  , beta_thresh :: Double
                                  , bg_rate :: Rate
                                  , burst_size :: Int
                                  , burst_rate :: Rate
                                  , prob_b :: Double
                                  , window :: Int
-                                 , input :: Maybe FilePath
-                                 , n_bins :: Int
                                  }
                     deriving (Show, Eq, Data, Typeable)
                              
-fretAnalysis = FretAnalysis { jiffy = 1/128e6 &= help "Jiffy time (s)"
-                            , beta_thresh = 2 &= help "Beta threshold"
-                            , burst_size = 10 &= help "Minimum burst size"
-                            , burst_rate = 4000 &= help "Burst rate (1/s)"
-                            , bg_rate = 200 &= help "Background rate (1/s)"
-                            , window = 10 &= help "Burst window (photons)"
-                            , prob_b = 0.01 &= help "Probability of burst"
-                            , n_bins = 40 &= help "Number of bins in efficiency histogram"
+fretAnalysis = FretAnalysis { jiffy = 1/128e6 &= groupname "General" &= help "Jiffy time (s)"
+                            , n_bins = 40 &= groupname "General" &= help "Number of bins in efficiency histogram"
                             , input = def &= argPos 0 &= typFile
+                            , burst_mode = enum [ Bayes &= help "Use Bayesian burst detection"
+                                                , BinThresh &= help "Use binning/thresholding for burst detection"
+                                                ]
+                            
+                            , bin_width = 10 &= groupname "Bin/threshold burst detection"
+                                             &= help "Bin width in milliseconds"
+                            , burst_thresh = 2 &= groupname "Bin/threshold burst detection"
+                                               &= help "Threshold rate over background rate"
+                            
+                            , burst_size = 10 &= groupname "Bayesian burst detection"
+                                              &= help "Minimum burst size"
+                            , burst_rate = 4000 &= groupname "Bayesian burst detection"
+                                                &= help "Burst rate (1/s)"
+                            , bg_rate = 200 &= groupname "Bayesian burst detection"
+                                            &= help "Background rate (1/s)"
+                            , window = 10 &= groupname "Bayesian burst detection"
+                                          &= help "Burst window (photons)"
+                            , prob_b = 0.01 &= groupname "Bayesian burst detection"
+                                            &= help "Probability of burst"
+                            , beta_thresh = 2 &= groupname "Bayesian burst detection"
+                                              &= help "Beta threshold"
                             }
                
 fretChs = Fret { fretA = Ch1
@@ -62,15 +86,27 @@ summary p label photons =
       dur = photonsDuration (jiffy p) photons
   in printf "%-8s: %1.1e photons, %1.2e sec, %1.2e Hz\n" label len dur (len/dur)
      
-fretBursts :: FretAnalysis -> Fret (V.Vector Time) -> Fret [V.Vector Time]
-fretBursts p d =
+fretBursts :: FretAnalysis -> Fret (V.Vector Time) -> IO (Fret [V.Vector Time])
+fretBursts p@(FretAnalysis {burst_mode=Bayes}) d = do
   let mp = modelParamsFromParams p
       combined = combineChannels [fretD d, fretA d]
       burstTimes = V.map (combined V.!)
                    $ findBurstPhotons mp (beta_thresh p)
                    $ timesToInterarrivals combined
       spans = V.toList $ compressSpans (10*mpTauBurst mp) burstTimes
-  in fmap (flip spansPhotons $ spans) d
+  putStrLn "Bayesian burst identification parameters:"
+  print mp
+  return $ fmap (flip spansPhotons $ spans) d
+
+fretBursts p@(FretAnalysis {burst_mode=BinThresh}) d = do
+  let combined = combineChannels [fretD d, fretA d]
+      binWidthTicks = round $ 1e-3*bin_width p / jiffy p
+      len = realToFrac $ V.length combined :: Double
+      dur = photonsDuration (jiffy p) combined
+      thresh = round $ burst_thresh p * len / dur * bin_width p * 1e-3
+      spans = V.toList $ findBursts binWidthTicks thresh combined
+  printf "Bin/threshold burst identification: bin width=%f ms, threshold=%d/bin\n" (bin_width p) thresh
+  return $ fmap (flip spansPhotons $ spans) d
      
 fretEffHist nbins e = layout
   where hist = plot_hist_values  ^= [e]
@@ -91,9 +127,8 @@ main = do
   summary p "A" $ fretA fret
   summary p "D" $ fretD fret
   
-  print mp
-  let bursts = fretBursts p fret
-      burstStats bursts =
+  bursts <- fretBursts p fret
+  let burstStats bursts =
         let counts = V.fromList $ map (realToFrac . V.length) bursts
         in (mean counts, stdDev counts)
   print $ fmap burstStats bursts
