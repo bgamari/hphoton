@@ -4,6 +4,7 @@ import Data.Accessor
 import Graphics.Rendering.Chart
 import Graphics.Rendering.Chart.Plot.Histogram
 
+chart _ xs | length xs < 2 = error "Can't histogram (nearly) empty list"
 chart nbins xs = layout
         where hist = plot_hist_values  ^= [xs]
                      $ plot_hist_range ^= Just (minimum xs, maximum xs)
