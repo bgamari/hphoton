@@ -82,15 +82,15 @@ data CompressSpansState = CSpansState { startT :: !Time
 compressSpans :: Time -> V.Vector Time -> V.Vector Span
 compressSpans fuzz ts =
   let f :: CompressSpansState -> Time -> CompressSpansState
-      f s t  | t - lastT s <= fuzz  = s { lastT=t }
+      f s t  | t - lastT s <= fuzz    = s { lastT=t }
              | otherwise = s { startT = t
                              , lastT  = t
                              , result = result s V.++ V.singleton (startT s, lastT s)
                              }
       s0 = CSpansState { startT = V.head ts
                        , lastT  = V.head ts
-                      , result = V.empty
-                      }
+                       , result = V.empty
+                       }
       res = V.foldl f s0 ts
       spans = result res V.++ V.singleton (startT res, lastT res) 
   in if V.null spans then V.empty
