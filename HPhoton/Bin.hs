@@ -35,10 +35,9 @@ binTimes' (t:ts) width end_t !bin_n !count
         -- Make sure the current time is greater than start_t
         | t < fromIntegral bin_n*width       = binTimes' ts width end_t bin_n count
         -- Make sure the current time isn't past end of the current bin
-        | t >= fromIntegral (bin_n+1)*width  = let
-                                  rest = binTimes' (t:ts) width end_t (bin_n+1) 0 
-                                  in
-                                  count : rest
+        | t >= fromIntegral (bin_n+1)*width  =
+            let rest = binTimes' (t:ts) width end_t (bin_n+1) 0 
+            in count : rest
         -- The photon is in our bin, increment count
         | otherwise             = binTimes' ts width end_t bin_n (count+1)
 
