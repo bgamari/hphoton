@@ -16,6 +16,10 @@ module HPhoton.Types ( -- * Time
 import Data.Label
 import Data.Word
 import qualified Data.Vector.Unboxed as V
+  
+import Test.QuickCheck.Arbitrary
+import Test.QuickCheck.Modifiers
+import Data.List (sort)
 
 -- | A time in instrument-dependent ticks
 type Time = Word64
@@ -37,9 +41,9 @@ realTimeToTime jiffy rt = round $ rt / jiffy
 type Span = (Time, Time)
 
 -- | Represents a monotonic series of timestamps
-data Timestamps = TStamps { _tsFreq :: Word64 -- ^ Ticks per second
-                          , _tsStamps :: V.Vector Time -- ^ The timestamps in ticks
-                          }
+data Timestamps = Timestamps { _tsFreq :: Word64 -- ^ Ticks per second
+                             , _tsStamps :: V.Vector Time -- ^ Timestamps in ticks
+                             }
                   deriving (Show, Eq)
 $(mkLabels [''Timestamps])
 
@@ -56,3 +60,7 @@ duration ts = V.last stamps - V.head stamps
 realDuration :: Timestamps -> RealTime
 realDuration ts = timeToRealTime (get tsJiffy ts) $ duration ts
 
+instance Arbitrary Timestamps where
+  arbitrary = do
+    NonEmpty ts <- arbitrary
+    return $ Timestamps 1 (V.fromList $ sort $ map abs $ ts)
