@@ -87,11 +87,11 @@ compressSpans fuzz ts =
                              , lastT  = t
                              , result = result s V.++ V.singleton (startT s, lastT s)
                              }
-      s = CSpansState { startT = V.head ts
-                      , lastT  = V.head ts
+      s0 = CSpansState { startT = V.head ts
+                       , lastT  = V.head ts
                       , result = V.empty
                       }
-      spans = result $ V.foldl f s ts
+      spans = result $ V.foldl f s0 ts
   in if V.null spans then V.empty
                      else spans 
                         
