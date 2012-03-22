@@ -9,8 +9,8 @@ import Test.Framework (testGroup, Test)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit hiding (State, Test)
 
-testSpans :: [Span] -> [Test]
-testSpans spans = map (uncurry testCase)
+testSpansPhotons :: [Span] -> [Test]
+testSpansPhotons spans = map (uncurry testCase)
   [ ( "Number of spans"
     , assertBool "Wrong number of spans"
       $ length res == length spans
@@ -29,6 +29,6 @@ testSpans spans = map (uncurry testCase)
   where times = V.enumFromN 0 1000
         res = spansPhotons times spans
         
-tests = [ testGroup "Zero length span" $ testSpans [(0,0)]
-        , testGroup "One length span" $ testSpans [(0,1)]
+tests = [ testGroup "Zero length span" $ testSpansPhotons [(0,0)]
+        , testGroup "One length span" $ testSpansPhotons [(0,1)]
         ]
