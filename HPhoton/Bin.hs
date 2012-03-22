@@ -4,19 +4,10 @@ module HPhoton.Bin ( binTimes
                    , binTimesWithTimes
                    , binTimesInRange
                    , binTimesInRangeWithTimes
-                     -- * Tests
-                   , tests
                    ) where
 
-import Data.Label
 import HPhoton.Types
-import Control.Monad
 import qualified Data.Vector.Unboxed as V
-  
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit
-import Test.QuickCheck
 
 binTimes :: V.Vector Time -> Time -> V.Vector Int
 binTimes ts width =
@@ -56,31 +47,3 @@ binTimes' [] width (Just end_t) !bin_n !count
 
 binTimes' [] _ Nothing _ _ = []
 
-testTimes :: V.Vector Time
-testTimes = V.generate (10*1000*1000) (\i->fromIntegral i*5)
-
-main :: IO ()
-main = do
-        let binned = binTimes testTimes 10
-        forM_ (V.toList binned) print
-
-prop_binning_conserves_photons :: Positive Time -> Timestamps -> Property
-prop_binning_conserves_photons (Positive width) ts =
-  printTestCase (show bins)
-  $ V.foldl (+) 0 bins == V.length takenTimes
-  where times = get tsStamps ts
-        takenTimes = V.takeWhile (< (V.last times `quot` width) * width) times
-        bins = binTimes times width
-        
-test_bins_have_correct_count :: Time -> Int -> Assertion
-test_bins_have_correct_count dt count =
-  assertBool "Bin with incorrect count" $ V.all (==count) bins
-  where times = V.enumFromStepN 0 dt (count*10)
-        bins = binTimes times width
-        width = fromIntegral count * dt
-
-tests = [ testProperty "binning conserves photons" prop_binning_conserves_photons
-        , testCase "bins have correct count (1,1)" $ test_bins_have_correct_count 1 1
-        , testCase "bins have correct count (2,1)" $ test_bins_have_correct_count 2 1
-        , testCase "bins have correct count (200,10)" $ test_bins_have_correct_count 200 10
-        ]
