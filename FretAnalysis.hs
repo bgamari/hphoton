@@ -1,33 +1,32 @@
 {-# LANGUAGE DeriveDataTypeable, PatternGuards #-}
 
-import Debug.Trace
-import HPhoton.Bin
-
-import Data.Maybe
-import Data.List
-import System.Environment
-import HPhoton.Types
-import HPhoton.BurstIdent.Bayes
-import HPhoton.BurstIdent.BinThreshold
-import HPhoton.Utils
-import HPhoton.Fret
-import Text.Printf
-import HPhoton.FpgaTimetagger
-import HPhoton.FpgaTimetagger.Alex
-import Statistics.Sample
+import           Control.Monad (guard)
+import           Data.Accessor
+import           Data.Foldable
+import           Data.List
+import           Data.Maybe
+import           Data.Traversable
 import qualified Data.Vector.Unboxed as V
-import Data.Accessor
-import Graphics.Rendering.Chart
-import Graphics.Rendering.Chart.Plot.Histogram
-import Graphics.Rendering.Chart.Simple.Histogram
-import System.Console.CmdArgs hiding (summary)
-import Control.Monad (guard)
+import           Graphics.Rendering.Chart
+import           Graphics.Rendering.Chart.Plot.Histogram
+import           Graphics.Rendering.Chart.Simple.Histogram
+import           HPhoton.Bin
+import           HPhoton.BurstIdent.Bayes
+import           HPhoton.BurstIdent.BinThreshold
+import           HPhoton.FpgaTimetagger
+import           HPhoton.Fret
+import           HPhoton.Types
+import           HPhoton.Utils
+import           Statistics.Sample
+import           System.Console.CmdArgs hiding (summary)
+import           System.Environment
+import           Text.Printf
 
 -- | A rate measured in real time
 type Rate = Double
 
 data BurstMode = Bayes | BinThresh deriving (Show, Eq, Data, Typeable)
-data FretAnalysis = FretAnalysis { jiffy :: RealTime
+data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , n_bins :: Int
                                  , input :: Maybe FilePath
                                  , burst_mode :: BurstMode
@@ -47,7 +46,7 @@ data FretAnalysis = FretAnalysis { jiffy :: RealTime
                                  }
                     deriving (Show, Eq, Data, Typeable)
                              
-fretAnalysis = FretAnalysis { jiffy = 1/128e6 &= groupname "General" &= help "Jiffy time (s)"
+fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "General" &= help "Timetagger clockrate (Hz)"
                             , n_bins = 40 &= groupname "General" &= help "Number of bins in efficiency histogram"
                             , input = def &= argPos 0 &= typFile
                             , burst_mode = enum [ Bayes &= help "Use Bayesian burst detection"
@@ -86,36 +85,38 @@ modelParamsFromParams :: FretAnalysis -> ModelParams
 modelParamsFromParams p =
   ModelParams { mpWindow = window p
               , mpProbB = prob_b p
-              , mpTauBurst = round $ 1 / burst_rate p / jiffy p
-              , mpTauBg = round $ 1 / bg_rate p / jiffy p
+              , mpTauBurst = round $ 1 / burst_rate p / jiffy
+              , mpTauBg = round $ 1 / bg_rate p / jiffy
               }
+  where jiffy = realToFrac $ clockrate p
      
+summary :: FretAnalysis -> String -> Clocked (V.Vector Time) -> IO ()
 summary p label photons =
-  let len = realToFrac $ V.length photons :: Double
-      dur = photonsDuration (jiffy p) photons
+  let len = realToFrac $ V.length (unClocked photons) :: Double
+      dur = realDuration $ fmap (:[]) photons
   in printf "%-8s: %1.1e photons, %1.2e sec, %1.2e Hz\n" label len dur (len/dur)
      
-fretBursts :: FretAnalysis -> Fret (V.Vector Time) -> IO (Fret [V.Vector Time])
+fretBursts :: FretAnalysis -> Clocked (Fret (V.Vector Time)) -> IO (Clocked (Fret [V.Vector Time]))
 fretBursts p@(FretAnalysis {burst_mode=Bayes}) d = do
   let mp = modelParamsFromParams p
-      combined = combineChannels [fretD d, fretA d]
+      combined = combineChannels $ toList $ unClocked d
       burstTimes = V.map (combined V.!)
                    $ findBurstPhotons mp (beta_thresh p)
                    $ timesToInterarrivals combined
       spans = V.toList $ compressSpans (10*mpTauBurst mp) burstTimes
   putStrLn "Bayesian burst identification parameters:"
   print mp
-  return $ fmap (flip spansPhotons $ spans) d
+  return $ fmap (fmap (flip spansPhotons $ spans)) d
 
 fretBursts p@(FretAnalysis {burst_mode=BinThresh}) d = do
-  let combined = combineChannels [fretD d, fretA d]
-      binWidthTicks = round $ 1e-3*bin_width p / jiffy p
+  let combined = combineChannels $ toList $ unClocked d
+      binWidthTicks = round $ 1e-3*bin_width p / jiffy d
       len = realToFrac $ V.length combined :: Double
-      dur = photonsDuration (jiffy p) combined
+      dur = photonsDuration (jiffy d) combined
       thresh = round $ burst_thresh p * len / dur * bin_width p * 1e-3
       spans = V.toList $ findBursts binWidthTicks thresh combined
   printf "Bin/threshold burst identification: bin width=%f ms, threshold=%d/bin\n" (bin_width p) thresh
-  return $ fmap (flip spansPhotons $ spans) d
+  return $ fmap (fmap (flip spansPhotons $ spans)) d
      
 fretEffHist nbins e = layout
   where hist = plot_hist_values  ^= [e]
@@ -125,37 +126,46 @@ fretEffHist nbins e = layout
         layout = layout1_plots ^= [Left (plotHist hist)]
                  $ defaultLayout1
         
+main :: IO ()
 main = do
   p <- cmdArgs fretAnalysis
   let mp = modelParamsFromParams p
   guard $ isJust $ input p
   recs <- readRecords $ fromJust $ input p
-  
-analyzeData :: FretAnalysis -> V.Vector Record -> IO ()
-analyzeData p recs = do 
-  let duration = photonsDuration (jiffy p) (V.map recTime recs)
+  let raw = Clocked (clockrate p) $ V.map recTime recs
+      fret = Clocked (clockrate p)
+             $ fmap (strobeTimes recs) fretChs
   let g = case () of 
             _ | Just f <- zero_fret p -> gammaFromFret 0 f
             _ | Just g <- gamma p     -> g
             otherwise                 -> 1
-  
+
   printf "Gamma: %f\n" g
-  summary p "Raw" $ V.map recTime recs
-  let fret = fmap (strobeTimes recs) fretChs
-  summary p "A" $ fretA fret
-  summary p "D" $ fretD fret
+  summary p "Raw" raw
+  summary p "A" $ fretA $ sequenceA fret
+  summary p "D" $ fretD $ sequenceA fret
+
+  analyzeData p g fret
   
+analyzeData :: FretAnalysis -> Gamma -> Clocked (Fret (V.Vector Time)) -> IO ()
+analyzeData p g fret = do 
+  let duration = realDuration $ fmap toList fret
   bursts <- fretBursts p fret
   let burstStats bursts =
         let counts = V.fromList $ map (realToFrac . V.length) bursts
         in (mean counts, stdDev counts)
-  print $ fmap burstStats bursts
-  simpleHist "d.png" 20 $ filter (<100) $ map (realToFrac . V.length) $ fretD bursts
-  simpleHist "a.png" 20 $ filter (<100) $ map (realToFrac . V.length) $ fretA bursts
+  print $ fmap burstStats $ unClocked bursts
+
+  simpleHist "d-bursts.png" 20
+             $ filter (<100) $ map (realToFrac . V.length)
+             $ fretD $ unClocked bursts
+  simpleHist "a-bursts.png" 20
+             $ filter (<100) $ map (realToFrac . V.length)
+             $ fretA $ unClocked bursts
   
   let separate = separateBursts
                  $ fmap (filter (\burst->V.length burst > burst_size p))
-                 $ bursts
+                 $ unClocked bursts
   printf "Found %d bursts (%1.1f per second)\n"
     (length separate)
     (genericLength separate / duration)
@@ -171,3 +181,4 @@ separateBursts x =
   let Fret a b = fmap (map (realToFrac . V.length)) x
   in zipWith Fret a b
  
+
