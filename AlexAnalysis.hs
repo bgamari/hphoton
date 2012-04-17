@@ -2,6 +2,7 @@
 
 import Data.Maybe
 import Data.List
+import Data.Traversable (sequenceA)
 import System.Environment
 import HPhoton.Types
 import HPhoton.BurstIdent.Bayes
@@ -50,17 +51,19 @@ modelParamsFromParams :: FretAnalysis -> ModelParams
 modelParamsFromParams p =
   ModelParams { mpWindow = window p
               , mpProbB = prob_b p
-              , mpTauBurst = round $ 1 / burst_rate p * realToFrac (clockrate p)
-              , mpTauBg = round $ 1 / bg_rate p / jiffy p
+              , mpTauBurst = round $ 1 / burst_rate p / jiffy
+              , mpTauBg = round $ 1 / bg_rate p / jiffy
               }
+  where jiffy = 1 / (realToFrac $ clockrate p)
      
+summary :: FretAnalysis -> String -> Clocked (V.Vector Time) -> IO ()
 summary p label photons =
-  let len = realToFrac $ V.length photons :: Double
-      dur = photonsDuration (jiffy p) photons
+  let len = realToFrac $ V.length $ unClocked photons :: Double
+      dur = realDuration $ fmap (:[]) photons
   in printf "%s: %1.1e photons, %1.2e sec, %1.2e Hz\n" label len dur (len/dur)
      
-alexBursts :: FretAnalysis -> Alex (V.Vector Time) -> Alex [V.Vector Time]
-alexBursts p d =
+alexBursts :: FretAnalysis -> Clocked (Alex (V.Vector Time)) -> Alex [V.Vector Time]
+alexBursts p (Clocked _ d) =
   let mp = modelParamsFromParams p
       combined = combineChannels [ alexAexcAem d
                                  , alexAexcDem d
@@ -72,22 +75,24 @@ alexBursts p d =
                    $ timesToInterarrivals combined
       spans = V.toList $ compressSpans (40*mpTauBurst mp) burstTimes
   in fmap (flip spansPhotons $ spans) d
-  
+
 main = do
   p <- cmdArgs fretAnalysis
   let mp = modelParamsFromParams p
   guard $ isJust $ input p
   recs <- readRecords $ fromJust $ input p
+  let raw = Clocked (clockrate p) $ V.map recTime recs
   
-  summary p "Raw" $ V.map recTime recs
   cachedAlex <- getCachedAlex $ fromJust $ input p
-  let alex = maybe (alexTimes 0 alexChs recs) id cachedAlex
-  putCachedAlex (fromJust $ input p) alex
+  let alex = Clocked (clockrate p)
+             $ maybe (alexTimes 0 alexChs recs) id cachedAlex
+  putCachedAlex (fromJust $ input p) $ unClocked alex
           
-  summary p "AexcAem" $ alexAexcAem alex
-  summary p "AexcDem" $ alexAexcDem alex
-  summary p "DexcAem" $ alexDexcAem alex
-  summary p "DexcDem" $ alexDexcDem alex
+  summary p "Raw" raw
+  summary p "AexcAem" $ alexAexcAem $ sequenceA alex
+  summary p "AexcDem" $ alexAexcDem $ sequenceA alex
+  summary p "DexcAem" $ alexDexcAem $ sequenceA alex
+  summary p "DexcDem" $ alexDexcDem $ sequenceA alex
   
   print mp
   let bursts = alexBursts p alex
