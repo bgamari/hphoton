@@ -11,9 +11,9 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit
   
-prop_spans_conserve_time :: Timestamps -> Bool
+prop_spans_conserve_time :: Clocked (V.Vector Time) -> Bool
 prop_spans_conserve_time ts =
-  let times = get tsStamps ts
+  let times = unClocked ts
       spans = compressSpans (V.maximum times) times 
   in V.head spans == (V.head times, V.last times)
                               

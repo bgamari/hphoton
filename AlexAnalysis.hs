@@ -19,7 +19,7 @@ import Control.Monad (guard)
 -- | A rate measured in real time
 type Rate = Double
 
-data FretAnalysis = FretAnalysis { jiffy :: RealTime
+data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , beta_thresh :: Double
                                  , bg_rate :: Rate
                                  , burst_rate :: Rate
@@ -29,7 +29,7 @@ data FretAnalysis = FretAnalysis { jiffy :: RealTime
                                  }
                     deriving (Show, Eq, Data, Typeable)
                              
-fretAnalysis = FretAnalysis { jiffy = 1/128e6 &= help "Jiffy time (s)"
+fretAnalysis = FretAnalysis { clockrate = round (128e6::Double) &= help "Jiffy time (s)"
                             , beta_thresh = 2 &= help "Beta threshold"
                             , burst_rate = 4000 &= help "Burst rate (1/s)"
                             , bg_rate = 200 &= help "Background rate (1/s)"
@@ -50,7 +50,7 @@ modelParamsFromParams :: FretAnalysis -> ModelParams
 modelParamsFromParams p =
   ModelParams { mpWindow = window p
               , mpProbB = prob_b p
-              , mpTauBurst = round $ 1 / burst_rate p / jiffy p
+              , mpTauBurst = round $ 1 / burst_rate p * realToFrac (clockrate p)
               , mpTauBg = round $ 1 / bg_rate p / jiffy p
               }
      

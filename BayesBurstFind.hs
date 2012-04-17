@@ -16,7 +16,7 @@ import Data.List (foldl')
 data BurstFind = BurstFind { fname :: FilePath
                            , bg_rate :: RealTime
                            , burst_rate :: RealTime
-                           , jiffy :: RealTime
+                           , clockrate :: Freq
                            , burst_length :: Int
                            , beta_thresh :: Double
                            } 
@@ -25,14 +25,14 @@ data BurstFind = BurstFind { fname :: FilePath
 burstFind = BurstFind { fname = def &= typFile &= argPos 0
                       , bg_rate = 1000 &= help "Background count rate (Hz)"
                       , burst_rate = 4000 &= help "Burst count rate (Hz)"
-                      , jiffy = (1/128e6) &= help "Clock period (s)"
+                      , clockrate = round $ (128e6::Double) &= help "Clock period (s)"
                       , burst_length = 10 &= help "Minimum burst length"
                       , beta_thresh = 2 &= help "Acceptance threshold on beta"
                       }
                       &= summary "Bayesian Burst Find"
 
 main = do args <- cmdArgs burstFind
-          let realRateToTau rate = round $ 1/(rate*jiffy args)
+          let realRateToTau rate = round $ realToFrac (clockrate args) / rate
               mp = ModelParams { mpWindow = burst_length args
                                , mpProbB = 0.05
                                , mpTauBg = realRateToTau $ bg_rate args
@@ -40,11 +40,12 @@ main = do args <- cmdArgs burstFind
                                }
 
           rs <- readRecords (fname args)
+          let d = Clocked (clockrate args) rs
           let (stampsA, stampsD) = (strobeTimes rs Ch0, strobeTimes rs Ch1)
               times = combineChannels [stampsA, stampsD]
 
           let dts = timesToInterarrivals times
-              duration = (jiffy args * fromIntegral (V.last times - V.head times))
+              duration = (jiffy d * fromIntegral (V.last times - V.head times))
           printf "%d photons\n" (V.length times)
           printf "Timestamp range %u..%u : %4.2e seconds\n" (V.head times) (V.last times) duration
           printf "Average rate %1.3f photons/second\n" $ (fromIntegral $ V.length dts) / duration

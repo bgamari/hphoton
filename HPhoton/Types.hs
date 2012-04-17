@@ -1,20 +1,22 @@
-{-# LANGUAGE TemplateHaskell, TypeOperators #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module HPhoton.Types ( -- * Time
                        Time
                      , TimeDelta
                      , RealTime
                      , Freq
+                     , Span
+                       -- * Values with discrete time
+                     , Clocked(..)
+                     , freq, jiffy
+                     , unClocked
+                     , withFreq, mapWithFreq
+                     , withJiffy, mapWithJiffy
+                     , duration, realDuration
                      , timeToRealTime
                      , realTimeToTime
-                     , Span
-                       -- * Time stamps
-                     , Timestamps(Timestamps)
-                     , tsFreq, tsStamps, tsJiffy
-                     , duration, realDuration
                      ) where
 
-import Data.Label
 import Data.Word
 import qualified Data.Vector.Unboxed as V
   
@@ -31,38 +33,57 @@ type RealTime = Double
 -- | A frequency in Hertz
 type Freq = Word64
 
--- | Convert a Time to a RealTime
-timeToRealTime :: RealTime -> Time -> RealTime
-timeToRealTime jiffy t = jiffy * realToFrac t
-
--- | Convert a RealTime to a Time
-realTimeToTime :: RealTime -> RealTime -> Time
-realTimeToTime jiffy rt = round $ rt / jiffy
-
 -- | A span of time given by `(start,end)`
 type Span = (Time, Time)
 
--- | Represents a monotonic series of timestamps
-data Timestamps = Timestamps { _tsFreq :: Freq            -- ^ Ticks per second
-                             , _tsStamps :: V.Vector Time -- ^ Timestamps in ticks
-                             }
-                  deriving (Show, Eq)
-$(mkLabels [''Timestamps])
+-- | `Clocked freq a` is a value `a` annotated with a clock frequency `freq`
+data Clocked a = Clocked Freq a deriving (Show, Eq)
 
--- | Real time per tick
-tsJiffy :: Timestamps :-> RealTime
-tsJiffy = lens (\ts->1/realToFrac (get tsFreq ts))
-               (\jiffy->set tsFreq (round $ 1/jiffy))
+instance Functor Clocked where
+    fmap f (Clocked freq a) = Clocked freq (f a)
 
+freq :: Clocked a -> Freq
+freq (Clocked f _) = f
+
+jiffy :: Clocked a -> RealTime
+jiffy (Clocked freq _) = 1 / realToFrac freq
+
+unClocked :: Clocked a -> a
+unClocked (Clocked _ a) = a
+
+mapWithFreq :: (Freq -> a -> b) -> Clocked a -> Clocked b
+mapWithFreq f c = fmap (f $ freq c) c
+
+withFreq :: (Freq -> a -> b) -> Clocked a -> b
+withFreq f c = unClocked $ mapWithFreq f c
+              
+mapWithJiffy :: (RealTime -> a -> b) -> Clocked a -> Clocked b
+mapWithJiffy f c = fmap (f $ jiffy c) c
+
+withJiffy :: (RealTime -> a -> b) -> Clocked a -> b
+withJiffy f c = unClocked $ mapWithJiffy f c
+              
 -- | The duration in ticks of a timestamp series
-duration :: Timestamps -> Time
-duration ts = V.last stamps - V.head stamps
-  where stamps = get tsStamps ts
+duration :: [V.Vector Time] -> Time
+duration stamps = maximum (map V.last stamps) - minimum (map V.head stamps)
 
-realDuration :: Timestamps -> RealTime
-realDuration ts = timeToRealTime (get tsJiffy ts) $ duration ts
+realDuration :: Clocked [V.Vector Time] -> RealTime
+realDuration = timeToRealTime . fmap duration
 
-instance Arbitrary Timestamps where
+-- | Convert a Time to a RealTime
+timeToRealTime :: Clocked Time -> RealTime
+timeToRealTime = withJiffy (\jiffy t->jiffy*realToFrac t)
+
+-- | Convert a RealTime to a Time
+realTimeToTime :: RealTime -> RealTime -> Clocked Time
+realTimeToTime jiffy = realTimeToTime' (round $ 1/jiffy)
+
+-- | Convert a RealTime to a Time
+realTimeToTime' :: Freq -> RealTime -> Clocked Time
+realTimeToTime' freq rt = Clocked freq $ round $ rt * realToFrac freq
+
+instance Arbitrary (Clocked (V.Vector Time)) where
   arbitrary = do
     NonEmpty ts <- arbitrary
-    return $ Timestamps 1 (V.fromList $ sort $ map abs $ ts)
+    return $ Clocked 1 (V.fromList $ sort $ map abs $ ts)
+
