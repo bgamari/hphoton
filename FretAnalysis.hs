@@ -56,7 +56,7 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
                             , bin_width = 10 &= groupname "Bin/threshold burst detection"
                                              &= help "Bin width in milliseconds"
                             , burst_thresh = 2 &= groupname "Bin/threshold burst detection"
-                                               &= help "Threshold rate over background rate"
+                                               &= help "Threshold rate over background rate (multiples of sigma)"
                             
                             , burst_size = 10 &= groupname "Bayesian burst detection"
                                               &= help "Minimum burst size"
@@ -113,7 +113,7 @@ fretBursts p@(FretAnalysis {burst_mode=BinThresh}) d = do
       binWidthTicks = round $ 1e-3*bin_width p / jiffy d
       len = realToFrac $ V.length combined :: Double
       dur = photonsDuration (jiffy d) combined
-      thresh = AbsThresh $ round $ burst_thresh p * len / dur * bin_width p * 1e-3
+      thresh = MultMeanThresh $ burst_thresh p
       spans = V.toList $ findBursts binWidthTicks thresh combined
   printf "Bin/threshold burst identification: bin width=%f ms, threshold=%s\n" (bin_width p) (show thresh)
   return $ fmap (fmap (flip spansPhotons $ spans)) d
