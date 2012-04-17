@@ -131,6 +131,9 @@ main = do
   guard $ isJust $ input p
   recs <- readRecords $ fromJust $ input p
   
+analyzeData :: FretAnalysis -> V.Vector Record -> IO ()
+analyzeData p recs = do 
+  let duration = photonsDuration (jiffy p) (V.map recTime recs)
   let g = case () of 
             _ | Just f <- zero_fret p -> gammaFromFret 0 f
             _ | Just g <- gamma p     -> g
@@ -155,7 +158,7 @@ main = do
                  $ bursts
   printf "Found %d bursts (%1.1f per second)\n"
     (length separate)
-    (genericLength separate / photonsDuration (jiffy p) (V.map recTime recs))
+    (genericLength separate / duration)
   
   renderableToPNGFile (toRenderable
                        $ fretEffHist (n_bins p)
