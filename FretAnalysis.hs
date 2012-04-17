@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, PatternGuards #-}
+
 import Debug.Trace
 import HPhoton.Bin
 
@@ -40,6 +41,9 @@ data FretAnalysis = FretAnalysis { jiffy :: RealTime
                                  , burst_rate :: Rate
                                  , prob_b :: Double
                                  , window :: Int
+
+                                 , zero_fret :: Maybe ProxRatio
+                                 , gamma :: Maybe Gamma
                                  }
                     deriving (Show, Eq, Data, Typeable)
                              
@@ -67,6 +71,11 @@ fretAnalysis = FretAnalysis { jiffy = 1/128e6 &= groupname "General" &= help "Ji
                                             &= help "Probability of burst"
                             , beta_thresh = 2 &= groupname "Bayesian burst detection"
                                               &= help "Beta threshold"
+
+                            , zero_fret = Nothing &= groupname "Gamma correction"
+                                                  &= help "Measured efficiency for zero FRET (donor-only)"
+                            , gamma = Nothing &= groupname "Gamma correction"
+                                              &= help "Gamma"
                             }
                
 fretChs = Fret { fretA = Ch1
@@ -122,6 +131,12 @@ main = do
   guard $ isJust $ input p
   recs <- readRecords $ fromJust $ input p
   
+  let g = case () of 
+            _ | Just f <- zero_fret p -> gammaFromFret 0 f
+            _ | Just g <- gamma p     -> g
+            otherwise                 -> 1
+  
+  printf "Gamma: %f\n" g
   summary p "Raw" $ V.map recTime recs
   let fret = fmap (strobeTimes recs) fretChs
   summary p "A" $ fretA fret
@@ -142,7 +157,10 @@ main = do
     (length separate)
     (genericLength separate / photonsDuration (jiffy p) (V.map recTime recs))
   
-  renderableToPNGFile (toRenderable $ fretEffHist (n_bins p) $ map proxRatio separate) 640 480 "fret_eff.png"
+  renderableToPNGFile (toRenderable
+                       $ fretEffHist (n_bins p)
+                       $ map (fretEfficiency g) separate
+                      ) 640 480 "fret_eff.png"
   return ()
   
 separateBursts :: Fret [V.Vector Time] -> [Fret Double]
