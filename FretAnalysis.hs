@@ -113,9 +113,9 @@ fretBursts p@(FretAnalysis {burst_mode=BinThresh}) d = do
       binWidthTicks = round $ 1e-3*bin_width p / jiffy d
       len = realToFrac $ V.length combined :: Double
       dur = photonsDuration (jiffy d) combined
-      thresh = round $ burst_thresh p * len / dur * bin_width p * 1e-3
+      thresh = AbsThresh $ round $ burst_thresh p * len / dur * bin_width p * 1e-3
       spans = V.toList $ findBursts binWidthTicks thresh combined
-  printf "Bin/threshold burst identification: bin width=%f ms, threshold=%d/bin\n" (bin_width p) thresh
+  printf "Bin/threshold burst identification: bin width=%f ms, threshold=%s\n" (bin_width p) (show thresh)
   return $ fmap (fmap (flip spansPhotons $ spans)) d
      
 fretEffHist nbins e = layout
