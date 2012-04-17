@@ -4,6 +4,7 @@ module HPhoton.Types ( -- * Time
                        Time
                      , TimeDelta
                      , RealTime
+                     , Freq
                      , timeToRealTime
                      , realTimeToTime
                      , Span
@@ -27,6 +28,8 @@ type TimeDelta = Word64
                  
 -- | A real time given in seconds
 type RealTime = Double
+-- | A frequency in Hertz
+type Freq = Word64
 
 -- | Convert a Time to a RealTime
 timeToRealTime :: RealTime -> Time -> RealTime
@@ -40,7 +43,7 @@ realTimeToTime jiffy rt = round $ rt / jiffy
 type Span = (Time, Time)
 
 -- | Represents a monotonic series of timestamps
-data Timestamps = Timestamps { _tsFreq :: Word64 -- ^ Ticks per second
+data Timestamps = Timestamps { _tsFreq :: Freq            -- ^ Ticks per second
                              , _tsStamps :: V.Vector Time -- ^ Timestamps in ticks
                              }
                   deriving (Show, Eq)
