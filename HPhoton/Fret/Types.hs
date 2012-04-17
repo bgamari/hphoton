@@ -7,6 +7,7 @@ module HPhoton.Fret.Types ( FretChannel(..)
 
 import Data.Foldable
 import Data.Monoid
+import Control.Applicative       
 
 type FretEff = Double
 type ProxRatio = Double
@@ -21,3 +22,8 @@ instance Functor Fret where
   
 instance Foldable Fret where
   foldMap f (Fret x y) = f x <> f y
+  
+instance Applicative Fret where
+  pure x = Fret x x
+  (Fret a b) <*> (Fret x y) = Fret (a x) (b y)
+
