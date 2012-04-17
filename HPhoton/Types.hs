@@ -18,6 +18,8 @@ module HPhoton.Types ( -- * Time
                      ) where
 
 import Data.Word
+import Data.Foldable hiding (maximum, minimum)   
+import Data.Traversable 
 import qualified Data.Vector.Unboxed as V
   
 import Test.QuickCheck
@@ -41,6 +43,12 @@ data Clocked a = Clocked Freq a deriving (Show, Eq)
 
 instance Functor Clocked where
     fmap f (Clocked freq a) = Clocked freq (f a)
+
+instance Foldable Clocked where
+    foldMap f (Clocked _ a) = f a
+
+instance Traversable Clocked where
+    sequenceA (Clocked freq a) = fmap (Clocked freq) a
 
 freq :: Clocked a -> Freq
 freq (Clocked f _) = f
