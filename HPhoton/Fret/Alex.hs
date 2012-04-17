@@ -8,6 +8,7 @@ module HPhoton.Fret.Alex ( Alex(..)
 
 import GHC.Generics
 import qualified Data.Serialize as S
+import Control.Applicative       
 
 data Alex a = Alex { alexAexcAem :: a
                    , alexAexcDem :: a
@@ -25,6 +26,10 @@ instance Functor Alex where
                   , alexDexcAem = f $ alexDexcAem a
                   }
   
+instance Applicative Alex where
+  pure x = Alex x x x x
+  (Alex a b c d) <*> (Alex x y z w) = Alex (a x) (b y) (c z) (d w)
+
 fretEff :: Double -> Alex Double -> Double
 fretEff gamma alex = iA / (iA + gamma*iD)
   where iA = alexDexcAem alex
