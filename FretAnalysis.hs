@@ -126,14 +126,12 @@ fretEffHist nbins e = layout
         layout = layout1_plots ^= [Left (plotHist hist)]
                  $ defaultLayout1
         
-main :: IO ()
 main = do
   p <- cmdArgs fretAnalysis
   let mp = modelParamsFromParams p
   guard $ isJust $ input p
   recs <- readRecords $ fromJust $ input p
-  let raw = Clocked (clockrate p) $ V.map recTime recs
-      fret = Clocked (clockrate p)
+  let fret = Clocked (clockrate p)
              $ fmap (strobeTimes recs) fretChs
   let g = case () of 
             _ | Just f <- zero_fret p -> gammaFromFret 0 f
@@ -141,14 +139,14 @@ main = do
             otherwise                 -> 1
 
   printf "Gamma: %f\n" g
-  summary p "Raw" raw
-  summary p "A" $ fretA $ sequenceA fret
-  summary p "D" $ fretD $ sequenceA fret
 
   analyzeData p g fret
   
 analyzeData :: FretAnalysis -> Gamma -> Clocked (Fret (V.Vector Time)) -> IO ()
 analyzeData p g fret = do 
+  summary p "A" $ fretA $ sequenceA fret
+  summary p "D" $ fretD $ sequenceA fret
+
   let duration = realDuration $ fmap toList fret
   bursts <- fretBursts p fret
   let burstStats bursts =
