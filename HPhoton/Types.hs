@@ -35,9 +35,6 @@ type RealTime = Double
 -- | A frequency in Hertz
 type Freq = Word64
 
--- | A span of time given by `(start,end)`
-type Span = (Time, Time)
-
 -- | `Clocked freq a` is a value `a` annotated with a clock frequency `freq`
 data Clocked a = Clocked Freq a deriving (Show, Eq)
 
@@ -94,4 +91,7 @@ instance Arbitrary (Clocked (V.Vector Time)) where
   arbitrary = do
     NonEmpty ts <- arbitrary
     return $ Clocked 1 (V.fromList $ sort $ map abs $ ts)
+
+-- | A span of time given by `(start,end)`
+type Span = (Time, Time)
 
