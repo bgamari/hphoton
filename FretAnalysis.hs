@@ -96,7 +96,7 @@ summary p label photons =
       dur = realDuration $ fmap (:[]) photons
   in printf "%-8s: %1.1e photons, %1.2e sec, %1.2e Hz\n" label len dur (len/dur)
      
-fretBursts :: FretAnalysis -> Clocked (Fret (V.Vector Time)) -> IO (Clocked (Fret [V.Vector Time]))
+fretBursts :: FretAnalysis -> Clocked (Fret (V.Vector Time)) -> IO [Span]
 fretBursts p@(FretAnalysis {burst_mode=Bayes}) d = do
   let mp = modelParamsFromParams p
       combined = combineChannels $ toList $ unClocked d
@@ -106,7 +106,7 @@ fretBursts p@(FretAnalysis {burst_mode=Bayes}) d = do
       spans = V.toList $ compressSpans (10*mpTauBurst mp) burstTimes
   putStrLn "Bayesian burst identification parameters:"
   print mp
-  return $ fmap (fmap (flip spansPhotons $ spans)) d
+  return spans
 
 fretBursts p@(FretAnalysis {burst_mode=BinThresh}) d = do
   let combined = combineChannels $ toList $ unClocked d
@@ -116,7 +116,7 @@ fretBursts p@(FretAnalysis {burst_mode=BinThresh}) d = do
       thresh = MultMeanThresh $ burst_thresh p
       spans = V.toList $ findBursts binWidthTicks thresh combined
   printf "Bin/threshold burst identification: bin width=%f ms, threshold=%s\n" (bin_width p) (show thresh)
-  return $ fmap (fmap (flip spansPhotons $ spans)) d
+  return spans
      
 fretEffHist nbins e = layout
   where hist = plot_hist_values  ^= [e]
@@ -148,7 +148,8 @@ analyzeData p g fret = do
   summary p "D" $ fretD $ sequenceA fret
 
   let duration = realDuration $ fmap toList fret
-  bursts <- fretBursts p fret
+  spans <- fretBursts p fret
+  let bursts = fmap (fmap (flip spansPhotons $ spans)) fret
   let burstStats bursts =
         let counts = V.fromList $ map (realToFrac . V.length) bursts
         in (mean counts, stdDev counts)
