@@ -100,7 +100,7 @@ fretBursts :: FretAnalysis -> Clocked (Fret (V.Vector Time)) -> IO (Clocked (Fre
 fretBursts p@(FretAnalysis {burst_mode=Bayes}) d = do
   let mp = modelParamsFromParams p
       combined = combineChannels $ toList $ unClocked d
-      burstTimes = V.map (combined V.!)
+      burstTimes = V.backpermute combined
                    $ findBurstPhotons mp (beta_thresh p)
                    $ timesToInterarrivals combined
       spans = V.toList $ compressSpans (10*mpTauBurst mp) burstTimes
