@@ -2,6 +2,7 @@ module HPhoton.Utils ( zeroTime
                      , zeroTimes
                      , timesToInterarrivals
                      , combineChannels
+                     , invertSpans
                      , spansPhotons
                      , photonsDuration
                      ) where
@@ -30,6 +31,13 @@ combineChannels chs =
   runST $ do stamps <- V.thaw $ V.concat chs
              sort stamps
              V.freeze stamps
+
+invertSpans :: (Time,Time) -> [Span] -> [Span]
+invertSpans (start,end) ((a,b):rest)
+  | start < a   = (start, a) : invertSpans (b, end) rest
+  | b > end     = []
+  | a == start  = invertSpans (b,end) rest
+invertSpans _ [] = []
 
 -- | 'spansPhotons ts spans' returns the photons in a set of spans
 spansPhotons :: V.Vector Time -> [Span] -> [V.Vector Time]
