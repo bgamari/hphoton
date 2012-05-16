@@ -62,8 +62,9 @@ beta mp dts i
 
 -- | Compute beta for each photon in a stream
 betas :: ModelParams -> V.Vector TimeDelta -> V.Vector (PhotonIdx, Double)
-betas mp dts = V.map (\i->(i,beta mp dts i))
-               $ V.enumFromN (fromIntegral n) (fromIntegral $ V.length dts - 2*n)
+betas mp dts | V.length dts < 2*n = error "Timestamp vector too short"
+             | otherwise = V.map (\i->(i,beta mp dts i))
+                           $ V.enumFromN (fromIntegral n) (fromIntegral $ V.length dts - 2*n)
   where n = mpWindow mp
          
 -- | Find photons attributable to a burst
