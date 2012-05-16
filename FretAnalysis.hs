@@ -126,7 +126,7 @@ fretEffHist nbins e = layout
         layout = layout1_plots ^= [Left (plotHist hist)]
                  $ defaultLayout1
         
-main = do
+main' = do
   p <- cmdArgs fretAnalysis
   let mp = modelParamsFromParams p
   guard $ isJust $ input p
@@ -139,7 +139,6 @@ main = do
             otherwise                 -> 1
 
   printf "Gamma: %f\n" g
-
   analyzeData p g fret
   
 analyzeData :: FretAnalysis -> Gamma -> Clocked (Fret (V.Vector Time)) -> IO ()
@@ -154,6 +153,7 @@ analyzeData p g fret = do
         let counts = V.fromList $ map (realToFrac . V.length) bursts
         in (mean counts, stdDev counts)
   print $ fmap burstStats $ unClocked bursts
+  --print bursts
 
   simpleHist "d-bursts.png" 20
              $ filter (<100) $ map (realToFrac . V.length)
@@ -180,4 +180,24 @@ separateBursts x =
   let Fret a b = fmap (map (realToFrac . V.length)) x
   in zipWith Fret a b
  
+testData :: Clocked (Fret (V.Vector Time))
+testData = Clocked 100000 $ Fret { fretA = V.generate 100000 (\i->fromIntegral $ i*1000)
+                                 , fretD = V.generate 100000 (\i->fromIntegral $ i*1000)
+                                 }
 
+testData' :: Clocked (Fret (V.Vector Time))
+testData' = Clocked freq $ Fret { fretA=times e, fretD=times (1-e) }
+          where freq = 1000000
+                e = 0.3
+                times :: Double -> V.Vector Time
+                times a = V.scanl1 (+)
+                          $ V.concat $ replicate 10
+                          $ V.replicate (round $ 1000 * a) (round $ realToFrac freq * 1e-3 / a) V.++ V.singleton freq
+
+testMain = do
+  let p = fretAnalysis { burst_thresh = 0.5
+                       , burst_size = 0
+                       }
+  analyzeData p 1 testData'
+  
+main = main'
