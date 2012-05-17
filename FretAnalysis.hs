@@ -6,6 +6,7 @@ import           Data.Foldable
 import           Data.List (genericLength)
 import           Data.Maybe
 import           Data.Traversable
+import           Control.Applicative
 import qualified Data.Vector.Unboxed as V
 import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Plot.Histogram
@@ -166,7 +167,7 @@ analyzeData p g fret = do
         let counts = V.fromList $ map (realToFrac . V.length) bursts
         in (mean counts, stdDev counts)
   print $ fmap burstStats $ unClocked bursts
-  --print bursts
+  print bg_rate
 
   simpleHist "d-bursts.png" 20
              $ filter (<100) $ map (realToFrac . V.length)
@@ -175,7 +176,9 @@ analyzeData p g fret = do
              $ filter (<100) $ map (realToFrac . V.length)
              $ fretA $ unClocked bursts
   
-  let separate = separateBursts
+  let separate :: [Fret Double]
+      separate = fmap (\a->(-) <$> a <*> bg_rate) 
+                 $ separateBursts
                  $ fmap (filter (\burst->V.length burst > burst_size p))
                  $ unClocked bursts
   printf "Found %d bursts (%1.1f per second)\n"
