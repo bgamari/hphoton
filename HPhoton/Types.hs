@@ -12,6 +12,7 @@ module HPhoton.Types ( -- * Time
                      , unClocked
                      , withFreq, mapWithFreq
                      , withJiffy, mapWithJiffy
+                     , startTime, endTime
                      , duration, realDuration
                      , timeToRealTime
                      , realTimeToTime
@@ -68,9 +69,19 @@ mapWithJiffy f c = fmap (f $ jiffy c) c
 withJiffy :: (RealTime -> a -> b) -> Clocked a -> b
 withJiffy f c = unClocked $ mapWithJiffy f c
               
+startTime :: [V.Vector Time] -> Time
+startTime stamps = minimum (foldMap head stamps)
+  where head x | V.null x  = []
+               | otherwise = [V.head x]
+          
+endTime :: [V.Vector Time] -> Time
+endTime stamps = maximum (foldMap last stamps)
+  where last x | V.null x  = []
+               | otherwise = [V.last x]
+
 -- | The duration in ticks of a timestamp series
 duration :: [V.Vector Time] -> Time
-duration stamps = maximum (map V.last stamps) - minimum (map V.head stamps)
+duration stamps = endTime stamps - startTime stamps
 
 realDuration :: Clocked [V.Vector Time] -> RealTime
 realDuration = timeToRealTime . fmap duration
