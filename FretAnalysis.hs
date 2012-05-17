@@ -3,7 +3,7 @@
 import           Control.Monad (guard)
 import           Data.Accessor
 import           Data.Foldable
-import           Data.List
+import           Data.List (genericLength)
 import           Data.Maybe
 import           Data.Traversable
 import qualified Data.Vector.Unboxed as V
@@ -17,6 +17,7 @@ import           HPhoton.FpgaTimetagger
 import           HPhoton.Fret
 import           HPhoton.Types
 import           HPhoton.Utils
+import           Prelude hiding (foldl1)
 import           Statistics.Sample
 import           System.Console.CmdArgs hiding (summary)
 import           System.Environment
@@ -141,6 +142,16 @@ main' = do
   printf "Gamma: %f\n" g
   analyzeData p g fret
   
+backgroundRate :: Clocked (V.Vector Time) -> [Span] -> Double
+backgroundRate times bursts =
+  let range = ( V.head $ unClocked times, V.last $ unClocked times)
+      background :: Clocked [V.Vector Time]
+      background = fmap (flip spansPhotons $ invertSpans range bursts) times
+      dur = realDuration background
+      span_rates :: [Double]
+      span_rates = map (\b->realToFrac (V.length b) / dur) $ unClocked background
+  in mean $ V.fromList span_rates
+
 analyzeData :: FretAnalysis -> Gamma -> Clocked (Fret (V.Vector Time)) -> IO ()
 analyzeData p g fret = do 
   summary p "A" $ fretA $ sequenceA fret
@@ -149,6 +160,8 @@ analyzeData p g fret = do
   let duration = realDuration $ fmap toList fret
   spans <- fretBursts p fret
   let bursts = fmap (fmap (flip spansPhotons $ spans)) fret
+      bg_rate :: Fret Double
+      bg_rate = fmap (flip backgroundRate $ spans) $ sequenceA fret
   let burstStats bursts =
         let counts = V.fromList $ map (realToFrac . V.length) bursts
         in (mean counts, stdDev counts)
