@@ -40,6 +40,7 @@ Library
                      data-accessor,
                      Chart,
                      chart-histogram,
+                     colour,
                      fclabels
 
 Executable Test
