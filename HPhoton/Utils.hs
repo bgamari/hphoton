@@ -5,6 +5,7 @@ module HPhoton.Utils ( zeroTime
                      , invertSpans
                      , spansPhotons
                      , photonsDuration
+                     , subtractSpans
                      ) where
 
 import qualified Data.Vector.Unboxed as V
@@ -52,7 +53,16 @@ spansPhotons ts spans = evalState (mapM f spans) ts
                            let (a,b) = V.span (<end) $ snd $ V.span (<start) ts
                            put b
                            return a
-        
+
+subtractSpans :: [Span] -> [Span] -> [Span]
+subtractSpans [] _       = []  
+subtractSpans abs []     = abs
+subtractSpans ((a,b):abs) ((x,y):xys)
+  | x<=a && y>a && y<=b  = subtractSpans ((y,b):abs) xys
+  | x>=a && y<=b         = (a,x) : subtractSpans ((y,b):abs) xys
+  | x>=a && x<b && y>b   = (a,x) : subtractSpans abs ((x,y):xys)
+  | otherwise            = (a,b) : subtractSpans abs xys
+
 -- | The duration in RealTime of a stream of photons
 photonsDuration :: RealTime -> V.Vector Time -> RealTime
 photonsDuration jiffy times = (realToFrac $ V.last times - V.head times) * jiffy
