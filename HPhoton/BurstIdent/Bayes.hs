@@ -80,6 +80,7 @@ data CompressSpansState = CSpansState { startT :: !Time
 
 -- | Reduce a list of times to a list of '(startTime, endTime)' spans
 compressSpans :: Time -> V.Vector Time -> V.Vector Span
+compressSpans _ ts | V.null ts = V.empty
 compressSpans fuzz ts =
   let f :: CompressSpansState -> Time -> CompressSpansState
       f s t  | t - lastT s <= fuzz    = s { lastT=t }
