@@ -152,6 +152,12 @@ backgroundRate times bursts =
       span_rates :: [Double]
       span_rates = map (\b->realToFrac (V.length b) / dur) $ unClocked background
   in mean $ V.fromList span_rates
+  
+crosstalkParam :: Clock (V.Vector Time) -> [Span] -> Double
+crosstalkParam v dOnlySpans =
+  map proximityRatio sep
+  $ separateBursts
+  $ fmap (fmap (flip spansPhotons $ dOnlySpans)) v
 
 analyzeData :: FretAnalysis -> Gamma -> Clocked (Fret (V.Vector Time)) -> IO ()
 analyzeData p g fret = do 
