@@ -87,8 +87,8 @@ modelParamsFromParams :: FretAnalysis -> ModelParams
 modelParamsFromParams p =
   ModelParams { mpWindow = window p
               , mpProbB = prob_b p
-              , mpTauBurst = round $ 1 / burst_rate p / jiffy
-              , mpTauBg = round $ 1 / bg_rate p / jiffy
+              , mpTauBurst = round $ 1 / burst_rate p * jiffy
+              , mpTauBg = round $ 1 / bg_rate p * jiffy
               }
   where jiffy = realToFrac $ clockrate p
      
