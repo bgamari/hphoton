@@ -83,14 +83,6 @@ fretChs = Fret { fretA = Ch1
                , fretD = Ch0
                }
 
-modelParamsFromParams :: FretAnalysis -> ModelParams
-modelParamsFromParams p =
-  ModelParams { mpWindow = window p
-              , mpProbB = prob_b p
-              , mpTauBurst = round $ 1 / burst_rate p * jiffy
-              , mpTauBg = round $ 1 / bg_rate p * jiffy
-              }
-  where jiffy = realToFrac $ clockrate p
      
 summary :: FretAnalysis -> String -> Clocked (V.Vector Time) -> IO ()
 summary p label photons =
@@ -98,17 +90,25 @@ summary p label photons =
       dur = realDuration $ fmap (:[]) photons
   in printf "%-8s: %1.1e photons, %1.2e sec, %1.2e Hz\n" label len dur (len/dur)
      
+burstSpans :: ModelParams -> Double -> V.Vector Time -> [Span]
+burstSpans mp betaThresh times =
+  let burstTimes = V.backpermute times
+                   $ findBurstPhotons mp betaThresh
+                   $ timesToInterarrivals times
+  in V.toList $ compressSpans (10*mpTauBurst mp) burstTimes
+
 fretBursts :: FretAnalysis -> Clocked (Fret (V.Vector Time)) -> IO [Span]
 fretBursts p@(FretAnalysis {burst_mode=Bayes}) d = do
-  let mp = modelParamsFromParams p
+  let jiffy = realToFrac $ clockrate p
+      mp = ModelParams { mpWindow = window p
+                       , mpProbB = prob_b p
+                       , mpTauBurst = round $ 1 / burst_rate p * jiffy
+                       , mpTauBg = round $ 1 / bg_rate p * jiffy
+                       }
       combined = combineChannels $ toList $ unClocked d
-      burstTimes = V.backpermute combined
-                   $ findBurstPhotons mp (beta_thresh p)
-                   $ timesToInterarrivals combined
-      spans = V.toList $ compressSpans (10*mpTauBurst mp) burstTimes
   putStrLn "Bayesian burst identification parameters:"
   print mp
-  return spans
+  return $ burstSpans mp (beta_thresh p) combined
 
 fretBursts p@(FretAnalysis {burst_mode=BinThresh}) d = do
   let combined = combineChannels $ toList $ unClocked d
@@ -130,7 +130,6 @@ fretEffHist nbins e = layout
         
 main' = do
   p <- cmdArgs fretAnalysis
-  let mp = modelParamsFromParams p
   guard $ isJust $ input p
   recs <- readRecords $ fromJust $ input p
   let fret = Clocked (clockrate p)
