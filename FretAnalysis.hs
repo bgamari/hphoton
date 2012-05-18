@@ -82,7 +82,6 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
 fretChs = Fret { fretA = Ch1
                , fretD = Ch0
                }
-
      
 summary :: FretAnalysis -> String -> Clocked (V.Vector Time) -> IO ()
 summary p label photons =
@@ -165,27 +164,27 @@ analyzeData p g fret = do
 
   let duration = realDuration $ fmap toList fret
   spans <- fretBursts p fret
-  let bursts = fmap (fmap (flip spansPhotons $ spans)) fret
+  let burstPhotons = fmap (fmap (flip spansPhotons $ spans)) fret
       bg_rate :: Fret Double
       bg_rate = fmap (flip backgroundRate $ spans) $ sequenceA fret
   let burstStats bursts =
         let counts = V.fromList $ map (realToFrac . V.length) bursts
         in (mean counts, stdDev counts)
-  print $ fmap burstStats $ unClocked bursts
+  print $ fmap burstStats $ unClocked burstPhotons
   print bg_rate
 
   simpleHist "d-bursts.png" 20
              $ filter (<100) $ map (realToFrac . V.length)
-             $ fretD $ unClocked bursts
+             $ fretD $ unClocked burstPhotons
   simpleHist "a-bursts.png" 20
              $ filter (<100) $ map (realToFrac . V.length)
-             $ fretA $ unClocked bursts
+             $ fretA $ unClocked burstPhotons
   
   let separate :: [Fret Double]
       separate = fmap (\a->(-) <$> a <*> bg_rate) 
                  $ separateBursts
                  $ fmap (filter (\burst->V.length burst > burst_size p))
-                 $ unClocked bursts
+                 $ unClocked burstPhotons
   printf "Found %d bursts (%1.1f per second)\n"
     (length separate)
     (genericLength separate / duration)
