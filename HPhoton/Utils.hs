@@ -34,9 +34,11 @@ combineChannels chs =
 
 invertSpans :: (Time,Time) -> [Span] -> [Span]
 invertSpans (start,end) ((a,b):rest)
-  | start < a   = (start, a) : invertSpans (b, end) rest
-  | b > end     = []
-  | a == start  = invertSpans (b,end) rest
+  | start >= a && b > end   = invertSpans (b, end) rest            
+  | start >= a && b <= end  = invertSpans (start, end) rest
+  | start < a               = (start, a) : invertSpans (b, end) rest
+  | b > end                 = []
+  | a == start              = invertSpans (b,end) rest
 invertSpans _ [] = []
 
 -- | 'spansPhotons ts spans' returns the photons in a set of spans
