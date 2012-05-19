@@ -182,9 +182,10 @@ analyzeData p g fret = do
              $ fretA $ unClocked burstPhotons
   
   let separate :: [Fret Double]
-      separate = fmap (\a->(-) <$> a <*> bg_rate) 
-                 $ map (fmap realToFrac) $ burstCounts
-                 $ fmap (filter (\burst->V.length burst > burst_size p))
+      separate = id --fmap (\a->(-) <$> a <*> bg_rate) 
+                 $ map (fmap realToFrac)
+                 $ filter (\x->fretA x + fretD x > burst_size p)
+                 $ burstCounts
                  $ unClocked burstPhotons
   printf "Found %d bursts (%1.1f per second)\n"
     (length separate)
