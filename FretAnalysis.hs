@@ -16,6 +16,7 @@ import           HPhoton.BurstIdent.Bayes
 import           HPhoton.BurstIdent.BinThreshold
 import           HPhoton.FpgaTimetagger
 import           HPhoton.Fret
+import           HPhoton.Bin.Plot
 import           HPhoton.Types
 import           HPhoton.Utils
 import           Prelude hiding (foldl1)
@@ -188,6 +189,8 @@ analyzeData p g fret = do
   printf "Found %d bursts (%1.1f per second)\n"
     (length separate)
     (genericLength separate / duration)
+  let layout = layout1_plots ^= map Right (plotFret fret 1e-3) $ defaultLayout1
+  renderableToPNGFile (toRenderable layout) 640 480 "hi.png"
   
   renderableToPNGFile (toRenderable
                        $ fretEffHist (n_bins p)
