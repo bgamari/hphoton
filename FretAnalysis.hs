@@ -183,7 +183,7 @@ analyzeData p g fret = do
   
   let separate :: [Fret Double]
       separate = fmap (\a->(-) <$> a <*> bg_rate) 
-                 $ separateBursts
+                 $ map (fmap realToFrac) $ burstCounts
                  $ fmap (filter (\burst->V.length burst > burst_size p))
                  $ unClocked burstPhotons
   printf "Found %d bursts (%1.1f per second)\n"
@@ -198,10 +198,11 @@ analyzeData p g fret = do
                       ) 640 480 "fret_eff.png"
   return ()
   
-separateBursts :: Fret [V.Vector Time] -> [Fret Double]
-separateBursts x =
-  let Fret a b = fmap (map (realToFrac . V.length)) x
-  in zipWith Fret a b
+burstCounts :: Fret [V.Vector Time] -> [Fret Int]
+burstCounts = map (fmap V.length) . flipFret            
+
+flipFret :: Fret [a] -> [Fret a]            
+flipFret (Fret a b) = zipWith Fret a b
  
 testData :: Clocked (Fret (V.Vector Time))
 testData = Clocked 100000 $ Fret { fretA = V.generate 100000 (\i->fromIntegral $ i*1000)
