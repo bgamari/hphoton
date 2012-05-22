@@ -3,7 +3,7 @@
 import           Control.Monad (guard)
 import           Data.Accessor
 import           Data.Foldable
-import           Data.List (genericLength)
+import           Data.List (genericLength, stripPrefix)
 import           Data.Maybe
 import           Data.Traversable
 import           Control.Applicative
@@ -80,6 +80,12 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
                                               &= help "Gamma"
                             }
                
+stripSuffix :: String -> String -> String             
+stripSuffix suffix = reverse . maybe (error "Invalid filename") id . stripPrefix (reverse suffix) . reverse
+
+rootName :: FretAnalysis -> String
+rootName = stripSuffix ".timetag" . maybe (error "Need filename") id . input
+
 fretChs = Fret { fretA = Ch1
                , fretD = Ch0
                }
@@ -120,6 +126,7 @@ fretBursts p@(FretAnalysis {burst_mode=BinThresh}) d = do
   printf "Bin/threshold burst identification: bin width=%f ms, threshold=%s\n" (bin_width p) (show thresh)
   return spans
      
+fretEffHist :: Int -> [FretEff] -> Layout1 FretEff Int
 fretEffHist nbins e = layout
   where hist = plot_hist_values  ^= [e]
                $ plot_hist_range ^= Just (-0.1, 1.1)
@@ -196,7 +203,9 @@ analyzeData p g fret = do
   renderableToPNGFile (toRenderable
                        $ fretEffHist (n_bins p)
                        $ map (fretEfficiency g) separate
-                      ) 640 480 "fret_eff.png"
+                      ) 640 480 (rootName p++"-fret_eff.png")
+  writeFile (rootName p++"-fret_eff.txt")
+    $ unlines $ map (show . fretEfficiency g) separate
   return ()
   
 burstCounts :: Fret [V.Vector Time] -> [Fret Int]
