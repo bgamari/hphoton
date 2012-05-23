@@ -19,7 +19,7 @@ import           HPhoton.Fret
 import           HPhoton.Bin.Plot
 import           HPhoton.Types
 import           HPhoton.Utils
-import           Prelude hiding (foldl1)
+import           Prelude hiding (foldl1, concat)
 import           Statistics.Sample
 import           System.Console.CmdArgs hiding (summary)
 import           System.Environment
@@ -164,6 +164,16 @@ crosstalkParam v dOnlySpans =
   map proximityRatio sep
   $ separateBursts
   $ fmap (fmap (flip spansPhotons $ dOnlySpans)) v
+         
+spansFill :: [(RealTime, RealTime)] -> Plot RealTime Int    
+spansFill spans = toPlot fill
+        where coords = concat $ map f spans
+                      where f (a,b) = [ (a, (0,0)), (a, (0,20))
+                                      , (b, (0,20)), (b, (0,0))
+                                      ]
+              fill = plot_fillbetween_values ^= coords
+                   $ plot_fillbetween_title  ^= "Detected bursts"
+                   $ defaultPlotFillBetween
 
 analyzeData :: FretAnalysis -> Gamma -> Clocked (Fret (V.Vector Time)) -> IO ()
 analyzeData p g fret = do 
@@ -197,8 +207,14 @@ analyzeData p g fret = do
   printf "Found %d bursts (%1.1f per second)\n"
     (length separate)
     (genericLength separate / duration)
-  let layout = layout1_plots ^= map Right (plotFret fret 1e-3) $ defaultLayout1
-  renderableToPNGFile (toRenderable layout) 640 480 "hi.png"
+  let a = spansFill $ map (\(a,b)->( timeToRealTime $ Clocked (freq fret) a
+                                   , timeToRealTime $ Clocked (freq fret) b)
+                          ) spans
+      layout = layout1_plots ^= map Right (a : plotFret fret 1e-2)
+             $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (0,100)
+             $ (layout1_right_axis .> laxis_generate) ^= scaledIntAxis defaultIntAxis (0,75)
+             $ defaultLayout1
+  renderableToPDFFile (toRenderable layout) 640 480 "bins.pdf"
   
   renderableToPNGFile (toRenderable
                        $ fretEffHist (n_bins p)
