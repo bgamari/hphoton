@@ -191,12 +191,19 @@ analyzeData p g fret = do
   print $ fmap burstStats $ unClocked burstPhotons
   print bg_rate
 
-  simpleHist "d-bursts.png" 20
+  let donorSpans = spans `subtractSpans` dOnlyBursts p fret
+  print $ fmap (map V.length . (flip spansPhotons $ donorSpans)) $ unClocked fret
+  
+  simpleHist "d-bursts.png" 30
              $ filter (<100) $ map (realToFrac . V.length)
              $ fretD $ unClocked burstPhotons
-  simpleHist "a-bursts.png" 20
+  simpleHist "a-bursts.png" 30
              $ filter (<100) $ map (realToFrac . V.length)
              $ fretA $ unClocked burstPhotons
+  simpleHist "ad-bursts.png" 30
+             $ filter (<200)
+             $ map (\x->realToFrac $ V.length (fretA x) + V.length (fretD x))
+             $ flipFret $ unClocked burstPhotons
   
   let separate :: [Fret Double]
       separate = id --fmap (\a->(-) <$> a <*> bg_rate) 
