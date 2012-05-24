@@ -1,25 +1,24 @@
 {-# LANGUAGE DeriveDataTypeable, PatternGuards #-}
-
+import           Control.Applicative
 import           Control.Monad (guard)
 import           Data.Accessor
 import           Data.Foldable
 import           Data.List (genericLength, stripPrefix)
 import           Data.Maybe
 import           Data.Traversable
-import           Control.Applicative
 import qualified Data.Vector.Unboxed as V
 import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Plot.Histogram
 import           Graphics.Rendering.Chart.Simple.Histogram
 import           HPhoton.Bin
+import           HPhoton.Bin.Plot
 import           HPhoton.BurstIdent.Bayes
 import           HPhoton.BurstIdent.BinThreshold
 import           HPhoton.FpgaTimetagger
 import           HPhoton.Fret
-import           HPhoton.Bin.Plot
 import           HPhoton.Types
 import           HPhoton.Utils
-import           Prelude hiding (foldl1, concat)
+import           Prelude hiding (foldl1, concat, all)
 import           Statistics.Sample
 import           System.Console.CmdArgs hiding (summary)
 import           System.Environment
@@ -159,7 +158,7 @@ backgroundRate times bursts =
       span_rates = map (\b->realToFrac (V.length b) / realDuration (Clocked (freq times) [b]))
                    $ filter (\b->V.length b > 10)
                    $ unClocked background
-  in mean $ V.fromList $ tr span_rates
+  in mean $ V.fromList span_rates
   
 crosstalkParam :: Clock (V.Vector Time) -> [Span] -> Double
 crosstalkParam v dOnlySpans =
@@ -179,46 +178,40 @@ spansFill spans = toPlot fill
 
 analyzeData :: FretAnalysis -> Gamma -> Clocked (Fret (V.Vector Time)) -> IO ()
 analyzeData p g fret = do 
+  let range = (V.head $ fretA $ unClocked fret, V.last $ fretA $ unClocked fret)
   summary p "A" $ fretA $ sequenceA fret
   summary p "D" $ fretD $ sequenceA fret
 
   let duration = realDuration $ fmap toList fret
   spans <- fretBursts p fret
-  let burstPhotons = fmap (fmap (flip spansPhotons $ spans)) fret
+  let burstPhotons :: Clocked [Fret (V.Vector Time)]
+      burstPhotons = fmap (filter (not . all V.null . toList)
+                          . flipFret
+                          . fmap (flip spansPhotons $ spans)
+                          ) fret
+
       bg_rate :: Fret Double
-      bg_rate = fmap (flip backgroundRate $ spans) $ sequenceA fret
-  let burstStats bursts =
-        let counts = V.fromList $ map (realToFrac . V.length) bursts
-        in (mean counts, stdDev counts)
-  print $ fmap burstStats $ unClocked burstPhotons
-  print bg_rate
+      --bg_rate = fmap (flip backgroundRate $ spans) $ sequenceA fret
+      bg_rate = Fret 90 80
+  printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
 
   let donorSpans = spans `subtractSpans` dOnlyBursts p fret
-  print $ fmap (map V.length . (flip spansPhotons $ donorSpans)) $ unClocked fret
+  --print $ fmap (map V.length . (flip spansPhotons $ donorSpans)) $ unClocked fret
   
-  simpleHist "d-bursts.png" 30
-             $ filter (<100) $ map (realToFrac . V.length)
-             $ fretD $ unClocked burstPhotons
-  simpleHist "a-bursts.png" 30
-             $ filter (<100) $ map (realToFrac . V.length)
-             $ fretA $ unClocked burstPhotons
-  simpleHist "ad-bursts.png" 30
-             $ filter (<200)
-             $ map (\x->realToFrac $ V.length (fretA x) + V.length (fretD x))
-             $ flipFret $ unClocked burstPhotons
-  
-  let separate :: [Fret Double]
-      separate = id --fmap (\a->(-) <$> a <*> bg_rate) 
+  let burstDur :: [RealTime]
+      burstDur = map (realDuration . clockedLike fret . toList)
+                 $ unClocked burstPhotons
+      separate :: [Fret Double]
+      separate = zipWith (\dur counts->(\n bg->n - bg*dur) <$> counts <*> bg_rate) burstDur
                  $ map (fmap realToFrac)
                  $ filter (\x->fretA x + fretD x > burst_size p)
-                 $ burstCounts
-                 $ unClocked burstPhotons
+                 $ burstCounts $ unClocked burstPhotons
   printf "Found %d bursts (%1.1f per second)\n"
     (length separate)
     (genericLength separate / duration)
   let a = spansFill $ map (\(a,b)->( timeToRealTime $ Clocked (freq fret) a
                                    , timeToRealTime $ Clocked (freq fret) b)
-                          ) spans
+                          ) $ invertSpans range spans
       layout = layout1_plots ^= map Right (a : plotFret fret 1e-2)
              $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (0,100)
              $ (layout1_right_axis .> laxis_generate) ^= scaledIntAxis defaultIntAxis (0,75)
@@ -233,8 +226,8 @@ analyzeData p g fret = do
     $ unlines $ map (show . fretEfficiency g) separate
   return ()
   
-burstCounts :: Fret [V.Vector Time] -> [Fret Int]
-burstCounts = map (fmap V.length) . flipFret            
+burstCounts :: [Fret (V.Vector Time)] -> [Fret Int]
+burstCounts = map (fmap V.length)
 
 flipFret :: Fret [a] -> [Fret a]            
 flipFret (Fret a b) = zipWith Fret a b
