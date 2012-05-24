@@ -36,6 +36,8 @@ type TimeDelta = Word64
 type RealTime = Double
 -- | A frequency in Hertz
 type Freq = Word64
+-- | A rate (e.g. photon intensity) in Hz
+type Rate = Double
 
 -- | `Clocked freq a` is a value `a` annotated with a clock frequency `freq`
 data Clocked a = Clocked Freq a deriving (Show, Eq)
