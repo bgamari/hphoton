@@ -69,13 +69,19 @@ mapWithJiffy f c = fmap (f $ jiffy c) c
 withJiffy :: (RealTime -> a -> b) -> Clocked a -> b
 withJiffy f c = unClocked $ mapWithJiffy f c
               
+checkEmpty :: String -> [a] -> [a]
+checkEmpty e [] = error $ e++": Empty list"
+checkEmpty _ a  = a          
+
 startTime :: [V.Vector Time] -> Time
-startTime stamps = minimum (foldMap head stamps)
+startTime [] = error "startTime: No start time of empty list of timeseries"        
+startTime stamps = minimum $ checkEmpty "startTime" $ foldMap head stamps
   where head x | V.null x  = []
                | otherwise = [V.head x]
           
 endTime :: [V.Vector Time] -> Time
-endTime stamps = maximum (foldMap last stamps)
+endTime [] = error "endTime: No end time of empty list of timeseries"        
+endTime stamps = maximum $ checkEmpty "endTime" $ foldMap last stamps
   where last x | V.null x  = []
                | otherwise = [V.last x]
 
