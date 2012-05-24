@@ -9,6 +9,7 @@ module HPhoton.Types ( -- * Time
                        -- * Values with discrete time
                      , Clocked(..)
                      , freq, jiffy
+                     , clockedLike
                      , unClocked
                      , withFreq, mapWithFreq
                      , withJiffy, mapWithJiffy
@@ -47,6 +48,9 @@ instance Foldable Clocked where
 
 instance Traversable Clocked where
     sequenceA (Clocked freq a) = fmap (Clocked freq) a
+    
+clockedLike :: Clocked a -> b -> Clocked b
+clockedLike a b = fmap (const b) a
 
 freq :: Clocked a -> Freq
 freq (Clocked f _) = f
