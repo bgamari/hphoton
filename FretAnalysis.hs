@@ -149,15 +149,17 @@ main' = do
   printf "Gamma: %f\n" g
   analyzeData p g fret
   
+-- Background rate in Hz
 backgroundRate :: Clocked (V.Vector Time) -> [Span] -> Double
 backgroundRate times bursts =
-  let range = ( V.head $ unClocked times, V.last $ unClocked times)
+  let range = (V.head $ unClocked times, V.last $ unClocked times)
       background :: Clocked [V.Vector Time]
       background = fmap (flip spansPhotons $ invertSpans range bursts) times
-      dur = realDuration background
       span_rates :: [Double]
-      span_rates = map (\b->realToFrac (V.length b) / dur) $ unClocked background
-  in mean $ V.fromList span_rates
+      span_rates = map (\b->realToFrac (V.length b) / realDuration (Clocked (freq times) [b]))
+                   $ filter (\b->V.length b > 10)
+                   $ unClocked background
+  in mean $ V.fromList $ tr span_rates
   
 crosstalkParam :: Clock (V.Vector Time) -> [Span] -> Double
 crosstalkParam v dOnlySpans =
