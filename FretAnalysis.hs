@@ -148,17 +148,22 @@ main' = do
   printf "Gamma: %f\n" g
   analyzeData p g fret
   
--- Background rate in Hz
+-- | Return the rates of a set of spans
+spanRates :: [Span] -> Clocked (V.Vector Time) -> [Double]
+spanRates spans times = 
+  map (\b->(realToFrac (V.length b) + 0.5) / realDuration (clockedLike times [b]))
+  $ filter (\b->V.length b > 20) -- Ensure we have enough statistics to make for good estimate
+  $ unClocked
+  $ fmap (flip spansPhotons $ spans) times
+            
+-- | Background rate in Hz
 backgroundRate :: Clocked (V.Vector Time) -> [Span] -> Double
 backgroundRate times bursts =
   let range = (V.head $ unClocked times, V.last $ unClocked times)
-      background :: Clocked [V.Vector Time]
-      background = fmap (flip spansPhotons $ invertSpans range bursts) times
       span_rates :: [Double]
-      span_rates = map (\b->realToFrac (V.length b) / realDuration (Clocked (freq times) [b]))
-                   $ filter (\b->V.length b > 10)
-                   $ unClocked background
-  in mean $ V.fromList span_rates
+      span_rates = spanRates (invertSpans range bursts) times
+  --in mean $ V.fromList span_rates -- FIXME?
+  in realToFrac (V.length $ unClocked times) / realDuration (fmap (:[]) times)
   
 crosstalkParam :: Clock (V.Vector Time) -> [Span] -> Double
 crosstalkParam v dOnlySpans =
