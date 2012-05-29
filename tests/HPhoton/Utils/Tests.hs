@@ -27,7 +27,7 @@ testSpansPhotons spans = map (uncurry testCase)
     )
   ]
   where times = V.enumFromN 0 1000
-        res = spansPhotons times spans
+        res = spansPhotons spans times
         
 tests = [ testGroup "Zero length span" $ testSpansPhotons [(0,0)]
         , testGroup "One length span" $ testSpansPhotons [(0,1)]
