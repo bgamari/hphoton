@@ -2,6 +2,7 @@
 
 import HPhoton.BurstIdent.Bayes
 import HPhoton.Types
+import HPhoton.Fret
 import HPhoton.Bin
 import HPhoton.Utils
 import System.Console.CmdArgs
@@ -39,13 +40,13 @@ main = do args <- cmdArgs burstFind
                                , mpTauBurst = realRateToTau $ burst_rate args
                                }
 
-          rs <- readRecords (fname args)
-          let d = Clocked (clockrate args) rs
-          let (stampsA, stampsD) = (strobeTimes rs Ch0, strobeTimes rs Ch1)
-              times = combineChannels [stampsA, stampsD]
+          d <- readRecords (fname args)
+          let clk = clockFromFreq $ clockrate args
+          let fret = Fret { fretA = strobeTimes d Ch0, fretD = strobeTimes d Ch1 }
+              times = combineChannels [fretA fret, fretD fret]
 
           let dts = timesToInterarrivals times
-              duration = (jiffy d * fromIntegral (V.last times - V.head times))
+              duration = (jiffy clk * fromIntegral (V.last times - V.head times))
           printf "%d photons\n" (V.length times)
           printf "Timestamp range %u..%u : %4.2e seconds\n" (V.head times) (V.last times) duration
           printf "Average rate %1.3f photons/second\n" $ (fromIntegral $ V.length dts) / duration
@@ -57,14 +58,13 @@ main = do args <- cmdArgs burstFind
              then putStrLn "No bursts found"
              else do printf "Found %u burst photons\n" nBurst
                      let cspans = V.toList $ compressSpans (40*mpTauBurst mp) burstTimes
-                         aCounts = map V.length $ spansPhotons stampsA cspans
-                         dCounts = map V.length $ spansPhotons stampsD cspans
+                         counts = fmap (map V.length . spansPhotons cspans) fret
                      printf "Average %f photons/burst\n"
                        (realToFrac nBurst / realToFrac (length cspans) :: Double)
        
-                     let printSpan (start,end) aCount dCount =
-                           printf "%9u\t%9u\t%4u\t%4u" start end aCount dCount
+                     let printSpan (start,end) counts =
+                           printf "%9u\t%9u\t%4u\t%4u" start end (fretA counts) (fretD counts)
                      writeFile (fname args) $ unlines
-                       $ zipWith3 printSpan cspans aCounts dCounts
+                       $ zipWith printSpan cspans (flipFrets counts)
                      
 
