@@ -1,6 +1,7 @@
 module HPhoton.Fret ( fretEfficiency
                     , proximityRatio
                     , gammaFromFret
+                    , flipFrets
                     , module HPhoton.Fret.Types
                     ) where
 
@@ -20,3 +21,9 @@ proximityRatio = fretEfficiency 1
 -- `proxRatio` is shifted to `fretEff`
 gammaFromFret :: ProxRatio -> FretEff -> Gamma
 gammaFromFret proxRatio fretEff = (1/fretEff - 1) / (1/proxRatio - 1)
+
+-- | Turn a 'Fret' of lists into a list of 'Fret's
+-- TODO: Should/could this somehow be done with Traversable?
+flipFrets :: Fret [a] -> [Fret a]
+flipFrets (Fret a b) = zipWith Fret a b
+

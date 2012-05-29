@@ -187,7 +187,7 @@ crosstalkParam clk v dOnlySpans =
   mean $ V.fromList
   $ map (proximityRatio . fmap realToFrac)
   $ burstCounts
-  $ flipFret
+  $ flipFrets
   $ fmap (spansPhotons dOnlySpans) v
          
 spansFill :: [(RealTime, RealTime)] -> Plot RealTime Int    
@@ -210,7 +210,7 @@ analyzeData clk p g fret = do
   burstSpans <- fretBursts clk p fret
   let burstPhotons :: [Fret (V.Vector Time)]
       burstPhotons = filter (not . all V.null . toList)
-                     $ flipFret
+                     $ flipFrets
                      $ fmap (spansPhotons burstSpans) fret
 
       bg_rate :: Fret Double
@@ -251,9 +251,6 @@ analyzeData clk p g fret = do
 burstCounts :: [Fret (V.Vector Time)] -> [Fret Int]
 burstCounts = map (fmap V.length)
 
-flipFret :: Fret [a] -> [Fret a]            
-flipFret (Fret a b) = zipWith Fret a b
- 
 testClock = clockFromFreq 1000000
 
 testData :: Fret (V.Vector Time)
