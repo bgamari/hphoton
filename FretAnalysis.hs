@@ -102,6 +102,16 @@ burstSpans mp betaThresh times =
                    $ timesToInterarrivals times
   in V.toList $ compressSpans (10*mpTauBurst mp) burstTimes
 
+dOnlyBursts :: FretAnalysis -> Clocked (Fret (V.Vector Time)) -> [Span]
+dOnlyBursts p d =
+  let jiffy = realToFrac $ clockrate p
+      mp = ModelParams { mpWindow = window p
+                       , mpProbB = prob_b p
+                       , mpTauBurst = round $ 1 / 140 * jiffy
+                       , mpTauBg = round $ 1 / 70 * jiffy
+                       }
+  in burstSpans mp (beta_thresh p) (fretA $ unClocked d)
+
 fretBursts :: FretAnalysis -> Clocked (Fret (V.Vector Time)) -> IO [Span]
 fretBursts p@(FretAnalysis {burst_mode=Bayes}) d = do
   let jiffy = realToFrac $ clockrate p
