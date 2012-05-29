@@ -207,18 +207,18 @@ analyzeData clk p g fret = do
   summary clk p "D" $ fretD fret
 
   let duration = realDuration clk $ toList fret
-  spans <- fretBursts clk p fret
+  burstSpans <- fretBursts clk p fret
   let burstPhotons :: [Fret (V.Vector Time)]
       burstPhotons = filter (not . all V.null . toList)
                      $ flipFret
-                     $ fmap (spansPhotons spans) fret
+                     $ fmap (spansPhotons burstSpans) fret
 
       bg_rate :: Fret Double
-      bg_rate = fmap (backgroundRate clk spans) fret
+      bg_rate = fmap (backgroundRate clk burstSpans) fret
       --bg_rate = Fret 90 80
   printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
 
-  let donorSpans = spans `subtractSpans` dOnlyBursts clk p fret
+  let donorSpans = burstSpans `subtractSpans` dOnlyBursts clk p fret
   --print $ fmap (map V.length . (flip spansPhotons $ donorSpans)) fret
   
   let burstDur :: [RealTime]
@@ -233,7 +233,7 @@ analyzeData clk p g fret = do
     (genericLength separate / duration)
   let a = spansFill $ map (\(a,b)->( timeToRealTime clk a
                                    , timeToRealTime clk b)
-                          ) $ invertSpans range spans
+                          ) $ invertSpans range burstSpans
       layout = layout1_plots ^= map Right (a : plotFret clk fret 1e-2)
              $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (0,100)
              $ (layout1_right_axis .> laxis_generate) ^= scaledIntAxis defaultIntAxis (0,75)
