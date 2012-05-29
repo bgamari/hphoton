@@ -14,6 +14,8 @@ module HPhoton.Types ( -- * Time
                      , duration, realDuration
                      , timeToRealTime
                      , realTimeToTime
+                       -- * Timestamps
+                     , Timestamps(..)
                      ) where
 
 import Data.Word
@@ -89,7 +91,7 @@ timeToRealTime clk t = jiffy clk * realToFrac t
 realTimeToTime :: Clock -> RealTime -> Time
 realTimeToTime clk rt = round $ rt / jiffy clk
 
--- | Sorted timestamps
+-- | Sorted vector of timestamps
 newtype Timestamps = Timestamps (V.Vector Time) deriving (Show)
 
 instance Arbitrary Timestamps where
