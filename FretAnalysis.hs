@@ -121,6 +121,7 @@ fretBursts p@(FretAnalysis {burst_mode=Bayes}) d = do
                        , mpTauBg = round $ 1 / bg_rate p * jiffy
                        }
       combined = combineChannels $ toList $ unClocked d
+      --combined = fretA $ unClocked d
   putStrLn "Bayesian burst identification parameters:"
   print mp
   return $ burstSpans mp (beta_thresh p) combined
@@ -158,11 +159,19 @@ main' = do
   printf "Gamma: %f\n" g
   analyzeData p g fret
   
--- | Return the rates of a set of spans
-spanRates :: [Span] -> Clocked (V.Vector Time) -> [Double]
-spanRates spans times = 
+-- | Return the rates of each of a list of spans
+spansRates :: [Span] -> Clocked (V.Vector Time) -> [Double]
+spansRates spans times = 
   map (\b->(realToFrac (V.length b) + 0.5) / realDuration (clockedLike times [b]))
   $ filter (\b->V.length b > 20) -- Ensure we have enough statistics to make for good estimate
+  $ unClocked
+  $ fmap (flip spansPhotons $ spans) times
+
+-- | Return the average rate of a set of spans
+spansRate :: [Span] -> Clocked (V.Vector Time) -> Double
+spansRate spans times = 
+  foldl' (\(n,t) a->(n + realToFrac (V.length a) + 0.5), t + realDuration (clockedLike times [a])) (0,0)
+  $ filter (\b->V.length b > 2)
   $ unClocked
   $ fmap (flip spansPhotons $ spans) times
             
@@ -171,15 +180,17 @@ backgroundRate :: Clocked (V.Vector Time) -> [Span] -> Double
 backgroundRate times bursts =
   let range = (V.head $ unClocked times, V.last $ unClocked times)
       span_rates :: [Double]
-      span_rates = spanRates (invertSpans range bursts) times
+      span_rates = spansRate (invertSpans range bursts) times
   --in mean $ V.fromList span_rates -- FIXME?
   in realToFrac (V.length $ unClocked times) / realDuration (fmap (:[]) times)
   
-crosstalkParam :: Clock (V.Vector Time) -> [Span] -> Double
+-- | Compute the crosstalk parameter alpha from donor-only spans
+crosstalkParam :: Clocked (Fret (V.Vector Time)) -> [Span] -> Double
 crosstalkParam v dOnlySpans =
-  map proximityRatio sep
-  $ separateBursts
-  $ fmap (fmap (flip spansPhotons $ dOnlySpans)) v
+  map proximityRatio
+  $ burstCounts
+  $ fmap (flip spansPhotons dOnlySpans)
+  $ unClocked v
          
 spansFill :: [(RealTime, RealTime)] -> Plot RealTime Int    
 spansFill spans = toPlot fill
@@ -206,8 +217,8 @@ analyzeData p g fret = do
                           ) fret
 
       bg_rate :: Fret Double
-      --bg_rate = fmap (flip backgroundRate $ spans) $ sequenceA fret
-      bg_rate = Fret 90 80
+      bg_rate = fmap (flip backgroundRate $ spans) $ sequenceA fret
+      --bg_rate = Fret 90 80
   printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
 
   let donorSpans = spans `subtractSpans` dOnlyBursts p fret
