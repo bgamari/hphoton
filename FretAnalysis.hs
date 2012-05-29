@@ -182,11 +182,13 @@ backgroundRate clk bursts times =
   in spansRate clk (invertSpans range bursts) times
   
 -- | Compute the crosstalk parameter alpha from donor-only spans
---crosstalkParam :: Clock -> Fret (V.Vector Time) -> [Span] -> Double
---crosstalkParam clk v dOnlySpans =
---  map proximityRatio
---  $ burstCounts
---  $ spansPhotons dOnlySpans v
+crosstalkParam :: Clock -> Fret (V.Vector Time) -> [Span] -> Double
+crosstalkParam clk v dOnlySpans =
+  mean $ V.fromList
+  $ map (proximityRatio . fmap realToFrac)
+  $ burstCounts
+  $ flipFret
+  $ fmap (spansPhotons dOnlySpans) v
          
 spansFill :: [(RealTime, RealTime)] -> Plot RealTime Int    
 spansFill spans = toPlot fill
