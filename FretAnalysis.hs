@@ -89,10 +89,10 @@ fretChs = Fret { fretA = Ch1
                , fretD = Ch0
                }
      
-summary :: FretAnalysis -> String -> Clocked (V.Vector Time) -> IO ()
-summary p label photons =
-  let len = realToFrac $ V.length (unClocked photons) :: Double
-      dur = realDuration $ fmap (:[]) photons
+summary :: Clock -> FretAnalysis -> String -> V.Vector Time -> IO ()
+summary clk p label photons =
+  let len = realToFrac $ V.length photons :: Double
+      dur = realDuration clk [photons]
   in printf "%-8s: %1.1e photons, %1.2e sec, %1.2e Hz\n" label len dur (len/dur)
      
 burstSpans :: ModelParams -> Double -> V.Vector Time -> [Span]
@@ -102,35 +102,33 @@ burstSpans mp betaThresh times =
                    $ timesToInterarrivals times
   in V.toList $ compressSpans (10*mpTauBurst mp) burstTimes
 
-dOnlyBursts :: FretAnalysis -> Clocked (Fret (V.Vector Time)) -> [Span]
-dOnlyBursts p d =
-  let jiffy = realToFrac $ clockrate p
-      mp = ModelParams { mpWindow = window p
+dOnlyBursts :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> [Span]
+dOnlyBursts clk p d =
+  let mp = ModelParams { mpWindow = window p
                        , mpProbB = prob_b p
-                       , mpTauBurst = round $ 1 / 140 * jiffy
-                       , mpTauBg = round $ 1 / 70 * jiffy
+                       , mpTauBurst = round $ 1 / 140 * jiffy clk
+                       , mpTauBg = round $ 1 / 70 * jiffy clk
                        }
-  in burstSpans mp (beta_thresh p) (fretA $ unClocked d)
+  in burstSpans mp (beta_thresh p) (fretA d)
 
-fretBursts :: FretAnalysis -> Clocked (Fret (V.Vector Time)) -> IO [Span]
-fretBursts p@(FretAnalysis {burst_mode=Bayes}) d = do
-  let jiffy = realToFrac $ clockrate p
-      mp = ModelParams { mpWindow = window p
+fretBursts :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO [Span]
+fretBursts clk p@(FretAnalysis {burst_mode=Bayes}) d = do
+  let mp = ModelParams { mpWindow = window p
                        , mpProbB = prob_b p
-                       , mpTauBurst = round $ 1 / burst_rate p * jiffy
-                       , mpTauBg = round $ 1 / bg_rate p * jiffy
+                       , mpTauBurst = round $ 1 / burst_rate p * jiffy clk
+                       , mpTauBg = round $ 1 / bg_rate p * jiffy clk
                        }
-      combined = combineChannels $ toList $ unClocked d
-      --combined = fretA $ unClocked d
+      combined = combineChannels $ toList d
+      --combined = fretA  d
   putStrLn "Bayesian burst identification parameters:"
   print mp
   return $ burstSpans mp (beta_thresh p) combined
 
-fretBursts p@(FretAnalysis {burst_mode=BinThresh}) d = do
-  let combined = combineChannels $ toList $ unClocked d
-      binWidthTicks = round $ 1e-3*bin_width p / jiffy d
+fretBursts clk p@(FretAnalysis {burst_mode=BinThresh}) d = do
+  let combined = combineChannels $ toList d
+      binWidthTicks = round $ 1e-3*bin_width p / jiffy clk
       len = realToFrac $ V.length combined :: Double
-      dur = photonsDuration (jiffy d) combined
+      dur = realDuration clk [combined]
       thresh = MultMeanThresh $ burst_thresh p
       spans = V.toList $ findBursts binWidthTicks thresh combined
   printf "Bin/threshold burst identification: bin width=%f ms, threshold=%s\n" (bin_width p) (show thresh)
@@ -149,48 +147,46 @@ main' = do
   p <- cmdArgs fretAnalysis
   guard $ isJust $ input p
   recs <- readRecords $ fromJust $ input p
-  let fret = Clocked (clockrate p)
-             $ fmap (strobeTimes recs) fretChs
+  let fret = fmap (strobeTimes recs) fretChs
   let g = case () of 
             _ | Just f <- zero_fret p -> gammaFromFret 0 f
             _ | Just g <- gamma p     -> g
             otherwise                 -> 1
 
   printf "Gamma: %f\n" g
-  analyzeData p g fret
+  analyzeData (clockFromFreq $ clockrate p) p g fret
   
 -- | Return the rates of each of a list of spans
-spansRates :: [Span] -> Clocked (V.Vector Time) -> [Double]
-spansRates spans times = 
-  map (\b->(realToFrac (V.length b) + 0.5) / realDuration (clockedLike times [b]))
+spansRates :: Clock -> [Span] -> V.Vector Time -> [Double]
+spansRates clk spans times = 
+  map (\b->(realToFrac (V.length b) + 0.5) / realDuration clk [b])
   $ filter (\b->V.length b > 20) -- Ensure we have enough statistics to make for good estimate
-  $ unClocked
-  $ fmap (flip spansPhotons $ spans) times
+  $ spansPhotons spans times
 
 -- | Return the average rate of a set of spans
-spansRate :: [Span] -> Clocked (V.Vector Time) -> Double
-spansRate spans times = 
-  foldl' (\(n,t) a->(n + realToFrac (V.length a) + 0.5), t + realDuration (clockedLike times [a])) (0,0)
-  $ filter (\b->V.length b > 2)
-  $ unClocked
-  $ fmap (flip spansPhotons $ spans) times
+spansRate :: Clock -> [Span] -> V.Vector Time -> Double
+spansRate clk spans times = 
+  let (n,t) = foldl' (\(n,t) a -> (n + realToFrac (V.length a) + 0.5, t + realDuration clk [a])) (0,0)
+              $ filter (\b->V.length b > 2)
+              $ spansPhotons spans times
+  in n / t
             
 -- | Background rate in Hz
-backgroundRate :: Clocked (V.Vector Time) -> [Span] -> Double
-backgroundRate times bursts =
-  let range = (V.head $ unClocked times, V.last $ unClocked times)
+backgroundRate :: Clock -> [Span] -> V.Vector Time  -> Double
+backgroundRate clk bursts times =
+  let range = (V.head times, V.last times)
       span_rates :: [Double]
-      span_rates = spansRate (invertSpans range bursts) times
+      span_rates = spansRates clk (invertSpans range bursts) times
   --in mean $ V.fromList span_rates -- FIXME?
-  in realToFrac (V.length $ unClocked times) / realDuration (fmap (:[]) times)
+  --in realToFrac (V.length times) / realDuration clk [times]
+  in spansRate clk (invertSpans range bursts) times
   
 -- | Compute the crosstalk parameter alpha from donor-only spans
-crosstalkParam :: Clocked (Fret (V.Vector Time)) -> [Span] -> Double
-crosstalkParam v dOnlySpans =
-  map proximityRatio
-  $ burstCounts
-  $ fmap (flip spansPhotons dOnlySpans)
-  $ unClocked v
+--crosstalkParam :: Clock -> Fret (V.Vector Time) -> [Span] -> Double
+--crosstalkParam clk v dOnlySpans =
+--  map proximityRatio
+--  $ burstCounts
+--  $ spansPhotons dOnlySpans v
          
 spansFill :: [(RealTime, RealTime)] -> Plot RealTime Int    
 spansFill spans = toPlot fill
@@ -202,43 +198,41 @@ spansFill spans = toPlot fill
                    $ plot_fillbetween_title  ^= "Detected bursts"
                    $ defaultPlotFillBetween
 
-analyzeData :: FretAnalysis -> Gamma -> Clocked (Fret (V.Vector Time)) -> IO ()
-analyzeData p g fret = do 
-  let range = (V.head $ fretA $ unClocked fret, V.last $ fretA $ unClocked fret)
-  summary p "A" $ fretA $ sequenceA fret
-  summary p "D" $ fretD $ sequenceA fret
+analyzeData :: Clock -> FretAnalysis -> Gamma -> Fret (V.Vector Time) -> IO ()
+analyzeData clk p g fret = do 
+  let range = (V.head $ fretA fret, V.last $ fretA fret)
+  summary clk p "A" $ fretA fret
+  summary clk p "D" $ fretD fret
 
-  let duration = realDuration $ fmap toList fret
-  spans <- fretBursts p fret
-  let burstPhotons :: Clocked [Fret (V.Vector Time)]
-      burstPhotons = fmap (filter (not . all V.null . toList)
-                          . flipFret
-                          . fmap (flip spansPhotons $ spans)
-                          ) fret
+  let duration = realDuration clk $ toList fret
+  spans <- fretBursts clk p fret
+  let burstPhotons :: [Fret (V.Vector Time)]
+      burstPhotons = filter (not . all V.null . toList)
+                     $ flipFret
+                     $ fmap (spansPhotons spans) fret
 
       bg_rate :: Fret Double
-      bg_rate = fmap (flip backgroundRate $ spans) $ sequenceA fret
+      bg_rate = fmap (backgroundRate clk spans) fret
       --bg_rate = Fret 90 80
   printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
 
-  let donorSpans = spans `subtractSpans` dOnlyBursts p fret
-  --print $ fmap (map V.length . (flip spansPhotons $ donorSpans)) $ unClocked fret
+  let donorSpans = spans `subtractSpans` dOnlyBursts clk p fret
+  --print $ fmap (map V.length . (flip spansPhotons $ donorSpans)) fret
   
   let burstDur :: [RealTime]
-      burstDur = map (realDuration . clockedLike fret . toList)
-                 $ unClocked burstPhotons
+      burstDur = map (realDuration clk . toList) burstPhotons
       separate :: [Fret Double]
       separate = zipWith (\dur counts->(\n bg->n - bg*dur) <$> counts <*> bg_rate) burstDur
                  $ map (fmap realToFrac)
                  $ filter (\x->fretA x + fretD x > burst_size p)
-                 $ burstCounts $ unClocked burstPhotons
+                 $ burstCounts burstPhotons
   printf "Found %d bursts (%1.1f per second)\n"
     (length separate)
     (genericLength separate / duration)
-  let a = spansFill $ map (\(a,b)->( timeToRealTime $ Clocked (freq fret) a
-                                   , timeToRealTime $ Clocked (freq fret) b)
+  let a = spansFill $ map (\(a,b)->( timeToRealTime clk a
+                                   , timeToRealTime clk b)
                           ) $ invertSpans range spans
-      layout = layout1_plots ^= map Right (a : plotFret fret 1e-2)
+      layout = layout1_plots ^= map Right (a : plotFret clk fret 1e-2)
              $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (0,100)
              $ (layout1_right_axis .> laxis_generate) ^= scaledIntAxis defaultIntAxis (0,75)
              $ defaultLayout1
@@ -258,24 +252,25 @@ burstCounts = map (fmap V.length)
 flipFret :: Fret [a] -> [Fret a]            
 flipFret (Fret a b) = zipWith Fret a b
  
-testData :: Clocked (Fret (V.Vector Time))
-testData = Clocked 100000 $ Fret { fretA = V.generate 100000 (\i->fromIntegral $ i*1000)
-                                 , fretD = V.generate 100000 (\i->fromIntegral $ i*1000)
-                                 }
+testClock = clockFromFreq 1000000
 
-testData' :: Clocked (Fret (V.Vector Time))
-testData' = Clocked freq $ Fret { fretA=times e, fretD=times (1-e) }
-          where freq = 1000000
-                e = 0.3
+testData :: Fret (V.Vector Time)
+testData = Fret { fretA = V.generate 100000 (\i->fromIntegral $ i*1000)
+                , fretD = V.generate 100000 (\i->fromIntegral $ i*1000)
+                }
+
+testData' :: Fret (V.Vector Time)
+testData' = Fret { fretA=times e, fretD=times (1-e) }
+          where e = 0.3
                 times :: Double -> V.Vector Time
                 times a = V.scanl1 (+)
                           $ V.concat $ replicate 10
-                          $ V.replicate (round $ 1000 * a) (round $ realToFrac freq * 1e-3 / a) V.++ V.singleton freq
+                          $ V.replicate (round $ 1000 * a) (round $ realToFrac (freq testClock) * 1e-3 / a) V.++ V.singleton (freq testClock)
 
 testMain = do
   let p = fretAnalysis { burst_thresh = 0.5
                        , burst_size = 0
                        }
-  analyzeData p 1 testData'
+  analyzeData testClock p 1 testData'
   
 main = main'

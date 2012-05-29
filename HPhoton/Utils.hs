@@ -4,7 +4,6 @@ module HPhoton.Utils ( zeroTime
                      , combineChannels
                      , invertSpans
                      , spansPhotons
-                     , photonsDuration
                      , subtractSpans
                      ) where
 
@@ -43,8 +42,8 @@ invertSpans (start,end) ((a,b):rest)
 invertSpans _ [] = []
 
 -- | 'spansPhotons ts spans' returns the photons in a set of spans
-spansPhotons :: V.Vector Time -> [Span] -> [V.Vector Time]
-spansPhotons ts spans = evalState (mapM f spans) ts
+spansPhotons :: [Span] -> V.Vector Time -> [V.Vector Time]
+spansPhotons spans ts = evalState (mapM f spans) ts
   where f :: Span -> State (V.Vector Time) (V.Vector Time)
         f (start,end) = do ts <- get
                            -- Note that we use snd $ V.span here instead
@@ -62,8 +61,4 @@ subtractSpans ((a,b):abs) ((x,y):xys)
   | x>=a && y<=b         = (a,x) : subtractSpans ((y,b):abs) xys
   | x>=a && x<b && y>b   = (a,x) : subtractSpans abs ((x,y):xys)
   | otherwise            = (a,b) : subtractSpans abs xys
-
--- | The duration in RealTime of a stream of photons
-photonsDuration :: RealTime -> V.Vector Time -> RealTime
-photonsDuration jiffy times = (realToFrac $ V.last times - V.head times) * jiffy
 
