@@ -198,6 +198,7 @@ crosstalkParam :: Clock -> Fret (V.Vector Time) -> [Span] -> Double
 crosstalkParam clk v dOnlySpans =
   mean $ V.fromList
   $ map (proximityRatio . fmap realToFrac)
+  $ filter (\f->fretA f + fretD f > 10)
   $ burstCounts
   $ flipFrets
   $ fmap (spansPhotons dOnlySpans) v
@@ -228,11 +229,10 @@ analyzeData clk p g fret = do
       bg_rate :: Fret Double
       bg_rate = fmap (backgroundRate clk burstSpans) fret
       --bg_rate = Fret 90 80
-  printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
-
   let donorSpans = burstSpans `subtractSpans` dOnlyBursts clk p fret
-  --print $ fmap (map V.length . (flip spansPhotons $ donorSpans)) fret
-  
+  printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
+  printf "Crosstalk: %1.2f\n" (crosstalkParam clk fret donorSpans)
+
   let burstDur :: [RealTime]
       burstDur = map (realDuration clk . toList) burstPhotons
       separate :: [Fret Double]
