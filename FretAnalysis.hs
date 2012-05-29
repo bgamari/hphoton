@@ -27,7 +27,10 @@ import           Text.Printf
 -- | A rate measured in real time
 type Rate = Double
 
-data BurstMode = Bayes | BinThresh deriving (Show, Eq, Data, Typeable)
+data BurstMode = Bayes
+               | BayesCombined
+               | BinThresh deriving (Show, Eq, Data, Typeable)
+
 data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , n_bins :: Int
                                  , input :: Maybe FilePath
@@ -52,7 +55,8 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
                             , n_bins = 20 &= groupname "General" &= help "Number of bins in efficiency histogram"
                             , input = def &= argPos 0 &= typFile
                             , burst_mode = enum [ BinThresh &= help "Use binning/thresholding for burst detection"
-                                                , Bayes &= help "Use Bayesian burst detection"
+                                                , Bayes &= help "Use Bayesian burst detection (acceptor channel)"
+                                                , BayesCombined &= help "Use Bayesian burst detection (both channels)"
                                                 ]
                             
                             , bin_width = 10 &= groupname "Bin/threshold burst detection"
@@ -111,18 +115,26 @@ dOnlyBursts clk p d =
                        }
   in burstSpans mp (beta_thresh p) (fretA d)
 
+modelParams :: Clock -> FretAnalysis -> ModelParams
+modelParams clk p =
+  ModelParams { mpWindow = window p
+              , mpProbB = prob_b p
+              , mpTauBurst = round $ 1 / burst_rate p / jiffy clk
+              , mpTauBg = round $ 1 / bg_rate p / jiffy clk
+              }
+
 fretBursts :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO [Span]
-fretBursts clk p@(FretAnalysis {burst_mode=Bayes}) d = do
-  let mp = ModelParams { mpWindow = window p
-                       , mpProbB = prob_b p
-                       , mpTauBurst = round $ 1 / burst_rate p * jiffy clk
-                       , mpTauBg = round $ 1 / bg_rate p * jiffy clk
-                       }
-      combined = combineChannels $ toList d
-      --combined = fretA  d
-  putStrLn "Bayesian burst identification parameters:"
+fretBursts clk p@(FretAnalysis {burst_mode=BayesCombined}) d = do
+  let mp = modelParams clk p
+  putStrLn "Bayesian burst identification (combined) parameters:"
   print mp
-  return $ burstSpans mp (beta_thresh p) combined
+  return $ burstSpans mp (beta_thresh p) (combineChannels $ toList d)
+
+fretBursts clk p@(FretAnalysis {burst_mode=Bayes}) d = do
+  let mp = modelParams clk p
+  putStrLn "Bayesian burst identification (acceptor) parameters:"
+  print mp
+  return $ burstSpans mp (beta_thresh p) (fretA d)
 
 fretBursts clk p@(FretAnalysis {burst_mode=BinThresh}) d = do
   let combined = combineChannels $ toList d
