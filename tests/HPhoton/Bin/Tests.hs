@@ -11,13 +11,13 @@ import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit
 import Test.QuickCheck
 
-prop_binning_conserves_photons :: Positive Time -> Clocked (V.Vector Time) -> Property
-prop_binning_conserves_photons (Positive width) ts =
+prop_binning_conserves_photons :: Positive Time -> Timestamps -> Property
+prop_binning_conserves_photons (Positive width) times =
   printTestCase (show bins)
   $ V.foldl (+) 0 bins == V.length takenTimes
-  where times = unClocked ts
-        takenTimes = V.takeWhile (< (V.last times `quot` width) * width) times
-        bins = binTimes times width
+  where Timestamps ts = times
+        takenTimes = V.takeWhile (< (V.last ts `quot` width) * width) ts
+        bins = binTimes ts width
         
 test_bins_have_correct_count :: Time -> Int -> Assertion
 test_bins_have_correct_count dt count =
