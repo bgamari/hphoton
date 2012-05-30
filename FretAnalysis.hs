@@ -125,6 +125,19 @@ modelParams clk p avgRate =
               , mpTauBg = round $ 1 / (avgRate * bg_rate p) / jiffy clk
               }
 
+fretEfficiency' :: Clock -> Fret (V.Vector Time) -> FretEff
+fretEfficiency' clk times =               
+  let binWidth = realTimeToTime clk 5e-3
+      bins = fmap (bin binWidth) times :: Fret (V.Vector Int)
+      prior = 5
+      a :: V.Vector Double
+      a = V.map (\(a,d)->realToFrac a / realToFrac (a+d))
+          $ V.map (\(a,d)->(a+prior, d+prior))
+          $ V.zip (fretA bins) (fretD bins)
+      donorOnlyBins = fmap (V.backpermute $ V.findIndices (<0.4) a) bins
+      fretBins = fmap (V.backpermute $ V.findIndices (>0.6) a) bins
+  in 1 - mean (V.map realToFrac $ fretD donorOnlyBins) / mean (V.map realToFrac $ fretD fretBins)
+  
 photonsRate :: Clock -> V.Vector Time -> Rate
 photonsRate clk times = realToFrac (V.length times) / realDuration clk [times]
 
