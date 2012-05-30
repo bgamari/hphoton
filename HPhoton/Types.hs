@@ -35,7 +35,10 @@ type TimeDelta = Word64
 type RealTime = Double
 -- | A frequency in Hertz
 type Freq = Word64
--- | A rate (e.g. photon intensity) in Hz
+-- | A rate (e.g. photon intensity)
+-- Note that this refers to the general notion of a number of events
+-- per time and does not imply a particular unit of time (e.g. per
+-- second, per bin).
 type Rate = Double
 
 -- | `Clock` denotes a clockrate
