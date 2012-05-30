@@ -219,16 +219,6 @@ correctCrosstalk :: Double -> Fret Double -> Fret Double
 correctCrosstalk alpha counts =
   let n = alpha * (fretA counts + fretD counts)
   in (subtract n) <$> counts 
-         
-spansFill :: Int -> String -> [(RealTime, RealTime)] -> Plot RealTime Int    
-spansFill maxY title spans = toPlot fill
-        where coords = concat $ map f spans
-                      where f (a,b) = [ (a, (0,0)), (a, (0,maxY))
-                                      , (b, (0,maxY)), (b, (0,0))
-                                      ]
-              fill = plot_fillbetween_values ^= coords
-                   $ plot_fillbetween_title  ^= title
-                   $ defaultPlotFillBetween
 
 analyzeData :: Clock -> FretAnalysis -> Gamma -> Fret (V.Vector Time) -> IO ()
 analyzeData clk p gamma fret = do 
@@ -274,6 +264,16 @@ analyzeData clk p gamma fret = do
 
   plotFretAnalysis clk gamma p fret (zip burstSpans burstRates)
   return ()
+
+spansFill :: Int -> String -> [(RealTime, RealTime)] -> Plot RealTime Int    
+spansFill maxY title spans = toPlot fill
+        where coords = concat $ map f spans
+                      where f (a,b) = [ (a, (0,0)), (a, (0,maxY))
+                                      , (b, (0,maxY)), (b, (0,0))
+                                      ]
+              fill = plot_fillbetween_values ^= coords
+                   $ plot_fillbetween_title  ^= title
+                   $ defaultPlotFillBetween
 
 plotFretAnalysis :: Clock -> Gamma -> FretAnalysis -> Fret (V.Vector Time)
                  -> [(Span, Fret Rate)] -> IO ()
