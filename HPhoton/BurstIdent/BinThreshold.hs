@@ -16,7 +16,7 @@ data BinThreshold = AbsThresh Int          -- ^ Absolute counts per bin
 
 findBursts :: TimeDelta -> BinThreshold -> V.Vector Time -> V.Vector Span
 findBursts width threshold ts =
-  let bins = binTimesWithTimes ts width
+  let bins = binWithBounds width ts
       counts = V.map (realToFrac . snd) bins
       thresh = case threshold of
                     AbsThresh n      -> n

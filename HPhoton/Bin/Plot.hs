@@ -18,7 +18,7 @@ plotBins :: Clock -> V.Vector Time -> RealTime -> String -> Colour Double -> Plo
 plotBins clk times binWidth label color=
   let binWidth' = realTimeToTime clk binWidth
       bins = V.map (\(t,c)->(timeToRealTime clk t, c))
-             $ binTimesWithTimes times binWidth'
+             $ binWithBounds binWidth' times
   in plotBins' bins label color
   
 plotBins' :: V.Vector (RealTime, Int) -> String -> Colour Double -> Plot RealTime Int
@@ -42,7 +42,7 @@ plotFretEff :: Clock -> Fret (V.Vector Time) -> RealTime -> Gamma -> Plot RealTi
 plotFretEff clk times binWidth =
   let binWidth' = realTimeToTime clk binWidth
       bins = fmap ( V.map (\(t,c)->(timeToRealTime clk t, c))
-                  . flip binTimesWithTimes binWidth'
+                  . binWithBounds binWidth'
                   ) times
   in plotFretEff' bins
 
@@ -50,7 +50,7 @@ plotFret :: Clock -> Fret (V.Vector Time) -> RealTime -> [Plot RealTime Int]
 plotFret clk times binWidth =
   let binWidth' = realTimeToTime clk binWidth
       bins = fmap ( V.map (\(t,c)->(timeToRealTime clk t, c))
-                  . flip binTimesWithTimes binWidth'
+                  . binWithBounds binWidth'
                   ) times
   in [ plotBins' (fretA bins) "Acceptor" red
      , plotBins' (fretD bins) "Donor" green

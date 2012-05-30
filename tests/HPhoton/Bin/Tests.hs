@@ -17,13 +17,13 @@ prop_binning_conserves_photons (Positive width) times =
   $ V.foldl (+) 0 bins == V.length takenTimes
   where Timestamps ts = times
         takenTimes = V.takeWhile (< (V.last ts `quot` width) * width) ts
-        bins = binTimes ts width
+        bins = bin width ts
         
 test_bins_have_correct_count :: Time -> Int -> Assertion
 test_bins_have_correct_count dt count =
   assertBool "Bin with incorrect count" $ V.all (==count) bins
   where times = V.enumFromStepN 0 dt (count*10)
-        bins = binTimes times width
+        bins = bin width times
         width = fromIntegral count * dt
 
 tests = [ testProperty "binning conserves photons" prop_binning_conserves_photons
