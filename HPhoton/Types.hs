@@ -6,7 +6,7 @@ module HPhoton.Types ( -- * Time
                      , RealTime
                      , Freq
                      , Span
-                       -- * Values with discrete time
+                       -- * Instrument clockrate
                      , Clock
                      , clockFromFreq, clockFromJiffy
                      , freq, jiffy
