@@ -253,40 +253,55 @@ analyzeData clk p g fret = do
 
   let burstDur :: [RealTime]
       burstDur = map (realDuration clk . toList) burstPhotons
-      separate :: [Fret Double]
-      separate = map (correctCrosstalk 0)
+      burstRates :: [Fret Rate]
+      burstRates = map (correctCrosstalk 0)
                  $ zipWith (correctFretBackground bg_rate) burstDur
                  $ map (fmap realToFrac)
                  $ filter (\x->fretA x + fretD x > burst_size p)
                  $ burstCounts burstPhotons
+
   printf "Found %d bursts (%1.1f per second)\n"
-    (length separate)
-    (genericLength separate / duration)
-  let a = spansFill 20 "Bursts" $ map (\(a,b)->( timeToRealTime clk a
+    (length burstRates)
+    (genericLength burstRates / duration)
+  writeFile (rootName p++"-fret_eff.txt")
+    $ unlines $ map (show . fretEfficiency g) burstRates
+  
+  renderableToPNGFile (toRenderable
+                       $ fretEffHist (n_bins p)
+                       $ map (fretEfficiency g) burstRates
+                      ) 640 480 (rootName p++"-fret_eff.png")
+
+  plotFretAnalysis clk g p fret (zip burstSpans burstRates)
+  return ()
+
+plotFretAnalysis :: Clock -> Gamma -> FretAnalysis -> Fret (V.Vector Time)
+                 -> [(Span, Fret Rate)] -> IO ()
+plotFretAnalysis clk g p times bursts = do
+  let (burstSpans, burstRates) = unzip bursts
+      a = spansFill 20 "Bursts" $ map (\(a,b)->( timeToRealTime clk a
                                                , timeToRealTime clk b)
                                       ) burstSpans
       b = spansFill 30 "Donor only" $ map (\(a,b)->( timeToRealTime clk a
                                                    , timeToRealTime clk b)
                                           ) burstSpans
-      layout = layout1_plots ^= map Left (a:b : plotFret clk fret 1e-2)
+      layout :: Layout1 RealTime Int
+      layout = layout1_plots ^= map Left (a : b : plotFret clk times 1e-2)
              $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (30,60)
              $ (layout1_left_axis .> laxis_generate) ^= scaledIntAxis defaultIntAxis (0,75)
              $ defaultLayout1
+
       l2 :: Layout1 RealTime FretEff
-      l2 = layout1_plots ^= [Left $ plotFretEff clk fret 1e-2 1]
+      l2 = layout1_plots ^= [Left $ plotFretEff clk times 1e-2 1]
          $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (30,60)
          $ (layout1_left_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (0,1)
          $ defaultLayout1
-  renderableToPDFFile (renderLayout1sStacked [withAnyOrdinate layout, withAnyOrdinate l2]) 5000 600 (rootName p++"-bins.pdf")
-  
-  renderableToPNGFile (toRenderable
-                       $ fretEffHist (n_bins p)
-                       $ map (fretEfficiency g) separate
-                      ) 640 480 (rootName p++"-fret_eff.png")
-  writeFile (rootName p++"-fret_eff.txt")
-    $ unlines $ map (show . fretEfficiency g) separate
+
+  renderableToPDFFile (renderLayout1sStacked [ withAnyOrdinate layout
+                                             , withAnyOrdinate l2]
+                      )
+                      5000 600 (rootName p++"-bins.pdf")
   return ()
-  
+
 burstCounts :: [Fret (V.Vector Time)] -> [Fret Int]
 burstCounts = map (fmap V.length)
 
