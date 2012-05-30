@@ -21,7 +21,7 @@ import           HPhoton.Types
 import           HPhoton.Utils
 import           Prelude hiding (foldl1, concat, all)
 import           Statistics.Sample
-import           System.Console.CmdArgs hiding (summary)
+import           System.Console.CmdArgs
 import           System.Environment
 import           Text.Printf
 
@@ -94,8 +94,8 @@ fretChs = Fret { fretA = Ch1
                , fretD = Ch0
                }
      
-summary :: Clock -> FretAnalysis -> String -> V.Vector Time -> IO ()
-summary clk p label photons =
+summarizeTimestamps :: Clock -> FretAnalysis -> String -> V.Vector Time -> IO ()
+summarizeTimestamps clk p label photons =
   let len = realToFrac $ V.length photons :: Double
       dur = realDuration clk [photons]
   in printf "%-8s: %1.1e photons, %1.2e sec, %1.2e Hz\n" label len dur (len/dur)
@@ -233,8 +233,8 @@ spansFill maxY title spans = toPlot fill
 analyzeData :: Clock -> FretAnalysis -> Gamma -> Fret (V.Vector Time) -> IO ()
 analyzeData clk p gamma fret = do 
   let range = (V.head $ fretA fret, V.last $ fretA fret)
-  summary clk p "A" $ fretA fret
-  summary clk p "D" $ fretD fret
+  summarizeTimestamps clk p "A" $ fretA fret
+  summarizeTimestamps clk p "D" $ fretD fret
 
   let duration = realDuration clk $ toList fret
   burstSpans <- fretBursts clk p fret
