@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, PatternGuards #-}
     
 import           Control.Applicative
-import           Control.Monad (guard)
+import           Control.Monad (guard, liftM)
 import           Control.Arrow (first, second)
 import           Data.Accessor
 import           Data.Foldable
@@ -26,11 +26,12 @@ import           HPhoton.Fret
 import           HPhoton.Types
 import           HPhoton.Utils
 
+import           Control.Exception (catch, SomeException)                 
 import           Numeric.MixtureModel.Beta as Beta
 import           System.Random.MWC       
 import           Data.Random       hiding (Gamma, gamma)
 
-import           Prelude hiding (foldl1, concat, all, sum)
+import           Prelude hiding (foldl1, concat, all, sum, catch)
 import           Statistics.Sample
 import           System.Console.CmdArgs
 import           System.Environment
@@ -276,9 +277,11 @@ analyzeData clk p gamma fret = do
     $ unlines $ map (show . fretEfficiency gamma) burstRates
   
   let fretEffs = map (fretEfficiency gamma) burstRates
-  fitParams <- fitFretHist fretEffs
+      fitFailed :: SomeException -> IO (Maybe Params)
+      fitFailed _ = putStrLn "Fit Failed" >> return Nothing
+  fitParams <- catch (Just `liftM` fitFretHist fretEffs) fitFailed
   let layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs ]
-                                ++ map Left (plotFit fitParams)
+                                ++ maybe [] (map Left . plotFit) fitParams
                $ defaultLayout1
   renderableToPNGFile (toRenderable layout) 640 480 (rootName p++"-fret_eff.png")
 
