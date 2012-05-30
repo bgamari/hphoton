@@ -198,6 +198,12 @@ backgroundRate clk bursts times =
   --in realToFrac (V.length times) / realDuration clk [times]
   in spansRate clk (invertSpans range bursts) times
   
+correctBackground :: Rate -> RealTime -> Double -> Double
+correctBackground rate dur n = n - dur*rate
+
+correctFretBackground :: Fret Rate -> RealTime -> Fret Double -> Fret Double
+correctFretBackground rate dur counts = correctBackground <$> rate <*> pure dur <*> counts
+
 -- | Compute the crosstalk parameter alpha from donor-only spans
 crosstalkParam :: Clock -> Fret (V.Vector Time) -> [Span] -> Double
 crosstalkParam clk v dOnlySpans =
@@ -207,6 +213,11 @@ crosstalkParam clk v dOnlySpans =
   $ burstCounts
   $ flipFrets
   $ fmap (spansPhotons dOnlySpans) v
+  
+correctCrosstalk :: Double -> Fret Double -> Fret Double
+correctCrosstalk alpha counts =
+  let n = alpha * (fretA counts + fretD counts)
+  in (subtract n) <$> counts 
          
 spansFill :: Int -> String -> [(RealTime, RealTime)] -> Plot RealTime Int    
 spansFill maxY title spans = toPlot fill
@@ -243,7 +254,8 @@ analyzeData clk p g fret = do
   let burstDur :: [RealTime]
       burstDur = map (realDuration clk . toList) burstPhotons
       separate :: [Fret Double]
-      separate = zipWith (\dur counts->(\n bg->n - bg*dur) <$> counts <*> bg_rate) burstDur
+      separate = map (correctCrosstalk 0)
+                 $ zipWith (correctFretBackground bg_rate) burstDur
                  $ map (fmap realToFrac)
                  $ filter (\x->fretA x + fretD x > burst_size p)
                  $ burstCounts burstPhotons
