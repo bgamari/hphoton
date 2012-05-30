@@ -6,6 +6,7 @@ module HPhoton.Types ( -- * Time
                      , RealTime
                      , Freq
                      , Span
+                     , spanDuration, realSpanDuration
                        -- * Instrument clockrate
                      , Clock
                      , clockFromFreq, clockFromJiffy
@@ -104,4 +105,12 @@ instance Arbitrary Timestamps where
 
 -- | A span of time given by `(start,end)`
 type Span = (Time, Time)
+
+-- | Duration of a span
+spanDuration :: Span -> Time
+spanDuration (a,b) = b-a
+
+-- | Real duration of a span
+realSpanDuration :: Clock -> Span -> RealTime
+realSpanDuration clk = timeToRealTime clk . spanDuration
 
