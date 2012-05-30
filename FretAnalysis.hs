@@ -252,6 +252,8 @@ analyzeData clk p gamma fret = do
       bg_rate :: Fret Rate
       bg_rate = fmap (backgroundRate clk burstSpans) fret
   printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
+  let (mu,sigma) = meanVariance $ V.fromList $ map (realSpanDuration clk) burstSpans
+  printf "Burst lengths: mu=%1.2e seconds, sigma=%1.2e seconds\n" mu sigma
 
   let dSpans = donorSpans clk p fret
       aSpans = acceptorSpans clk p fret
