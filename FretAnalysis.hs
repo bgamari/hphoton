@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, PatternGuards #-}
     
 import           Control.Applicative
-import           Control.Monad (guard, liftM)
+import           Control.Monad (guard, liftM, when)
 import           Control.Arrow (first, second)
 import           Data.Accessor
 import           Data.Foldable
@@ -31,7 +31,7 @@ import           Numeric.MixtureModel.Beta as Beta
 import           System.Random.MWC       
 import           Data.Random       hiding (Gamma, gamma)
 
-import           Prelude hiding (foldl1, concat, all, sum, catch)
+import           Prelude hiding (foldl1, concat, all, sum, catch, mapM_)
 import           Statistics.Sample
 import           System.Console.CmdArgs
 import           System.Environment
@@ -46,7 +46,7 @@ data BurstMode = Bayes
 
 data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , n_bins :: Int
-                                 , input :: Maybe FilePath
+                                 , input :: [FilePath]
                                  , burst_mode :: BurstMode
 
                                  , bin_width :: RealTime
@@ -66,7 +66,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                              
 fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "General" &= help "Timetagger clockrate (Hz)"
                             , n_bins = 20 &= groupname "General" &= help "Number of bins in efficiency histogram"
-                            , input = def &= argPos 0 &= typFile
+                            , input = def &= args &= typFile
                             , burst_mode = enum [ BinThresh &= help "Use binning/thresholding for burst detection"
                                                 , Bayes &= help "Use Bayesian burst detection (acceptor channel)"
                                                 , BayesCombined &= help "Use Bayesian burst detection (both channels)"
@@ -95,12 +95,6 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
                             , gamma = Nothing &= groupname "Gamma correction"
                                               &= help "Gamma"
                             }
-               
-stripSuffix :: String -> String -> String             
-stripSuffix suffix = reverse . maybe (error "Invalid filename") id . stripPrefix (reverse suffix) . reverse
-
-rootName :: FretAnalysis -> String
-rootName = stripSuffix ".timetag" . maybe (error "Need filename") id . input
 
 fretChs = Fret { fretA = Ch1
                , fretD = Ch0
@@ -179,16 +173,24 @@ fretBursts clk p@(FretAnalysis {burst_mode=BinThresh}) d = do
      
 main' = do
   p <- cmdArgs fretAnalysis
-  guard $ isJust $ input p
-  recs <- readRecords $ fromJust $ input p
+  when (null $ input p) $ error "Need at least one input file"
+  mapM_ (fileMain p) $ input p
+               
+stripSuffix :: String -> String -> String             
+stripSuffix suffix = reverse . maybe (error "Invalid filename") id . stripPrefix (reverse suffix) . reverse
+
+fileMain :: FretAnalysis -> FilePath -> IO ()
+fileMain p input = do         
+  recs <- readRecords input
   let fret = fmap (strobeTimes recs) fretChs
+      rootName = stripSuffix ".timetag" input
   let g = case () of 
             _ | Just f <- zero_fret p -> gammaFromFret 0 f
             _ | Just g <- gamma p     -> g
             otherwise                 -> 1
 
   printf "Gamma: %f\n" g
-  analyzeData (clockFromFreq $ clockrate p) p g fret
+  analyzeData rootName (clockFromFreq $ clockrate p) p g fret
   
 -- | Return the rates of each of a list of spans
 spansRates :: Clock -> [Span] -> V.Vector Time -> [Double]
@@ -236,8 +238,8 @@ correctCrosstalk alpha counts =
   let n = alpha * (fretA counts + fretD counts)
   in (subtract n) <$> counts 
 
-analyzeData :: Clock -> FretAnalysis -> Gamma -> Fret (V.Vector Time) -> IO ()
-analyzeData clk p gamma fret = do 
+analyzeData :: String -> Clock -> FretAnalysis -> Gamma -> Fret (V.Vector Time) -> IO ()
+analyzeData rootName clk p gamma fret = do 
   let range = (V.head $ fretA fret, V.last $ fretA fret)
   summarizeTimestamps clk p "A" $ fretA fret
   summarizeTimestamps clk p "D" $ fretD fret
@@ -273,7 +275,7 @@ analyzeData clk p gamma fret = do
   printf "Found %d bursts (%1.1f per second)\n"
     (length burstRates)
     (genericLength burstRates / duration)
-  writeFile (rootName p++"-fret_eff.txt")
+  writeFile (rootName++"-fret_eff.txt")
     $ unlines $ map (show . fretEfficiency gamma) burstRates
   
   let fretEffs = map (fretEfficiency gamma) burstRates
@@ -283,7 +285,7 @@ analyzeData clk p gamma fret = do
   let layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs ]
                                 ++ maybe [] (map Left . plotFit) fitParams
                $ defaultLayout1
-  renderableToPNGFile (toRenderable layout) 640 480 (rootName p++"-fret_eff.png")
+  renderableToPNGFile (toRenderable layout) 640 480 (rootName++"-fret_eff.png")
 
   --plotFretAnalysis clk gamma p fret (zip burstSpans burstRates)
   return ()
@@ -351,9 +353,9 @@ spansFill maxY title spans = toPlot fill
                    $ plot_fillbetween_title  ^= title
                    $ defaultPlotFillBetween
 
-plotFretAnalysis :: Clock -> Gamma -> FretAnalysis -> Fret (V.Vector Time)
+plotFretAnalysis :: String -> Clock -> Gamma -> FretAnalysis -> Fret (V.Vector Time)
                  -> [(Span, Fret Rate)] -> IO ()
-plotFretAnalysis clk gamma p times bursts = do
+plotFretAnalysis rootName clk gamma p times bursts = do
   let (burstSpans, burstRates) = unzip bursts
       a = spansFill 20 "Bursts" $ map (\(a,b)->( timeToRealTime clk a
                                                , timeToRealTime clk b)
@@ -381,7 +383,7 @@ plotFretAnalysis clk gamma p times bursts = do
   renderableToPDFFile (renderLayout1sStacked [ withAnyOrdinate layout
                                              , withAnyOrdinate l2]
                       )
-                      5000 600 (rootName p++"-bins.pdf")
+                      5000 600 (rootName++"-bins.pdf")
   return ()
 
 burstCounts :: [Fret (V.Vector Time)] -> [Fret Int]
@@ -405,6 +407,6 @@ testMain = do
   let p = fretAnalysis { burst_thresh = 0.5
                        , burst_size = 0
                        }
-  analyzeData testClock p 1 testData'
+  analyzeData "test" testClock p 1 testData'
   
 main = main'
