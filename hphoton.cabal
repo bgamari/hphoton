@@ -112,4 +112,5 @@ Executable fret-analysis
                      statistics,
                      data-accessor,
                      Chart,
-                     chart-histogram
+                     chart-histogram,
+                     mixture-model

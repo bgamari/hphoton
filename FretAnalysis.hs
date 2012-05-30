@@ -2,15 +2,21 @@
     
 import           Control.Applicative
 import           Control.Monad (guard)
+import           Control.Arrow (first, second)
 import           Data.Accessor
 import           Data.Foldable
 import           Data.List (genericLength, stripPrefix)
 import           Data.Maybe
 import           Data.Traversable
 import qualified Data.Vector.Unboxed as V
+import qualified Data.Vector as VB
+
 import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Plot.Histogram
 import           Graphics.Rendering.Chart.Simple.Histogram
+import           Data.Colour
+import           Data.Colour.Names                 
+
 import           HPhoton.Bin
 import           HPhoton.Bin.Plot
 import           HPhoton.BurstIdent.Bayes
@@ -19,7 +25,12 @@ import           HPhoton.FpgaTimetagger
 import           HPhoton.Fret
 import           HPhoton.Types
 import           HPhoton.Utils
-import           Prelude hiding (foldl1, concat, all)
+
+import           Numeric.MixtureModel.Beta as Beta
+import           System.Random.MWC       
+import           Data.Random       hiding (Gamma, gamma)
+
+import           Prelude hiding (foldl1, concat, all, sum)
 import           Statistics.Sample
 import           System.Console.CmdArgs
 import           System.Environment
@@ -165,15 +176,6 @@ fretBursts clk p@(FretAnalysis {burst_mode=BinThresh}) d = do
   printf "Bin/threshold burst identification: bin width=%f ms, threshold=%s\n" (bin_width p) (show thresh)
   return spans
      
-fretEffHist :: Int -> [FretEff] -> Layout1 FretEff Int
-fretEffHist nbins e = layout
-  where hist = plot_hist_values  ^= [e]
-               $ plot_hist_range ^= Just (-0.1, 1.1)
-               $ plot_hist_bins  ^= nbins
-               $ defaultPlotHist
-        layout = layout1_plots ^= [Left (plotHist hist)]
-                 $ defaultLayout1
-        
 main' = do
   p <- cmdArgs fretAnalysis
   guard $ isJust $ input p
@@ -238,6 +240,7 @@ analyzeData clk p gamma fret = do
   let range = (V.head $ fretA fret, V.last $ fretA fret)
   summarizeTimestamps clk p "A" $ fretA fret
   summarizeTimestamps clk p "D" $ fretD fret
+  print $ fretEfficiency' clk fret
 
   let duration = realDuration clk $ toList fret
   burstSpans <- fretBursts clk p fret
@@ -270,13 +273,61 @@ analyzeData clk p gamma fret = do
   writeFile (rootName p++"-fret_eff.txt")
     $ unlines $ map (show . fretEfficiency gamma) burstRates
   
-  renderableToPNGFile (toRenderable
-                       $ fretEffHist (n_bins p)
-                       $ map (fretEfficiency gamma) burstRates
-                      ) 640 480 (rootName p++"-fret_eff.png")
+  let fretEffs = map (fretEfficiency gamma) burstRates
+  fitParams <- fitFretHist fretEffs
+  let layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs
+                                , Left $ plotFit fitParams
+                                ]
+               $ defaultLayout1
+  renderableToPNGFile (toRenderable layout) 640 480 (rootName p++"-fret_eff.png")
 
-  plotFretAnalysis clk gamma p fret (zip burstSpans burstRates)
+  --plotFretAnalysis clk gamma p fret (zip burstSpans burstRates)
   return ()
+
+fitFretHist :: [FretEff] -> IO Params
+fitFretHist fretEffs = do
+  mwc <- create
+  fitParams <- runRVar (runFit 250 $ VB.fromList $ filter (\x->x>0 && x<1) fretEffs) mwc
+  putStrLn $ unlines 
+           $ map (\(w,p)->let (mu,sigma) = paramToMoments p
+                          in printf "weight=%1.2f, mu=%1.2f, sigma^2=%1.2f" w mu sigma
+                 ) $ VB.toList fitParams
+  return fitParams
+  
+replicateM' :: Monad m => Int -> (a -> m a) -> a -> m a
+replicateM' n f a | n < 1 = error "Invalid count"
+replicateM' 1 f a = f a
+replicateM' n f a = f a >>= replicateM' (n-1) f
+
+priors :: [(Weight, BetaParam)]       
+priors = [ (0.5, paramFromMoments (0.1, 0.01))
+         , (0.5, paramFromMoments (0.9, 0.01))
+         ]
+
+runFit :: Int -> Samples -> RVar Params
+runFit niter samples = do
+    a0 <- updateAssignments' samples (VB.fromList priors)
+    a <- replicateM' 500 (updateAssignments samples 2) a0
+    return $ estimateWeights a $ paramsFromAssignments samples 2 a
+
+plotFit :: Params -> Plot FretEff Double
+plotFit fitParams = functionPlot 1000 (0.01,0.99) dist
+    where dist x = sum $ map (\(w,p)->w * realToFrac (betaProb p x)) $ VB.toList fitParams
+
+functionPlot :: (RealFrac x, Enum x) => Int -> (x, x) -> (x -> y) -> Plot x y
+functionPlot n (a,b) f =
+  let xs = [a,a+(b-a)/realToFrac n..b]
+  in toPlot $ plot_lines_values ^= [map (\x->(x,f x)) xs]
+            $ plot_lines_style .> line_color ^= opaque red
+            $ defaultPlotLines
+
+plotFretHist :: Int -> [FretEff] -> Plot FretEff Double
+plotFretHist nbins fretEffs =
+    plotNormedHist
+    $ plot_hist_values ^= [fretEffs]
+    $ plot_hist_range  ^= Just (-0.1, 1.1)
+    $ plot_hist_bins   ^= nbins
+    $ defaultPlotHist
 
 spansFill :: Int -> String -> [(RealTime, RealTime)] -> Plot RealTime Int    
 spansFill maxY title spans = toPlot fill
@@ -304,8 +355,13 @@ plotFretAnalysis clk gamma p times bursts = do
              $ (layout1_left_axis .> laxis_generate) ^= scaledIntAxis defaultIntAxis (0,75)
              $ defaultLayout1
 
+      c = plot_points_values ^= map (\((s,e), f)->(timeToRealTime clk s, proximityRatio f)) bursts
+          $ plot_points_style ^= plusses 2 0.1 (opaque orange)
+          $ plot_points_title ^= "Burst FRET efficiency"
+          $ defaultPlotPoints
       l2 :: Layout1 RealTime FretEff
-      l2 = layout1_plots ^= [Left $ plotFretEff clk times 1e-2 1]
+      l2 = layout1_plots ^= [ Left $ plotFretEff clk times 1e-2 1
+                            , Left $ toPlot c]
          $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (30,60)
          $ (layout1_left_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (0,1)
          $ defaultLayout1
@@ -325,7 +381,6 @@ testData :: Fret (V.Vector Time)
 testData = Fret { fretA = V.generate 100000 (\i->fromIntegral $ i*1000)
                 , fretD = V.generate 100000 (\i->fromIntegral $ i*1000)
                 }
-
 testData' :: Fret (V.Vector Time)
 testData' = Fret { fretA=times e, fretD=times (1-e) }
           where e = 0.3
