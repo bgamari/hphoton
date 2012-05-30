@@ -275,9 +275,8 @@ analyzeData clk p gamma fret = do
   
   let fretEffs = map (fretEfficiency gamma) burstRates
   fitParams <- fitFretHist fretEffs
-  let layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs
-                                , Left $ plotFit fitParams
-                                ]
+  let layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs ]
+                                ++ map Left (plotFit fitParams)
                $ defaultLayout1
   renderableToPNGFile (toRenderable layout) 640 480 (rootName p++"-fret_eff.png")
 
@@ -310,9 +309,17 @@ runFit niter samples = do
     a <- replicateM' 500 (updateAssignments samples 2) a0
     return $ estimateWeights a $ paramsFromAssignments samples 2 a
 
-plotFit :: Params -> Plot FretEff Double
-plotFit fitParams = functionPlot 1000 (0.01,0.99) dist
+plotFit :: Params -> [Plot FretEff Double]
+plotFit fitParams = [ functionPlot 1000 (0.01,0.99) dist
+                    , toPlot
+                      $ plot_annotation_values ^= [(0,1,label)]
+                      $ defaultPlotAnnotation
+                    ]
     where dist x = sum $ map (\(w,p)->w * realToFrac (betaProb p x)) $ VB.toList fitParams
+          label = unlines 
+                  $ map (\(w,p)->let (mu,sigma) = paramToMoments p
+                                 in printf "weight=%1.2f, mu=%1.2f, sigma^2=%1.2f" w mu sigma
+                        ) $ VB.toList fitParams
 
 functionPlot :: (RealFrac x, Enum x) => Int -> (x, x) -> (x -> y) -> Plot x y
 functionPlot n (a,b) f =
