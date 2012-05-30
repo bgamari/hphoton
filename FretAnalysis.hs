@@ -181,6 +181,7 @@ stripSuffix suffix = reverse . maybe (error "Invalid filename") id . stripPrefix
 
 fileMain :: FretAnalysis -> FilePath -> IO ()
 fileMain p input = do         
+  printf "\nProcessing %s...\n" input
   recs <- readRecords input
   let fret = fmap (strobeTimes recs) fretChs
       rootName = stripSuffix ".timetag" input
