@@ -243,7 +243,7 @@ analyzeData clk p gamma fret = do
                      $ flipFrets
                      $ fmap (spansPhotons burstSpans) fret
 
-      bg_rate :: Fret Double
+      bg_rate :: Fret Rate
       bg_rate = fmap (backgroundRate clk burstSpans) fret
   printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
 
