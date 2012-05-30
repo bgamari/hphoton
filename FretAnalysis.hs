@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, PatternGuards #-}
+    
 import           Control.Applicative
 import           Control.Monad (guard)
 import           Data.Accessor
@@ -230,7 +231,7 @@ spansFill maxY title spans = toPlot fill
                    $ defaultPlotFillBetween
 
 analyzeData :: Clock -> FretAnalysis -> Gamma -> Fret (V.Vector Time) -> IO ()
-analyzeData clk p g fret = do 
+analyzeData clk p gamma fret = do 
   let range = (V.head $ fretA fret, V.last $ fretA fret)
   summary clk p "A" $ fretA fret
   summary clk p "D" $ fretD fret
@@ -264,19 +265,19 @@ analyzeData clk p g fret = do
     (length burstRates)
     (genericLength burstRates / duration)
   writeFile (rootName p++"-fret_eff.txt")
-    $ unlines $ map (show . fretEfficiency g) burstRates
+    $ unlines $ map (show . fretEfficiency gamma) burstRates
   
   renderableToPNGFile (toRenderable
                        $ fretEffHist (n_bins p)
-                       $ map (fretEfficiency g) burstRates
+                       $ map (fretEfficiency gamma) burstRates
                       ) 640 480 (rootName p++"-fret_eff.png")
 
-  plotFretAnalysis clk g p fret (zip burstSpans burstRates)
+  plotFretAnalysis clk gamma p fret (zip burstSpans burstRates)
   return ()
 
 plotFretAnalysis :: Clock -> Gamma -> FretAnalysis -> Fret (V.Vector Time)
                  -> [(Span, Fret Rate)] -> IO ()
-plotFretAnalysis clk g p times bursts = do
+plotFretAnalysis clk gamma p times bursts = do
   let (burstSpans, burstRates) = unzip bursts
       a = spansFill 20 "Bursts" $ map (\(a,b)->( timeToRealTime clk a
                                                , timeToRealTime clk b)
