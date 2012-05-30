@@ -285,6 +285,7 @@ analyzeData rootName clk p gamma fret = do
   fitParams <- catch (Just `liftM` fitFretHist fretEffs) fitFailed
   let layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs ]
                                 ++ maybe [] (map Left . plotFit) fitParams
+               $ layout1_title ^= rootName
                $ defaultLayout1
   renderableToPNGFile (toRenderable layout) 640 480 (rootName++"-fret_eff.png")
 
