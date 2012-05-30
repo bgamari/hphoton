@@ -95,6 +95,7 @@ Executable bayes-burst-find
 
 Executable fret-analysis
   Main-is:           FretAnalysis.hs
+  Ghc-options:       -rtsopts
   Build-depends:     base,
                      directory,
                      filepath,
