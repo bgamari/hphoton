@@ -40,9 +40,9 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , burst_thresh :: Double
                                  
                                  , beta_thresh :: Double
-                                 , bg_rate :: Rate
+                                 , bg_rate :: Double
                                  , burst_size :: Int
-                                 , burst_rate :: Rate
+                                 , burst_rate :: Double
                                  , prob_b :: Double
                                  , window :: Int
 
@@ -67,9 +67,9 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
                             , burst_size = 10 &= groupname "Bayesian burst detection"
                                               &= help "Minimum burst size"
                             , burst_rate = 4000 &= groupname "Bayesian burst detection"
-                                                &= help "Burst rate (1/s)"
+                                                &= help "Burst rate (multiple of avg.)"
                             , bg_rate = 200 &= groupname "Bayesian burst detection"
-                                            &= help "Background rate (1/s)"
+                                            &= help "Background rate (multiple of avg.)"
                             , window = 10 &= groupname "Bayesian burst detection"
                                           &= help "Burst window (photons)"
                             , prob_b = 0.01 &= groupname "Bayesian burst detection"
@@ -104,34 +104,39 @@ burstSpans mp betaThresh times =
   let burstTimes = V.backpermute times
                    $ findBurstPhotons mp betaThresh
                    $ timesToInterarrivals times
-  in V.toList $ compressSpans (10*mpTauBurst mp) burstTimes
+  in V.toList $ compressSpans (3*mpTauBurst mp) burstTimes
 
-dOnlyBursts :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> [Span]
-dOnlyBursts clk p d =
-  let mp = ModelParams { mpWindow = window p
-                       , mpProbB = prob_b p
-                       , mpTauBurst = round $ 1 / 140 * jiffy clk
-                       , mpTauBg = round $ 1 / 70 * jiffy clk
-                       }
+donorSpans :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> [Span]
+donorSpans clk p d =
+  let mp = modelParams clk p $ photonsRate clk (fretD d)
+  in burstSpans mp (beta_thresh p) (fretD d)
+
+acceptorSpans :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> [Span]
+acceptorSpans clk p d =
+  let mp = modelParams clk p $ photonsRate clk (fretA d)
   in burstSpans mp (beta_thresh p) (fretA d)
 
-modelParams :: Clock -> FretAnalysis -> ModelParams
-modelParams clk p =
+modelParams :: Clock -> FretAnalysis -> Rate -> ModelParams
+modelParams clk p avgRate =
   ModelParams { mpWindow = window p
               , mpProbB = prob_b p
-              , mpTauBurst = round $ 1 / burst_rate p / jiffy clk
-              , mpTauBg = round $ 1 / bg_rate p / jiffy clk
+              , mpTauBurst = round $ 1 / (avgRate * burst_rate p) / jiffy clk
+              , mpTauBg = round $ 1 / (avgRate * bg_rate p) / jiffy clk
               }
+
+photonsRate :: Clock -> V.Vector Time -> Rate
+photonsRate clk times = realToFrac (V.length times) / realDuration clk [times]
 
 fretBursts :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO [Span]
 fretBursts clk p@(FretAnalysis {burst_mode=BayesCombined}) d = do
-  let mp = modelParams clk p
+  let combined = combineChannels $ toList d
+      mp = modelParams clk p $ photonsRate clk combined
   putStrLn "Bayesian burst identification (combined) parameters:"
   print mp
-  return $ burstSpans mp (beta_thresh p) (combineChannels $ toList d)
+  return $ burstSpans mp (beta_thresh p) combined
 
 fretBursts clk p@(FretAnalysis {burst_mode=Bayes}) d = do
-  let mp = modelParams clk p
+  let mp = modelParams clk p $ photonsRate clk (fretA d)
   putStrLn "Bayesian burst identification (acceptor) parameters:"
   print mp
   return $ burstSpans mp (beta_thresh p) (fretA d)
@@ -203,14 +208,14 @@ crosstalkParam clk v dOnlySpans =
   $ flipFrets
   $ fmap (spansPhotons dOnlySpans) v
          
-spansFill :: [(RealTime, RealTime)] -> Plot RealTime Int    
-spansFill spans = toPlot fill
+spansFill :: Int -> String -> [(RealTime, RealTime)] -> Plot RealTime Int    
+spansFill maxY title spans = toPlot fill
         where coords = concat $ map f spans
-                      where f (a,b) = [ (a, (0,0)), (a, (0,20))
-                                      , (b, (0,20)), (b, (0,0))
+                      where f (a,b) = [ (a, (0,0)), (a, (0,maxY))
+                                      , (b, (0,maxY)), (b, (0,0))
                                       ]
               fill = plot_fillbetween_values ^= coords
-                   $ plot_fillbetween_title  ^= "Detected bursts"
+                   $ plot_fillbetween_title  ^= title
                    $ defaultPlotFillBetween
 
 analyzeData :: Clock -> FretAnalysis -> Gamma -> Fret (V.Vector Time) -> IO ()
@@ -228,10 +233,12 @@ analyzeData clk p g fret = do
 
       bg_rate :: Fret Double
       bg_rate = fmap (backgroundRate clk burstSpans) fret
-      --bg_rate = Fret 90 80
-  let donorSpans = burstSpans `subtractSpans` dOnlyBursts clk p fret
   printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
-  printf "Crosstalk: %1.2f\n" (crosstalkParam clk fret donorSpans)
+
+  let dSpans = donorSpans clk p fret
+      aSpans = acceptorSpans clk p fret
+      dOnlySpans = burstSpans `subtractSpans` aSpans
+  printf "Crosstalk: %1.2f\n" (crosstalkParam clk fret dSpans)
 
   let burstDur :: [RealTime]
       burstDur = map (realDuration clk . toList) burstPhotons
@@ -243,14 +250,22 @@ analyzeData clk p g fret = do
   printf "Found %d bursts (%1.1f per second)\n"
     (length separate)
     (genericLength separate / duration)
-  let a = spansFill $ map (\(a,b)->( timeToRealTime clk a
-                                   , timeToRealTime clk b)
-                          ) $ invertSpans range burstSpans
-      layout = layout1_plots ^= map Right (a : plotFret clk fret 1e-2)
-             $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (0,100)
-             $ (layout1_right_axis .> laxis_generate) ^= scaledIntAxis defaultIntAxis (0,75)
+  let a = spansFill 20 "Bursts" $ map (\(a,b)->( timeToRealTime clk a
+                                               , timeToRealTime clk b)
+                                      ) burstSpans
+      b = spansFill 30 "Donor only" $ map (\(a,b)->( timeToRealTime clk a
+                                                   , timeToRealTime clk b)
+                                          ) burstSpans
+      layout = layout1_plots ^= map Left (a:b : plotFret clk fret 1e-2)
+             $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (30,60)
+             $ (layout1_left_axis .> laxis_generate) ^= scaledIntAxis defaultIntAxis (0,75)
              $ defaultLayout1
-  renderableToPDFFile (toRenderable layout) 640 480 "bins.pdf"
+      l2 :: Layout1 RealTime FretEff
+      l2 = layout1_plots ^= [Left $ plotFretEff clk fret 1e-2 1]
+         $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (30,60)
+         $ (layout1_left_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (0,1)
+         $ defaultLayout1
+  renderableToPDFFile (renderLayout1sStacked [withAnyOrdinate layout, withAnyOrdinate l2]) 5000 600 (rootName p++"-bins.pdf")
   
   renderableToPNGFile (toRenderable
                        $ fretEffHist (n_bins p)
