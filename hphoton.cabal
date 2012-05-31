@@ -115,3 +115,27 @@ Executable fret-analysis
                      Chart,
                      chart-histogram,
                      mixture-model
+
+Executable fit-interarrivals
+  Main-is:           FitInterarrivals.hs
+  Ghc-options:       -rtsopts
+  Build-depends:     base,
+                     directory,
+                     filepath,
+                     ghc-prim,
+                     vector-algorithms,
+                     random-fu,
+                     vector,
+                     storable-endian,
+                     mwc-random,
+                     cmdargs,
+                     bytestring,
+                     transformers,
+                     cereal,
+                     vector-mmap,
+                     statistics,
+                     data-accessor,
+                     Chart,
+                     chart-histogram,
+                     logfloat,
+                     mixture-model
