@@ -288,7 +288,7 @@ analyzeData rootName clk p gamma fret = do
                                 ++ maybe [] (map Left . plotFit scale) fitParams
                $ layout1_title ^= rootName
                $ defaultLayout1
-  renderableToPNGFile (toRenderable layout) 640 480 (rootName++"-fret_eff.png")
+  renderableToSVGFile (toRenderable layout) 640 480 (rootName++"-fret_eff.svg")
 
   --plotFretAnalysis clk gamma p fret (zip burstSpans burstRates)
   return ()
