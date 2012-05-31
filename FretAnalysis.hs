@@ -323,7 +323,7 @@ plotFit :: Double -> ComponentParams -> [Plot FretEff Double]
 plotFit scale fitParams =
     [ functionPlot 1000 (0.01,0.99) $ \x->scale * dist x
     , toPlot
-      $ plot_annotation_values ^= [(0,1,label)]
+      $ plot_annotation_values ^= [(1,5,label)]
       $ defaultPlotAnnotation
     ]
     where dist x = sum $ map (\(w,p)->w * realToFrac (betaProb p x)) $ V.toList fitParams
