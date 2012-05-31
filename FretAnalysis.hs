@@ -280,7 +280,7 @@ analyzeData rootName clk p gamma fret = do
     $ unlines $ map (show . fretEfficiency gamma) burstRates
   
   let fretEffs = map (fretEfficiency gamma) burstRates
-      fitFailed :: SomeException -> IO (Maybe Params)
+      fitFailed :: SomeException -> IO (Maybe ComponentParams)
       fitFailed _ = putStrLn "Fit Failed" >> return Nothing
   fitParams <- catch (Just `liftM` fitFretHist fretEffs) fitFailed
   let layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs ]
@@ -292,7 +292,7 @@ analyzeData rootName clk p gamma fret = do
   --plotFretAnalysis clk gamma p fret (zip burstSpans burstRates)
   return ()
 
-fitFretHist :: [FretEff] -> IO Params
+fitFretHist :: [FretEff] -> IO ComponentParams
 fitFretHist fretEffs = do
   mwc <- create
   fitParams <- runRVar (runFit 250 $ VB.fromList $ filter (\x->x>0 && x<1) fretEffs) mwc
@@ -312,13 +312,13 @@ priors = [ (0.5, paramFromMoments (0.1, 0.01))
          , (0.5, paramFromMoments (0.9, 0.01))
          ]
 
-runFit :: Int -> Samples -> RVar Params
+runFit :: Int -> Samples -> RVar ComponentParams
 runFit niter samples = do
     a0 <- updateAssignments' samples (VB.fromList priors)
     a <- replicateM' 500 (updateAssignments samples 2) a0
     return $ estimateWeights a $ paramsFromAssignments samples 2 a
 
-plotFit :: Params -> [Plot FretEff Double]
+plotFit :: ComponentParams -> [Plot FretEff Double]
 plotFit fitParams = [ functionPlot 1000 (0.01,0.99) dist
                     , toPlot
                       $ plot_annotation_values ^= [(0,1,label)]
