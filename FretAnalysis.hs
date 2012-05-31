@@ -237,7 +237,7 @@ crosstalkParam clk v dOnlySpans =
 correctCrosstalk :: Double -> Fret Double -> Fret Double
 correctCrosstalk alpha counts =
   let n = alpha * (fretA counts + fretD counts)
-  in (subtract n) <$> counts 
+  in Fret {fretA=subtract n, fretD=(+n)} <*> counts 
 
 analyzeData :: String -> Clock -> FretAnalysis -> Gamma -> Fret (V.Vector Time) -> IO ()
 analyzeData rootName clk p gamma fret = do 
