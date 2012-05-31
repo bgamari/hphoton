@@ -284,7 +284,7 @@ analyzeData rootName clk p gamma fret = do
       fitFailed :: SomeException -> IO (Maybe ComponentParams)
       fitFailed _ = putStrLn "Fit Failed" >> return Nothing
   fitParams <- catch (Just `liftM` fitFretHist fretEffs) fitFailed
-  let scale = realToFrac $ length fretEffs
+  let scale = realToFrac (length fretEffs) / realToFrac (n_bins p)
       layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs ]
                                 ++ maybe [] (map Left . plotFit scale) fitParams
                $ layout1_title ^= rootName
