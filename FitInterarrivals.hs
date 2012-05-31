@@ -49,19 +49,19 @@ main = do
 
   mwc <- create
   assignments0 <- sampleFrom mwc $ updateAssignments' samples (V.fromList initial)
-  print $ paramsFromAssignments samples 2 assignments0
+  print $ paramsFromAssignments samples (length initial) assignments0
   let f :: Assignments -> RVarT IO Assignments
       f a = do
-        a' <- lift $ updateAssignments samples 2 a
-        let params = estimateWeights a' $ paramsFromAssignments samples 2 a'
+        a' <- lift $ updateAssignments samples (length initial) a
+        let params = estimateWeights a' $ paramsFromAssignments samples (length initial) a'
         lift $ print (logFromLogFloat $ likelihood samples params a' :: Double)
         return a'
   assignments <- sampleFrom mwc
                  $ replicateM' 40 f assignments0
-  print $ paramsFromAssignments samples 2 assignments
+  print $ paramsFromAssignments samples (length initial) assignments
 
   let params = estimateWeights assignments
-               $ paramsFromAssignments samples 2 assignments
+               $ paramsFromAssignments samples (length initial) assignments
       dist x = sum $ map (\(w,p)->w * realToFrac (expProb p x)) $ V.toList params
   let layout = layout1_plots ^= [ Left $ histPlot samples
                                 , Left $ functionPlot 100 (1e-6,1e-2) dist
