@@ -262,12 +262,13 @@ analyzeData rootName clk p gamma fret = do
   let dSpans = donorSpans clk p fret
       aSpans = acceptorSpans clk p fret
       dOnlySpans = burstSpans `subtractSpans` aSpans
-  printf "Crosstalk: %1.2f\n" (crosstalkParam clk fret dSpans)
+      crosstalk = crosstalkParam clk fret dSpans
+  printf "Crosstalk: %1.2f\n" crosstalk
 
   let burstDur :: [RealTime]
       burstDur = map (realDuration clk . toList) burstPhotons
       burstRates :: [Fret Rate]
-      burstRates = map (correctCrosstalk 0)
+      burstRates = map (correctCrosstalk crosstalk)
                  $ zipWith (correctFretBackground bg_rate) burstDur
                  $ map (fmap realToFrac)
                  $ filter (\x->fretA x + fretD x > burst_size p)
