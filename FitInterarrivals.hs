@@ -41,7 +41,8 @@ jiffy = 1/128e6
 main = do
   [fname] <- getArgs
   recs <- readRecords fname
-  let samples = V.map ((jiffy*) . realToFrac)
+  let samples = V.filter (>10e-6)
+                $ V.map ((jiffy*) . realToFrac)
                 $ timesToInterarrivals
                 $ strobeTimes recs Ch0
              :: V.Vector Sample
