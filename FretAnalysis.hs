@@ -9,7 +9,6 @@ import           Data.List (genericLength, stripPrefix)
 import           Data.Maybe
 import           Data.Traversable
 import qualified Data.Vector.Unboxed as V
-import qualified Data.Vector as VB
 
 import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Plot.Histogram
@@ -297,11 +296,11 @@ analyzeData rootName clk p gamma fret = do
 fitFretHist :: [FretEff] -> IO ComponentParams
 fitFretHist fretEffs = do
   mwc <- create
-  fitParams <- runRVar (runFit 250 $ VB.fromList $ filter (\x->x>0 && x<1) fretEffs) mwc
+  fitParams <- runRVar (runFit 250 $ V.fromList $ filter (\x->x>0 && x<1) fretEffs) mwc
   putStrLn $ unlines 
            $ map (\(w,p)->let (mu,sigma) = paramToMoments p
                           in printf "weight=%1.2f, mu=%1.2f, sigma^2=%1.2f" w mu sigma
-                 ) $ VB.toList fitParams
+                 ) $ V.toList fitParams
   return fitParams
   
 replicateM' :: Monad m => Int -> (a -> m a) -> a -> m a
@@ -316,7 +315,7 @@ priors = [ (0.5, paramFromMoments (0.1, 0.01))
 
 runFit :: Int -> Samples -> RVar ComponentParams
 runFit niter samples = do
-    a0 <- updateAssignments' samples (VB.fromList priors)
+    a0 <- updateAssignments' samples (V.fromList priors)
     a <- replicateM' 500 (updateAssignments samples 2) a0
     return $ estimateWeights a $ paramsFromAssignments samples 2 a
 
@@ -327,11 +326,11 @@ plotFit scale fitParams =
       $ plot_annotation_values ^= [(0,1,label)]
       $ defaultPlotAnnotation
     ]
-    where dist x = sum $ map (\(w,p)->w * realToFrac (betaProb p x)) $ VB.toList fitParams
+    where dist x = sum $ map (\(w,p)->w * realToFrac (betaProb p x)) $ V.toList fitParams
           label = unlines 
                   $ map (\(w,p)->let (mu,sigma) = paramToMoments p
                                  in printf "weight=%1.2f, mu=%1.2f, sigma^2=%1.2f" w mu sigma
-                        ) $ VB.toList fitParams
+                        ) $ V.toList fitParams
 
 functionPlot :: (RealFrac x, Enum x) => Int -> (x, x) -> (x -> y) -> Plot x y
 functionPlot n (a,b) f =
