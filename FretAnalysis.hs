@@ -283,8 +283,9 @@ analyzeData rootName clk p gamma fret = do
       fitFailed :: SomeException -> IO (Maybe ComponentParams)
       fitFailed _ = putStrLn "Fit Failed" >> return Nothing
   fitParams <- catch (Just `liftM` fitFretHist fretEffs) fitFailed
-  let layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs ]
-                                ++ maybe [] (map Left . plotFit) fitParams
+  let scale = realToFrac $ length fretEffs
+      layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs ]
+                                ++ maybe [] (map Left . plotFit scale) fitParams
                $ layout1_title ^= rootName
                $ defaultLayout1
   renderableToPNGFile (toRenderable layout) 640 480 (rootName++"-fret_eff.png")
@@ -318,12 +319,13 @@ runFit niter samples = do
     a <- replicateM' 500 (updateAssignments samples 2) a0
     return $ estimateWeights a $ paramsFromAssignments samples 2 a
 
-plotFit :: ComponentParams -> [Plot FretEff Double]
-plotFit fitParams = [ functionPlot 1000 (0.01,0.99) dist
-                    , toPlot
-                      $ plot_annotation_values ^= [(0,1,label)]
-                      $ defaultPlotAnnotation
-                    ]
+plotFit :: Double -> ComponentParams -> [Plot FretEff Double]
+plotFit scale fitParams =
+    [ functionPlot 1000 (0.01,0.99) $ \x->scale * dist x
+    , toPlot
+      $ plot_annotation_values ^= [(0,1,label)]
+      $ defaultPlotAnnotation
+    ]
     where dist x = sum $ map (\(w,p)->w * realToFrac (betaProb p x)) $ VB.toList fitParams
           label = unlines 
                   $ map (\(w,p)->let (mu,sigma) = paramToMoments p
@@ -339,7 +341,7 @@ functionPlot n (a,b) f =
 
 plotFretHist :: Int -> [FretEff] -> Plot FretEff Double
 plotFretHist nbins fretEffs =
-    plotNormedHist
+    plotFloatHist
     $ plot_hist_values ^= [fretEffs]
     $ plot_hist_range  ^= Just (-0.1, 1.1)
     $ plot_hist_bins   ^= nbins
