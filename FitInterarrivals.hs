@@ -96,7 +96,6 @@ main = do
                                 ]
              $ (layout1_left_axis .> laxis_generate) ^= autoScaledLogAxis defaultLogAxis
              $ defaultLayout1
-  print params
   renderableToPDFFile (toRenderable layout) 640 480 "hi.pdf"
 
 replicateM' :: Monad m => Int -> (a -> m a) -> a -> m [a]
