@@ -1,6 +1,7 @@
 import System.Environment (getArgs)                
 import Data.Number.LogFloat                 hiding (realToFrac)
 import Data.Random.Lift
+import qualified Data.Vector as VB
 import qualified Data.Vector.Unboxed as V                
 import Control.Applicative                
 import Control.Monad                
@@ -19,9 +20,10 @@ import Graphics.Rendering.Chart.Plot.Histogram
 import Data.Colour
 import Data.Colour.Names       
        
-initial :: [(Weight, ExpParam)]       
-initial = [ (0.5, 50)
-          , (0.5, 5000)
+initial :: VB.Vector (Weight, Exponential)
+initial = VB.fromList 
+        $ [ (0.8, Exp 50)
+          , (0.2, StretchedExp 5000 1)
           ]
 
 histPlot :: V.Vector Sample -> Plot Sample Double
@@ -41,29 +43,27 @@ jiffy = 1/128e6
 main = do
   [fname] <- getArgs
   recs <- readRecords fname
-  let samples = V.filter (>10e-6)
+  let samples = V.filter (>1e-6)
                 $ V.map ((jiffy*) . realToFrac)
                 $ timesToInterarrivals
                 $ strobeTimes recs Ch0
              :: V.Vector Sample
 
   mwc <- create
-  assignments0 <- sampleFrom mwc $ updateAssignments' samples (V.fromList initial)
-  print $ paramsFromAssignments samples (length initial) assignments0
-  let f :: Assignments -> RVarT IO Assignments
-      f a = do
-        a' <- lift $ updateAssignments samples (length initial) a
-        let params = estimateWeights a' $ paramsFromAssignments samples (length initial) a'
-        lift $ print (logFromLogFloat $ likelihood samples params a' :: Double)
-        return a'
-  assignments <- sampleFrom mwc
-                 $ replicateM' 40 f assignments0
-  print $ paramsFromAssignments samples (length initial) assignments
+  assignments0 <- sampleFrom mwc $ updateAssignments samples initial
+  print $ paramsFromAssignments samples (VB.map snd initial) assignments0
 
-  let params = estimateWeights assignments
-               $ paramsFromAssignments samples (length initial) assignments
-      dist x = sum $ map (\(w,p)->w * realToFrac (expProb p x)) $ V.toList params
-  let layout = layout1_plots ^= [ Left $ histPlot samples
+  let f :: (ComponentParams, Assignments) -> RVarT IO (ComponentParams, Assignments)
+      f (params, a) = do
+        a' <- lift $ updateAssignments samples params
+        let params' = estimateWeights a' $ paramsFromAssignments samples (VB.map snd params) a'
+        lift $ print (params', logFromLogFloat $ likelihood samples params a' :: Double)
+        return (params', a')
+  (params, assignments) <- sampleFrom mwc $ replicateM' 40 f (initial, assignments0)
+
+  print $ paramsFromAssignments samples (VB.map snd params) assignments
+  let dist x = sum $ map (\(w,p)->w * realToFrac (prob p x)) $ VB.toList params
+      layout = layout1_plots ^= [ Left $ histPlot samples
                                 , Left $ functionPlot 100 (1e-6,1e-2) dist
                                 ]
              -- $ (layout1_left_axis .> laxis_generate) ^= autoScaledLogAxis defaultLogAxis
