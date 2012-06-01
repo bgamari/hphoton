@@ -341,7 +341,7 @@ functionPlot n (a,b) f =
 
 plotFretHist :: Int -> [FretEff] -> Plot FretEff Double
 plotFretHist nbins fretEffs =
-    plotFloatHist
+    histToFloatBarsPlot
     $ plot_hist_values ^= [fretEffs]
     $ plot_hist_range  ^= Just (-0.1, 1.1)
     $ plot_hist_bins   ^= nbins

@@ -28,7 +28,7 @@ chart nbins xs = layout
                      $ plot_hist_range ^= Just (min,max)
                      $ plot_hist_bins  ^= nbins
                      $ defaultPlotHist
-              layout = layout1_plots ^= [Left (plotHist hist)]
+              layout = layout1_plots ^= [Left (histToBarsPlot hist)]
                      $ (layout1_bottom_axis .> laxis_generate) ^=
                            const (generateAxisData' nbins (min,max))
                      $ defaultLayout1

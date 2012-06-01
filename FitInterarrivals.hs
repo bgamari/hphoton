@@ -27,9 +27,10 @@ initial = VB.fromList
           ]
 
 histPlot :: V.Vector Sample -> Plot Sample Double
-histPlot xs = plotNormedHist $ plot_hist_bins ^= 40
-                             $ plot_hist_values ^= [V.toList xs]
-                             $ defaultPlotHist
+histPlot xs = histToNormedBarsPlot
+              $ plot_hist_bins ^= 40
+              $ plot_hist_values ^= [V.toList xs]
+              $ defaultPlotHist
 
 functionPlot :: (RealFrac x, Enum x) => Int -> (x, x) -> (x -> y) -> Plot x y
 functionPlot n (a,b) f =
