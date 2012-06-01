@@ -48,6 +48,16 @@ functionPlot n (a,b) f =
 
 jiffy = 1/128e6
 
+showExponential :: Exponential -> String
+showExponential (Exp lambda) = "Exponential: λ="++show lambda
+showExponential (StretchedExp lambda beta) =
+    "Power exponential: λ="++show lambda++" β="++show beta
+
+showStats :: [Double] -> String
+showStats v =
+    let (mean,var) = meanVariance $ V.fromList v
+    in show mean++" ± "++show var
+
 main = do
   [fname] <- getArgs
   recs <- readRecords fname
@@ -65,16 +75,19 @@ main = do
       f (params, a) = do
         a' <- lift $ updateAssignments samples params
         let params' = estimateWeights a' $ paramsFromAssignments samples (VB.map snd params) a'
-        lift $ print (params', logFromLogFloat $ likelihood samples params a' :: Double)
+        lift $ print (logFromLogFloat $ likelihood samples params a' :: Double)
         return (params', a')
-  steps <- sampleFrom mwc $ replicateM' 100 f (initial, assignments0)
+  steps <- sampleFrom mwc $ replicateM' 400 f (initial, assignments0)
   let (params, assignments) = last steps
-  let paramSamples = transpose $ takeEvery 2 $ drop 20 $ map (VB.toList . fst) steps
-  print $ meanVariance $ V.fromList
-        $ map (\(_,Exp lambda)->lambda)
-        $ paramSamples !! 0
+  let paramSamples = transpose $ takeEvery 2 $ drop 50 $ map (VB.toList . fst) steps
+  forM_ (zip [0..] paramSamples) $ \(i,component)->do
+      let (w,p) = unzip component
+      putStrLn $ "\nComponent "++show i
+      putStrLn $ "  Last Params: "++showExponential (last p)
+      putStrLn $ "  Weight:      "++showStats w
+      putStrLn $ "  <τ>:         "++showStats (map tauMean p)
+      putStrLn $ "  <τ²>:        "++showStats (map tauVariance p)
 
-  print $ paramsFromAssignments samples (VB.map snd params) assignments
   let dist x = sum $ map (\(w,p)->w * realToFrac (prob p x)) $ VB.toList params
       layout = layout1_plots ^= [ Left $ histPlot samples
                                 , Left $ functionPlot 10000 (1e-7,longTime) dist
