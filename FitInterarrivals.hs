@@ -8,7 +8,7 @@ import Control.Monad
 import           Data.Random                 
 import           Data.Random.Distribution.Beta
 import           Data.Random.Distribution.Categorical
-import System.Random.MWC (create)                 
+import System.Random.MWC (withSystemRandom)                 
 
 import Numeric.MixtureModel.Exponential
 
@@ -67,7 +67,7 @@ main = do
                 $ strobeTimes recs Ch0
              :: V.Vector Sample
 
-  mwc <- create
+  withSystemRandom $ \mwc->do
   assignments0 <- sampleFrom mwc $ updateAssignments samples initial
   print $ paramsFromAssignments samples (VB.map snd initial) assignments0
 
