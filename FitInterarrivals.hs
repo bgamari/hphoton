@@ -27,9 +27,11 @@ initial = VB.fromList
           ]
 
 histPlot :: V.Vector Sample -> Plot Sample Double
-histPlot xs = histToNormedBarsPlot
-              $ plot_hist_bins ^= 40
-              $ plot_hist_values ^= [V.toList xs]
+histPlot xs = histToNormedLinesPlot
+              $ plot_hist_bins     ^= 4000
+              $ plot_hist_values   ^= [V.toList xs]
+              $ plot_hist_range    ^= Just (0, 0.12)
+              $ plot_hist_no_zeros ^= True
               $ defaultPlotHist
 
 functionPlot :: (RealFrac x, Enum x) => Int -> (x, x) -> (x -> y) -> Plot x y
@@ -65,9 +67,9 @@ main = do
   print $ paramsFromAssignments samples (VB.map snd params) assignments
   let dist x = sum $ map (\(w,p)->w * realToFrac (prob p x)) $ VB.toList params
       layout = layout1_plots ^= [ Left $ histPlot samples
-                                , Left $ functionPlot 100 (1e-6,1e-2) dist
+                                , Left $ functionPlot 10000 (1e-7,1e-1) ((1+) . dist)
                                 ]
-             -- $ (layout1_left_axis .> laxis_generate) ^= autoScaledLogAxis defaultLogAxis
+             $ (layout1_left_axis .> laxis_generate) ^= autoScaledLogAxis defaultLogAxis
              $ defaultLayout1
   print params
   renderableToPDFFile (toRenderable layout) 640 480 "hi.pdf"
