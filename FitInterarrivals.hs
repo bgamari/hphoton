@@ -22,6 +22,7 @@ import Graphics.Rendering.Chart
 import Graphics.Rendering.Chart.Plot.Histogram       
 import Data.Colour
 import Data.Colour.Names       
+import Text.Printf       
        
 initial :: VB.Vector (Weight, Exponential)
 initial = VB.fromList 
@@ -49,14 +50,15 @@ functionPlot n (a,b) f =
 jiffy = 1/128e6
 
 showExponential :: Exponential -> String
-showExponential (Exp lambda) = "Exponential: λ="++show lambda
+showExponential (Exp lambda) =
+    printf "Exponential: λ=%1.2e" lambda
 showExponential (StretchedExp lambda beta) =
-    "Power exponential: λ="++show lambda++" β="++show beta
+    printf "Power exponential: λ=%1.2e β=%1.2e" lambda beta
 
 showStats :: [Double] -> String
 showStats v =
     let (mean,var) = meanVariance $ V.fromList v
-    in show mean++" ± "++show var
+    in printf "%1.3e    σ²=%1.3e"  mean var
 
 main = do
   [fname] <- getArgs
