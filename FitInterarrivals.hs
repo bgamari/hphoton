@@ -12,6 +12,9 @@ import System.Random.MWC (create)
 
 import Numeric.MixtureModel.Exponential
 
+import Statistics.Sample (meanVariance)
+import Data.List (transpose)
+
 import           HPhoton.FpgaTimetagger
 import HPhoton.Utils
 import Data.Accessor       
@@ -26,11 +29,13 @@ initial = VB.fromList
           , (0.2, StretchedExp 5000 1)
           ]
 
+longTime = 5e-2
+
 histPlot :: V.Vector Sample -> Plot Sample Double
 histPlot xs = histToNormedLinesPlot
               $ plot_hist_bins     ^= 4000
               $ plot_hist_values   ^= [V.toList xs]
-              $ plot_hist_range    ^= Just (0, 0.12)
+              $ plot_hist_range    ^= Just (0, longTime)
               $ plot_hist_no_zeros ^= True
               $ defaultPlotHist
 
@@ -62,20 +67,30 @@ main = do
         let params' = estimateWeights a' $ paramsFromAssignments samples (VB.map snd params) a'
         lift $ print (params', logFromLogFloat $ likelihood samples params a' :: Double)
         return (params', a')
-  (params, assignments) <- sampleFrom mwc $ replicateM' 40 f (initial, assignments0)
+  steps <- sampleFrom mwc $ replicateM' 100 f (initial, assignments0)
+  let (params, assignments) = last steps
+  let paramSamples = transpose $ takeEvery 2 $ drop 20 $ map (VB.toList . fst) steps
+  print $ meanVariance $ V.fromList
+        $ map (\(_,Exp lambda)->lambda)
+        $ paramSamples !! 0
 
   print $ paramsFromAssignments samples (VB.map snd params) assignments
   let dist x = sum $ map (\(w,p)->w * realToFrac (prob p x)) $ VB.toList params
       layout = layout1_plots ^= [ Left $ histPlot samples
-                                , Left $ functionPlot 10000 (1e-7,1e-1) ((1+) . dist)
+                                , Left $ functionPlot 10000 (1e-7,longTime) dist
                                 ]
              $ (layout1_left_axis .> laxis_generate) ^= autoScaledLogAxis defaultLogAxis
              $ defaultLayout1
   print params
   renderableToPDFFile (toRenderable layout) 640 480 "hi.pdf"
 
-replicateM' :: Monad m => Int -> (a -> m a) -> a -> m a
+replicateM' :: Monad m => Int -> (a -> m a) -> a -> m [a]
 replicateM' n f a | n < 1 = error "Invalid count"
-replicateM' 1 f a = f a
-replicateM' n f a = f a >>= replicateM' (n-1) f
+replicateM' 1 f a = f a >>= return . (:[])
+replicateM' n f a = do b <- f a
+                       rest <- replicateM' (n-1) f b
+                       return (b:rest)
 
+takeEvery :: Int -> [a] -> [a]
+takeEvery n xs | length xs < n = []
+               | otherwise     = head xs : takeEvery n (drop n xs)
