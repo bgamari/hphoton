@@ -77,8 +77,10 @@ main = do
         -> RVarT IO ((ComponentParams, Assignments), ComponentParams)
       f (params, a) = do
         a' <- lift $ updateAssignments samples params
-        let params' = estimateWeights a' $ paramsFromAssignments samples (VB.map snd params) a'
-        lift $ print (logFromLogFloat $ likelihood samples params a' :: Double)
+        let params' = estimateWeights a'
+                      $ paramsFromAssignments samples (VB.map snd params) a'
+            l = likelihood samples params a'
+        lift $ putStr $ printf "Likelihood: %1.5e\n" (logFromLogFloat l :: Double) 
         return ((params', a'), params')
   steps <- sampleFrom mwc $ replicateM' 400 f (initial, assignments0)
   let paramSamples = transpose $ takeEvery 2 $ drop 50 $ map VB.toList steps
