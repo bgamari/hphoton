@@ -30,6 +30,8 @@ import           HPhoton.Utils
 import           System.Console.CmdArgs
 import           Text.Printf
 
+type Freq = Double
+
 data FitArgs = FitArgs { chain_length     :: Int
                        , number_chains    :: Int
                        , sample_every     :: Int
@@ -38,6 +40,7 @@ data FitArgs = FitArgs { chain_length     :: Int
                        , model            :: Maybe FilePath
                        , file             :: FilePath
                        , channel          :: Int
+                       , clockrate        :: Freq
                        }
              deriving (Data, Typeable, Show)
        
@@ -48,6 +51,7 @@ fitArgs = FitArgs { chain_length = 100 &= help "Length of Markov chain"
                   , plot = False &= help "Produce plots showing model components"
                   , model = Nothing &= help "Model file"
                   , file = "" &= typFile &= argPos 0
+                  , clockrate = 128e6 &= typ "FREQ" &= help "Instrument clockrate"
                   , channel = 0 &= help "Channel to fit"
                   }
         &= program "fit-interarrivals"
@@ -84,8 +88,6 @@ functionPlot n (a,b) f =
   in toPlot $ plot_lines_values ^= [map (\x->(x,f x)) xs]
             $ plot_lines_style .> line_color ^= opaque red
             $ defaultPlotLines
-
-jiffy = 1/128e6
 
 showExponential :: Exponential -> String
 showExponential (Exp lambda) =
@@ -154,7 +156,8 @@ plotParamSample samples paramSample = do
 main = do
   fargs <- cmdArgs fitArgs
   recs <- readRecords $ file fargs
-  let samples = V.filter (>1e-6)
+  let jiffy = 1 / clockrate fargs
+      samples = V.filter (>1e-6)
                 $ V.map ((jiffy*) . realToFrac)
                 $ timesToInterarrivals
                 $ strobeTimes recs (argsChannel fargs)
