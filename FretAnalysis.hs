@@ -58,8 +58,8 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , prob_b :: Double
                                  , window :: Int
 
-                                 , zero_fret :: Maybe ProxRatio
-                                 , gamma :: Maybe Gamma
+                                 , crosstalk :: Double
+                                 , gamma :: Gamma
                                  }
                     deriving (Show, Eq, Data, Typeable)
                              
@@ -89,10 +89,10 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
                             , beta_thresh = 2 &= groupname "Bayesian burst detection"
                                               &= help "Beta threshold"
 
-                            , zero_fret = Nothing &= groupname "Gamma correction"
-                                                  &= help "Measured efficiency for zero FRET (donor-only)"
-                            , gamma = Nothing &= groupname "Gamma correction"
-                                              &= help "Gamma"
+                            , crosstalk = 0 &= groupname "Crosstalk Correction"
+                                            &= help "Measured efficiency for zero FRET (donor-only)"
+                            , gamma = 1 &= groupname "Gamma correction"
+                                        &= help "Gamma"
                             }
 
 fretChs = Fret { fretA = Ch1
@@ -184,13 +184,8 @@ fileMain p input = do
   recs <- readRecords input
   let fret = fmap (strobeTimes recs) fretChs
       rootName = stripSuffix ".timetag" input
-  let g = case () of 
-            _ | Just f <- zero_fret p -> gammaFromFret 0 f
-            _ | Just g <- gamma p     -> g
-            otherwise                 -> 1
 
-  printf "Gamma: %f\n" g
-  analyzeData rootName (clockFromFreq $ clockrate p) p g fret
+  analyzeData rootName (clockFromFreq $ clockrate p) p fret
   
 -- | Return the rates of each of a list of spans
 spansRates :: Clock -> [Span] -> V.Vector Time -> [Double]
@@ -238,8 +233,8 @@ correctCrosstalk alpha counts =
   let n = alpha * (fretA counts + fretD counts)
   in Fret {fretA=subtract n, fretD=(+n)} <*> counts 
 
-analyzeData :: String -> Clock -> FretAnalysis -> Gamma -> Fret (V.Vector Time) -> IO ()
-analyzeData rootName clk p gamma fret = do 
+analyzeData :: String -> Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO ()
+analyzeData rootName clk p fret = do 
   let range = (V.head $ fretA fret, V.last $ fretA fret)
   summarizeTimestamps clk p "A" $ fretA fret
   summarizeTimestamps clk p "D" $ fretD fret
@@ -261,13 +256,12 @@ analyzeData rootName clk p gamma fret = do
   let dSpans = donorSpans clk p fret
       aSpans = acceptorSpans clk p fret
       dOnlySpans = burstSpans `subtractSpans` aSpans
-      crosstalk = crosstalkParam clk fret dSpans
-  printf "Crosstalk: %1.2f\n" crosstalk
+  printf "Crosstalk: %1.2f\n" (crosstalk p)
 
   let burstDur :: [RealTime]
       burstDur = map (realDuration clk . toList) burstPhotons
       burstRates :: [Fret Rate]
-      burstRates = map (correctCrosstalk crosstalk)
+      burstRates = map (correctCrosstalk $ crosstalk p)
                  $ zipWith (correctFretBackground bg_rate) burstDur
                  $ map (fmap realToFrac)
                  $ filter (\x->fretA x + fretD x > burst_size p)
@@ -277,9 +271,9 @@ analyzeData rootName clk p gamma fret = do
     (length burstRates)
     (genericLength burstRates / duration)
   writeFile (rootName++"-fret_eff.txt")
-    $ unlines $ map (show . fretEfficiency gamma) burstRates
+    $ unlines $ map (show . fretEfficiency (gamma p)) burstRates
   
-  let fretEffs = map (fretEfficiency gamma) burstRates
+  let fretEffs = map (fretEfficiency (gamma p)) burstRates
       fitFailed :: SomeException -> IO (Maybe ComponentParams)
       fitFailed _ = putStrLn "Fit Failed" >> return Nothing
   fitParams <- catch (Just `liftM` fitFretHist fretEffs) fitFailed
@@ -411,6 +405,6 @@ testMain = do
   let p = fretAnalysis { burst_thresh = 0.5
                        , burst_size = 0
                        }
-  analyzeData "test" testClock p 1 testData'
+  analyzeData "test" testClock p testData'
   
 main = main'
