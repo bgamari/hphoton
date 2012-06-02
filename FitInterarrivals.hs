@@ -45,6 +45,7 @@ data FitArgs = FitArgs { chain_length     :: Int
                        , channel          :: Int
                        , clockrate        :: Freq
                        , short_cutoff     :: RealTime
+                       , verbose          :: Bool
                        }
              deriving (Data, Typeable, Show)
        
@@ -66,6 +67,8 @@ fitArgs = FitArgs
                    &= help "Produce plots showing model components"
     , all_chains = False &= groupname "Output"
                          &= help "Show statistics from all chains"
+    , verbose = False &= groupname "Output"
+                      &= help "Display status updates during chain run"
     
     , chain_length = 100 &= help "Length of Markov chain (default=100)"
                          &= name "l"
@@ -231,7 +234,7 @@ plotParamSample samples paramSample = do
   renderableToPDFFile (toRenderable $ plotFit samples (1e-7,longTime) [dist]) 640 480 "all.pdf"
   forM_ (zip [1..] $ VB.toList paramSample) $ \(i,(w,p))->do
       let c x = w * realToFrac (prob p x)
-          longTime = 2 * tauMean p
+          longTime = 10 * tauMean p
       renderableToPDFFile (toRenderable $ plotFit samples (1e-7,longTime) [dist, c]) 640 480 (printf "component%03d.pdf" (i::Int))
 
 main = do
@@ -251,7 +254,7 @@ main = do
   scoreVars <- forM [1..number_chains fargs] $ \i->do 
       var <- newIORef Waiting
       return (i, var)
-  forkIO $ statusWorker scoreVars
+  when (verbose fargs) $ void $ forkIO $ statusWorker scoreVars
   chains <- parallelInterleaved
             $ map (\(i,var)->runChain fargs params samples var) scoreVars
 
