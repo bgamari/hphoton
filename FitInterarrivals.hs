@@ -39,6 +39,7 @@ data FitArgs = FitArgs { chain_length     :: Int
                        , sample_every     :: Int
                        , burnin_length    :: Int
                        , plot             :: Bool
+                       , all_chains       :: Bool
                        , model            :: Maybe FilePath
                        , file             :: FilePath
                        , channel          :: Int
@@ -63,6 +64,8 @@ fitArgs = FitArgs
 
     , plot = False &= groupname "Output"
                    &= help "Produce plots showing model components"
+    , all_chains = False &= groupname "Output"
+                         &= help "Show statistics from all chains"
     
     , chain_length = 100 &= help "Length of Markov chain (default=100)"
                          &= name "l"
@@ -252,9 +255,10 @@ main = do
   chains <- parallelInterleaved
             $ map (\(i,var)->runChain fargs params samples var) likelihoodVars
 
-  forM_ (zip [1..] chains) $ \(i,chain)->do
-      printf "\n\nChain %d\n" (i::Int)
-      putStr $ execWriter $ showChainStats chain
+  when (all_chains fargs) $
+      forM_ (zip [1..] chains) $ \(i,chain)->do
+          printf "\n\nChain %d\n" (i::Int)
+          putStr $ execWriter $ showChainStats chain
   
   putStr "\n\nChain totals\n"
   putStr $ execWriter $ showChainStats $ concat chains
