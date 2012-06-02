@@ -260,7 +260,7 @@ main = do
           printf "\n\nChain %d\n" (i::Int)
           putStr $ execWriter $ showChainStats chain
   
-  putStr "\n\nChain totals\n"
+  putStr "\n\nAll chains\n"
   putStr $ execWriter $ showChainStats $ concat chains
   
   let paramSample = last $ last chains -- TODO: Correctly average
