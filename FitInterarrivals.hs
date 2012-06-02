@@ -1,5 +1,7 @@
-import System.Environment (getArgs)                
-import Data.Number.LogFloat                 hiding (realToFrac)
+{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
+
+import System.IO
+import Data.Number.LogFloat hiding (realToFrac)
 import Data.Random.Lift
 import qualified Data.Vector as VB
 import qualified Data.Vector.Unboxed as V                
@@ -23,7 +25,25 @@ import Graphics.Rendering.Chart.Plot.Histogram
 import Data.Colour
 import Data.Colour.Names       
 import Text.Printf       
+import System.Console.CmdArgs
+
+data FitArgs = FitArgs { chain_length     :: Int
+                       , number_chains    :: Int
+                       , sample_every     :: Int
+                       , burnin_length    :: Int
+                       , file             :: FilePath
+                       }
+             deriving (Data, Typeable, Show)
        
+fitArgs = FitArgs { chain_length = 100 &= help "Length of Markov chain"
+                  , number_chains = 200 &= help "Number of chains to run"
+                  , sample_every = 5 &= help "Number of steps to skip between sampling parameters"
+                  , burnin_length = 40 &= help "Number of steps to allow chain to burn-in for"
+                  , file = "" &= help "File to process" &= typFile &= argPos 0
+                  }
+        &= summary "fit-interarrivals"
+        &= details ["Fit interarrival times from mixture of Poisson processes"]
+
 initial :: VB.Vector (Weight, Exponential)
 initial = VB.fromList 
         $ [ (0.8, Exp 50)
@@ -61,8 +81,8 @@ showStats v =
     in printf "%1.3e    σ²=%1.3e"  mean var
 
 main = do
-  [fname] <- getArgs
-  recs <- readRecords fname
+  fargs <- cmdArgs fitArgs
+  recs <- readRecords $ file fargs
   let samples = V.filter (>1e-6)
                 $ V.map ((jiffy*) . realToFrac)
                 $ timesToInterarrivals
@@ -80,10 +100,13 @@ main = do
         let params' = estimateWeights a'
                       $ paramsFromAssignments samples (VB.map snd params) a'
             l = likelihood samples params a'
-        lift $ putStr $ printf "Likelihood: %1.5e\n" (logFromLogFloat l :: Double) 
+        lift $ hPutStr stderr $ printf "Likelihood: %1.5e\n" (logFromLogFloat l :: Double) 
         return ((params', a'), params')
-  steps <- sampleFrom mwc $ replicateM' 400 f (initial, assignments0)
-  let paramSamples = transpose $ takeEvery 2 $ drop 50 $ map VB.toList steps
+  steps <- sampleFrom mwc $ replicateM' (chain_length fargs) f (initial, assignments0)
+
+  let paramSamples = transpose $ takeEvery (sample_every fargs)
+                     $ drop (burnin_length fargs)
+                     $ map VB.toList steps
   forM_ (zip [0..] paramSamples) $ \(i,component)->do
       let (w,p) = unzip component
       putStrLn $ "\nComponent "++show i
