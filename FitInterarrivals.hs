@@ -91,8 +91,8 @@ showChainStats chain = do
         tell $ "\nComponent "++show i++"\n"
         tell $ "  Last Params: "++showExponential (last p)++"\n"
         tell $ "  Weight:      "++showStats w++"\n"
-        tell $ "  <τ>:         "++showStats (map tauMean p)++"\n"
-        tell $ "  <τ²>:        "++showStats (map tauVariance p)++"\n"
+        tell $ "  〈τ〉:         "++showStats (map tauMean p)++"\n"
+        tell $ "  〈τ²〉:        "++showStats (map tauVariance p)++"\n"
 
 data ChainStatus = Waiting
                  | Running LogFloat
