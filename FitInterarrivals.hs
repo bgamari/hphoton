@@ -35,6 +35,7 @@ data FitArgs = FitArgs { chain_length     :: Int
                        , sample_every     :: Int
                        , burnin_length    :: Int
                        , plot             :: Bool
+                       , model            :: Maybe FilePath
                        , file             :: FilePath
                        }
              deriving (Data, Typeable, Show)
@@ -44,14 +45,14 @@ fitArgs = FitArgs { chain_length = 100 &= help "Length of Markov chain"
                   , sample_every = 5 &= help "Number of steps to skip between sampling parameters"
                   , burnin_length = 40 &= help "Number of steps to allow chain to burn-in for"
                   , plot = False &= help "Produce plots showing model components"
+                  , model = Nothing &= help "Model file"
                   , file = "" &= typFile &= argPos 0
                   }
         &= summary "fit-interarrivals"
         &= details ["Fit interarrival times from mixture of Poisson processes"]
 
-initial :: VB.Vector (Weight, Exponential)
-initial = VB.fromList 
-        $ [ (0.7, Exp 50)
+initial :: [(Weight, Exponential)]
+initial = [ (0.7, Exp 50)
           , (0.2, StretchedExp 5000 1)
           ]
 
@@ -147,12 +148,16 @@ main = do
                 $ strobeTimes recs Ch0
              :: V.Vector Sample
 
+  params <- VB.fromList <$> case model fargs of
+      Nothing -> return initial
+      Just f  -> read <$> readFile f
+
   likelihoodVars <- forM [1..number_chains fargs] $ \i->do 
       var <- newMVar Waiting
       return (i, var)
   forkIO $ statusWorker likelihoodVars
   chains <- parallelInterleaved
-            $ map (\(i,var)->runChain fargs samples var) likelihoodVars
+            $ map (\(i,var)->runChain fargs params samples var) likelihoodVars
 
   forM_ (zip [1..] chains) $ \(i,chain)->do
       printf "\n\nChain %d\n" (i::Int)
@@ -163,19 +168,20 @@ main = do
   
   let paramSample = last $ last chains -- TODO: Correctly average
   when (plot fargs) $ plotParamSample samples paramSample
-  
 
 -- | Parameter samples of a chain
 type Chain = [ComponentParams]
 
-runChain :: FitArgs -> V.Vector Sample -> MVar ChainStatus -> IO Chain
-runChain fargs samples chainN =
+runChain :: FitArgs -> ComponentParams -> V.Vector Sample
+         -> MVar ChainStatus -> IO Chain
+runChain fargs params samples chainN =
     withSystemRandom $ \mwc->
-        sampleFrom mwc (runChain' fargs samples chainN) :: IO Chain
+        sampleFrom mwc (runChain' fargs params samples chainN) :: IO Chain
 
-runChain' :: FitArgs -> V.Vector Sample -> MVar ChainStatus -> RVarT IO Chain
-runChain' fargs samples likelihoodVar = do
-    assignments0 <- lift $ updateAssignments samples initial
+runChain' :: FitArgs -> ComponentParams -> V.Vector Sample
+          -> MVar ChainStatus -> RVarT IO Chain
+runChain' fargs params samples likelihoodVar = do
+    assignments0 <- lift $ updateAssignments samples params
     let f :: (ComponentParams, Assignments)
           -> RVarT IO ((ComponentParams, Assignments), ComponentParams)
         f (params, a) = do
@@ -185,7 +191,7 @@ runChain' fargs samples likelihoodVar = do
                 l = scoreAssignments samples params a'
             lift $ swapMVar likelihoodVar $ Running l
             return ((params', a'), params')
-    steps <- replicateM' (chain_length fargs) f (initial, assignments0)
+    steps <- replicateM' (chain_length fargs) f (params, assignments0)
 
     let paramSamples :: Chain
         paramSamples = takeEvery (sample_every fargs)
