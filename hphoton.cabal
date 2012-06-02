@@ -118,7 +118,7 @@ Executable fret-analysis
 
 Executable fit-interarrivals
   Main-is:           FitInterarrivals.hs
-  Ghc-options:       -rtsopts
+  Ghc-options:       -rtsopts -threaded
   Build-depends:     base,
                      directory,
                      filepath,
