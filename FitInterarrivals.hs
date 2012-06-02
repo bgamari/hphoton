@@ -48,24 +48,23 @@ data FitArgs = FitArgs { chain_length     :: Int
        
 fitArgs = FitArgs
     { file = "" &= typFile &= argPos 0
-    , clockrate = 128e6 &= typ "FREQ"
-                        &= help "Instrument clockrate" &= groupname "Input"
-    , channel = 0 &= help "Channel to fit" &= groupname "Input"
+    , clockrate = 128e6 &= groupname "Input"
+                        &= typ "FREQ"
+                        &= help "Instrument clockrate"
+    , channel = 0 &= help "Channel to fit"
     , short_cutoff = 1e-6 &= typ "TIME"
                           &= help "Discard interarrival times smaller than TIME"
-                          &= groupname "Input"
-    , model = Nothing &= help "Model file" &= groupname "Input"
-    , plot = False &= help "Produce plots showing model components"
-                   &= groupname "Output"
+    , model = Nothing &= typFile &= help "Model file"
+
+    , plot = False &= groupname "Output"
+                   &= help "Produce plots showing model components"
     
     , chain_length = 100 &= help "Length of Markov chain"
+                         &= name "l"
                          &= groupname "Sampler"
     , number_chains = 40 &= help "Number of chains to run"
-                         &= groupname "Sampler"
     , sample_every = 5 &= help "Number of steps to skip between sampling parameters"
-                       &= groupname "Sampler"
     , burnin_length = 40 &= help "Number of steps to allow chain to burn-in for"
-                         &= groupname "Sampler"
     }
     &= program "fit-interarrivals"
     &= summary "fit-interarrivals"
