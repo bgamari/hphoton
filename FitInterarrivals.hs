@@ -37,6 +37,7 @@ data FitArgs = FitArgs { chain_length     :: Int
                        , plot             :: Bool
                        , model            :: Maybe FilePath
                        , file             :: FilePath
+                       , channel          :: Int
                        }
              deriving (Data, Typeable, Show)
        
@@ -47,10 +48,18 @@ fitArgs = FitArgs { chain_length = 100 &= help "Length of Markov chain"
                   , plot = False &= help "Produce plots showing model components"
                   , model = Nothing &= help "Model file"
                   , file = "" &= typFile &= argPos 0
+                  , channel = 0 &= help "Channel to fit"
                   }
         &= summary "fit-interarrivals"
         &= details ["Fit interarrival times from mixture of Poisson processes"]
 
+argsChannel :: FitArgs -> Channel
+argsChannel (FitArgs {channel=ch}) = f ch
+  where f 0 = Ch0
+        f 1 = Ch1
+        f 2 = Ch2
+        f 3 = Ch3
+        
 initial :: [(Weight, Exponential)]
 initial = [ (0.7, Exp 50)
           , (0.2, StretchedExp 5000 1)
@@ -145,7 +154,7 @@ main = do
   let samples = V.filter (>1e-6)
                 $ V.map ((jiffy*) . realToFrac)
                 $ timesToInterarrivals
-                $ strobeTimes recs Ch0
+                $ strobeTimes recs (argsChannel fargs)
              :: V.Vector Sample
 
   params <- VB.fromList <$> case model fargs of
