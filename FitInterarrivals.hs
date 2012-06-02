@@ -73,15 +73,15 @@ main = do
   assignments0 <- sampleFrom mwc $ updateAssignments samples initial
   print $ paramsFromAssignments samples (VB.map snd initial) assignments0
 
-  let f :: (ComponentParams, Assignments) -> RVarT IO (ComponentParams, Assignments)
+  let f :: (ComponentParams, Assignments)
+        -> RVarT IO ((ComponentParams, Assignments), ComponentParams)
       f (params, a) = do
         a' <- lift $ updateAssignments samples params
         let params' = estimateWeights a' $ paramsFromAssignments samples (VB.map snd params) a'
         lift $ print (logFromLogFloat $ likelihood samples params a' :: Double)
-        return (params', a')
+        return ((params', a'), params')
   steps <- sampleFrom mwc $ replicateM' 400 f (initial, assignments0)
-  let (params, assignments) = last steps
-  let paramSamples = transpose $ takeEvery 2 $ drop 50 $ map (VB.toList . fst) steps
+  let paramSamples = transpose $ takeEvery 2 $ drop 50 $ map VB.toList steps
   forM_ (zip [0..] paramSamples) $ \(i,component)->do
       let (w,p) = unzip component
       putStrLn $ "\nComponent "++show i
@@ -90,7 +90,7 @@ main = do
       putStrLn $ "  <τ>:         "++showStats (map tauMean p)
       putStrLn $ "  <τ²>:        "++showStats (map tauVariance p)
 
-  let dist x = sum $ map (\(w,p)->w * realToFrac (prob p x)) $ VB.toList params
+  let dist x = sum $ map (\(w,p)->w * realToFrac (prob p x)) $ VB.toList $ last steps
       layout = layout1_plots ^= [ Left $ histPlot samples
                                 , Left $ functionPlot 10000 (1e-7,longTime) dist
                                 ]
@@ -98,11 +98,11 @@ main = do
              $ defaultLayout1
   renderableToPDFFile (toRenderable layout) 640 480 "hi.pdf"
 
-replicateM' :: Monad m => Int -> (a -> m a) -> a -> m [a]
+replicateM' :: Monad m => Int -> (a -> m (a,b)) -> a -> m [b]
 replicateM' n f a | n < 1 = error "Invalid count"
-replicateM' 1 f a = f a >>= return . (:[])
-replicateM' n f a = do b <- f a
-                       rest <- replicateM' (n-1) f b
+replicateM' 1 f a = f a >>= return . (:[]) . snd
+replicateM' n f a = do (a',b) <- f a
+                       rest <- replicateM' (n-1) f a'
                        return (b:rest)
 
 takeEvery :: Int -> [a] -> [a]
