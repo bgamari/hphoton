@@ -46,20 +46,30 @@ data FitArgs = FitArgs { chain_length     :: Int
                        }
              deriving (Data, Typeable, Show)
        
-fitArgs = FitArgs { chain_length = 100 &= help "Length of Markov chain"
-                  , number_chains = 40 &= help "Number of chains to run"
-                  , sample_every = 5 &= help "Number of steps to skip between sampling parameters"
-                  , burnin_length = 40 &= help "Number of steps to allow chain to burn-in for"
-                  , plot = False &= help "Produce plots showing model components"
-                  , model = Nothing &= help "Model file"
-                  , file = "" &= typFile &= argPos 0
-                  , clockrate = 128e6 &= typ "FREQ" &= help "Instrument clockrate"
-                  , channel = 0 &= help "Channel to fit"
-                  , short_cutoff = 1e-6 &= typ "TIME" &= help "Discard interarrival times smaller than TIME"
-                  }
-        &= program "fit-interarrivals"
-        &= summary "fit-interarrivals"
-        &= details ["Fit interarrival times to a mixture of exponential distributions."]
+fitArgs = FitArgs
+    { file = "" &= typFile &= argPos 0
+    , clockrate = 128e6 &= typ "FREQ"
+                        &= help "Instrument clockrate" &= groupname "Input"
+    , channel = 0 &= help "Channel to fit" &= groupname "Input"
+    , short_cutoff = 1e-6 &= typ "TIME"
+                          &= help "Discard interarrival times smaller than TIME"
+                          &= groupname "Input"
+    , model = Nothing &= help "Model file" &= groupname "Input"
+    , plot = False &= help "Produce plots showing model components"
+                   &= groupname "Output"
+    
+    , chain_length = 100 &= help "Length of Markov chain"
+                         &= groupname "Sampler"
+    , number_chains = 40 &= help "Number of chains to run"
+                         &= groupname "Sampler"
+    , sample_every = 5 &= help "Number of steps to skip between sampling parameters"
+                       &= groupname "Sampler"
+    , burnin_length = 40 &= help "Number of steps to allow chain to burn-in for"
+                         &= groupname "Sampler"
+    }
+    &= program "fit-interarrivals"
+    &= summary "fit-interarrivals"
+    &= details ["Fit interarrival times to a mixture of exponential distributions."]
 
 argsChannel :: FitArgs -> Channel
 argsChannel (FitArgs {channel=ch}) =
