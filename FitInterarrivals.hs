@@ -204,9 +204,9 @@ statusWorker chains = do
     hPutStr stderr "\n\n"
     forM_ chains' $ \(i,status)->do
         case status of
-            Running likelihood ->
-                hPutStr stderr $ printf "%3d: Likelihood %8f\n"
-                                        i (logFromLogFloat likelihood :: Double)
+            Running score ->
+                hPutStr stderr $ printf "%3d: score %8f\n"
+                                        i (logFromLogFloat score :: Double)
             otherwise -> return ()
     hPutStr stderr
         $ printf "%3d / %3d finished\n"
@@ -248,12 +248,12 @@ main = do
       Nothing -> return initial
       Just f  -> read <$> readFile f
 
-  likelihoodVars <- forM [1..number_chains fargs] $ \i->do 
+  scoreVars <- forM [1..number_chains fargs] $ \i->do 
       var <- newIORef Waiting
       return (i, var)
-  forkIO $ statusWorker likelihoodVars
+  forkIO $ statusWorker scoreVars
   chains <- parallelInterleaved
-            $ map (\(i,var)->runChain fargs params samples var) likelihoodVars
+            $ map (\(i,var)->runChain fargs params samples var) scoreVars
 
   when (all_chains fargs) $
       forM_ (zip [1..] chains) $ \(i,chain)->do
@@ -277,7 +277,7 @@ runChain fargs params samples chainN =
 
 runChain' :: FitArgs -> ComponentParams -> V.Vector Sample
           -> IORef ChainStatus -> RVarT IO Chain
-runChain' fargs params samples likelihoodVar = do
+runChain' fargs params samples scoreVar = do
     assignments0 <- lift $ updateAssignments samples params
     let f :: (ComponentParams, Assignments)
           -> RVarT IO ((ComponentParams, Assignments), ComponentParams)
@@ -286,14 +286,14 @@ runChain' fargs params samples likelihoodVar = do
             let params' = estimateWeights a'
                         $ paramsFromAssignments samples (VB.map snd params) a'
                 l = scoreAssignments samples params a'
-            lift $ writeIORef likelihoodVar $ Running l
+            lift $ writeIORef scoreVar $ Running l
             return ((params', a'), params')
     steps <- replicateM' (chain_length fargs) f (params, assignments0)
 
     let paramSamples :: Chain
         paramSamples = takeEvery (sample_every fargs)
                        $ drop (burnin_length fargs) steps
-    lift $ writeIORef likelihoodVar Finished
+    lift $ writeIORef scoreVar Finished
     return paramSamples
 
 replicateM' :: Monad m => Int -> (a -> m (a,b)) -> a -> m [b]
