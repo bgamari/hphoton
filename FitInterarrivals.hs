@@ -18,6 +18,7 @@ import           Numeric.MixtureModel.Exponential
 import           Statistics.Sample (meanVariance)
 import           Data.List (transpose)
 
+import           Control.Concurrent                 
 import           Control.Concurrent.ParallelIO
 import           Data.Accessor
 import           Data.Colour
@@ -38,7 +39,7 @@ data FitArgs = FitArgs { chain_length     :: Int
              deriving (Data, Typeable, Show)
        
 fitArgs = FitArgs { chain_length = 100 &= help "Length of Markov chain"
-                  , number_chains = 200 &= help "Number of chains to run"
+                  , number_chains = 40 &= help "Number of chains to run"
                   , sample_every = 5 &= help "Number of steps to skip between sampling parameters"
                   , burnin_length = 40 &= help "Number of steps to allow chain to burn-in for"
                   , file = "" &= typFile &= argPos 0
@@ -93,6 +94,32 @@ showChainStats chain = do
         tell $ "  <τ>:         "++showStats (map tauMean p)++"\n"
         tell $ "  <τ²>:        "++showStats (map tauVariance p)++"\n"
 
+data ChainStatus = Waiting
+                 | Running LogFloat
+                 | Finished
+                 deriving (Show, Eq)
+
+statusWorker :: [(Int, MVar ChainStatus)] -> IO ()
+statusWorker chains = do
+    chains' <- forM chains $ \(i,status)->do s <- readMVar status
+                                             return (i,s)
+    putStr "\n\n"
+    forM_ chains' $ \(i,status)->do
+        case status of
+            Running likelihood ->
+                hPutStr stderr $ printf "%3d: Likelihood %8f\n"
+                                        i (logFromLogFloat likelihood :: Double)
+            otherwise -> return ()
+    hPutStr stderr
+        $ printf "%3d / %3d finished\n"
+                 (length $ filter (\(_,s)->s==Finished) chains')
+                 (length chains')
+    hFlush stderr
+    threadDelay 5000000
+    if all (\(_,s)->s == Finished) chains'
+        then return ()
+        else statusWorker chains
+
 main = do
   fargs <- cmdArgs fitArgs
   recs <- readRecords $ file fargs
@@ -102,7 +129,12 @@ main = do
                 $ strobeTimes recs Ch0
              :: V.Vector Sample
 
-  chains <- parallelInterleaved $ map (runChain fargs samples) [1..number_chains fargs]
+  likelihoodVars <- forM [1..number_chains fargs] $ \i->do 
+      var <- newMVar Waiting
+      return (i, var)
+  forkIO $ statusWorker likelihoodVars
+  chains <- parallelInterleaved
+            $ map (\(i,var)->runChain fargs samples var) likelihoodVars
 
   forM_ (zip [1..] chains) $ \(i,chain)->do
       printf "\n\nChain %d\n" (i::Int)
@@ -124,13 +156,13 @@ main = do
 -- | Parameter samples of a chain
 type Chain = [ComponentParams]
 
-runChain :: FitArgs -> V.Vector Sample -> Int -> IO Chain
+runChain :: FitArgs -> V.Vector Sample -> MVar ChainStatus -> IO Chain
 runChain fargs samples chainN =
     withSystemRandom $ \mwc->
         sampleFrom mwc (runChain' fargs samples chainN) :: IO Chain
 
-runChain' :: FitArgs -> V.Vector Sample -> Int -> RVarT IO Chain
-runChain' fargs samples chainN = do
+runChain' :: FitArgs -> V.Vector Sample -> MVar ChainStatus -> RVarT IO Chain
+runChain' fargs samples likelihoodVar = do
     assignments0 <- lift $ updateAssignments samples initial
     let f :: (ComponentParams, Assignments)
           -> RVarT IO ((ComponentParams, Assignments), ComponentParams)
@@ -139,14 +171,14 @@ runChain' fargs samples chainN = do
             let params' = estimateWeights a'
                         $ paramsFromAssignments samples (VB.map snd params) a'
                 l = likelihood samples params a'
-            lift $ hPutStr stderr
-                 $ printf "%d: Likelihood: %8f\n" chainN (logFromLogFloat l :: Double) 
+            lift $ swapMVar likelihoodVar $ Running l
             return ((params', a'), params')
     steps <- replicateM' (chain_length fargs) f (initial, assignments0)
 
     let paramSamples :: Chain
         paramSamples = takeEvery (sample_every fargs)
                        $ drop (burnin_length fargs) steps
+    lift $ swapMVar likelihoodVar Finished
     return paramSamples
 
 replicateM' :: Monad m => Int -> (a -> m (a,b)) -> a -> m [b]
