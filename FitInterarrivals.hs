@@ -34,6 +34,7 @@ data FitArgs = FitArgs { chain_length     :: Int
                        , number_chains    :: Int
                        , sample_every     :: Int
                        , burnin_length    :: Int
+                       , plot             :: Bool
                        , file             :: FilePath
                        }
              deriving (Data, Typeable, Show)
@@ -42,6 +43,7 @@ fitArgs = FitArgs { chain_length = 100 &= help "Length of Markov chain"
                   , number_chains = 40 &= help "Number of chains to run"
                   , sample_every = 5 &= help "Number of steps to skip between sampling parameters"
                   , burnin_length = 40 &= help "Number of steps to allow chain to burn-in for"
+                  , plot = False &= help "Produce plots showing model components"
                   , file = "" &= typFile &= argPos 0
                   }
         &= summary "fit-interarrivals"
@@ -49,17 +51,17 @@ fitArgs = FitArgs { chain_length = 100 &= help "Length of Markov chain"
 
 initial :: VB.Vector (Weight, Exponential)
 initial = VB.fromList 
-        $ [ (0.8, Exp 50)
+        $ [ (0.7, Exp 50)
           , (0.2, StretchedExp 5000 1)
           ]
 
 longTime = 5e-2
 
-histPlot :: V.Vector Sample -> Plot Sample Double
-histPlot xs = histToNormedLinesPlot
+histPlot :: (Double, Double) -> V.Vector Sample -> Plot Sample Double
+histPlot range xs = histToNormedLinesPlot
               $ plot_hist_bins     ^= 4000
               $ plot_hist_values   ^= [V.toList xs]
-              $ plot_hist_range    ^= Just (0, longTime)
+              $ plot_hist_range    ^= Just range
               $ plot_hist_no_zeros ^= True
               $ defaultPlotHist
 
@@ -120,6 +122,22 @@ statusWorker chains = do
         then return ()
         else statusWorker chains
 
+plotFit :: V.Vector Sample -> (Double,Double) -> [Double->Double] -> Layout1 Double Double
+plotFit samples (a,b) fits =
+    layout1_plots ^= [ Left $ histPlot (a,b) samples ]
+                     ++ map (Left . functionPlot 1000 (a,b)) fits
+    $ (layout1_left_axis .> laxis_generate) ^= autoScaledLogAxis defaultLogAxis
+    $ defaultLayout1
+    
+plotParamSample :: V.Vector Sample -> ComponentParams -> IO ()
+plotParamSample samples paramSample = do
+  let dist x = sum $ map (\(w,p)->w * realToFrac (prob p x)) $ VB.toList paramSample
+  renderableToPDFFile (toRenderable $ plotFit samples (1e-7,longTime) [dist]) 640 480 "all.pdf"
+  forM_ (zip [1..] $ VB.toList paramSample) $ \(i,(w,p))->do
+      let c x = w * realToFrac (prob p x)
+          longTime = 2 * tauMean p
+      renderableToPDFFile (toRenderable $ plotFit samples (1e-7,longTime) [dist, c]) 640 480 (printf "component%03d.pdf" (i::Int))
+
 main = do
   fargs <- cmdArgs fitArgs
   recs <- readRecords $ file fargs
@@ -144,14 +162,8 @@ main = do
   putStr $ execWriter $ showChainStats $ concat chains
   
   let paramSample = last $ last chains -- TODO: Correctly average
-
-  let dist x = sum $ map (\(w,p)->w * realToFrac (prob p x)) $ VB.toList paramSample
-      layout = layout1_plots ^= [ Left $ histPlot samples
-                                , Left $ functionPlot 10000 (1e-7,longTime) dist
-                                ]
-             $ (layout1_left_axis .> laxis_generate) ^= autoScaledLogAxis defaultLogAxis
-             $ defaultLayout1
-  renderableToPDFFile (toRenderable layout) 640 480 "hi.pdf"
+  when (plot fargs) $ plotParamSample samples paramSample
+  
 
 -- | Parameter samples of a chain
 type Chain = [ComponentParams]
