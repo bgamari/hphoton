@@ -11,7 +11,7 @@ import           Control.Monad.Trans.Writer
 import           Data.Random
 import           Data.Random.Distribution.Beta
 import           Data.Random.Distribution.Categorical
-import           System.Random.MWC (withSystemRandom)
+import           System.Random.MWC (withSystemRandom, GenIO)
 
 import           Numeric.MixtureModel.Exponential
 
@@ -125,23 +125,29 @@ main = do
 type Chain = [ComponentParams]
 
 runChain :: FitArgs -> V.Vector Sample -> Int -> IO Chain
-runChain fargs samples chainN = withSystemRandom $ \mwc->do
-  assignments0 <- sampleFrom mwc $ updateAssignments samples initial
-  let f :: (ComponentParams, Assignments)
-        -> RVarT IO ((ComponentParams, Assignments), ComponentParams)
-      f (params, a) = do
-        a' <- lift $ updateAssignments samples params
-        let params' = estimateWeights a'
-                      $ paramsFromAssignments samples (VB.map snd params) a'
-            l = likelihood samples params a'
-        lift $ hPutStr stderr $ printf "%d: Likelihood: %8f\n" chainN (logFromLogFloat l :: Double) 
-        return ((params', a'), params')
-  steps <- sampleFrom mwc $ replicateM' (chain_length fargs) f (initial, assignments0)
+runChain fargs samples chainN =
+    withSystemRandom $ \mwc->
+        sampleFrom mwc (runChain' fargs samples chainN) :: IO Chain
 
-  let paramSamples :: Chain
-      paramSamples = takeEvery (sample_every fargs)
-                     $ drop (burnin_length fargs) steps
-  return paramSamples
+runChain' :: FitArgs -> V.Vector Sample -> Int -> RVarT IO Chain
+runChain' fargs samples chainN = do
+    assignments0 <- lift $ updateAssignments samples initial
+    let f :: (ComponentParams, Assignments)
+          -> RVarT IO ((ComponentParams, Assignments), ComponentParams)
+        f (params, a) = do
+            a' <- lift $ updateAssignments samples params
+            let params' = estimateWeights a'
+                        $ paramsFromAssignments samples (VB.map snd params) a'
+                l = likelihood samples params a'
+            lift $ hPutStr stderr
+                 $ printf "%d: Likelihood: %8f\n" chainN (logFromLogFloat l :: Double) 
+            return ((params', a'), params')
+    steps <- replicateM' (chain_length fargs) f (initial, assignments0)
+
+    let paramSamples :: Chain
+        paramSamples = takeEvery (sample_every fargs)
+                       $ drop (burnin_length fargs) steps
+    return paramSamples
 
 replicateM' :: Monad m => Int -> (a -> m (a,b)) -> a -> m [b]
 replicateM' n f a | n < 1 = error "Invalid count"
