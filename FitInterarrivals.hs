@@ -50,8 +50,9 @@ fitArgs = FitArgs { chain_length = 100 &= help "Length of Markov chain"
                   , file = "" &= typFile &= argPos 0
                   , channel = 0 &= help "Channel to fit"
                   }
+        &= program "fit-interarrivals"
         &= summary "fit-interarrivals"
-        &= details ["Fit interarrival times from mixture of Poisson processes"]
+        &= details ["Fit interarrival times to a mixture of exponential distributions."]
 
 argsChannel :: FitArgs -> Channel
 argsChannel (FitArgs {channel=ch}) = f ch
