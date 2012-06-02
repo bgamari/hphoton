@@ -55,11 +55,13 @@ fitArgs = FitArgs { chain_length = 100 &= help "Length of Markov chain"
         &= details ["Fit interarrival times to a mixture of exponential distributions."]
 
 argsChannel :: FitArgs -> Channel
-argsChannel (FitArgs {channel=ch}) = f ch
-  where f 0 = Ch0
-        f 1 = Ch1
-        f 2 = Ch2
-        f 3 = Ch3
+argsChannel (FitArgs {channel=ch}) =
+    case ch of
+        0         -> Ch0        
+        1         -> Ch1
+        2         -> Ch2
+        3         -> Ch3
+        otherwise -> error "Invalid channel"
         
 initial :: [(Weight, Exponential)]
 initial = [ (0.7, Exp 50)
