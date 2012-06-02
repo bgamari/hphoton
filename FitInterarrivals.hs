@@ -52,10 +52,14 @@ fitArgs = FitArgs
     , clockrate = 128e6 &= groupname "Input"
                         &= typ "FREQ"
                         &= help "Instrument clockrate (default=128 MHz)"
-    , channel = 0 &= help "Channel to fit"
+    , channel = 0 &= groupname "Input"
+                  &= help "Channel to fit"
     , short_cutoff = 1e-6 &= typ "TIME"
+                          &= groupname "Input"
                           &= help "Discard interarrival times smaller than TIME (default=1 us)"
-    , model = Nothing &= typFile &= help "Model file"
+    , model = Nothing &= typFile
+                      &= groupname "Model"
+                      &= help "Model file"
 
     , plot = False &= groupname "Output"
                    &= help "Produce plots showing model components"
@@ -64,8 +68,11 @@ fitArgs = FitArgs
                          &= name "l"
                          &= groupname "Sampler"
     , number_chains = 40 &= help "Number of chains to run (default=40)"
+                         &= groupname "Sampler"
     , sample_every = 5 &= help "Number of steps to skip between sampling parameters (default=5)"
+                       &= groupname "Sampler"
     , burnin_length = 40 &= help "Number of steps to allow chain to burn-in for (default=40)"
+                         &= groupname "Sampler"
     }
     &= program "fit-interarrivals"
     &= summary "Fit interarrival times to a mixture of exponential distributions."
