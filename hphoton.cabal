@@ -138,4 +138,5 @@ Executable fit-interarrivals
                      Chart,
                      chart-histogram,
                      logfloat,
-                     mixture-model
+                     mixture-model,
+                     parallel-io
