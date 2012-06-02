@@ -18,6 +18,7 @@ import           Numeric.MixtureModel.Exponential
 import           Statistics.Sample (meanVariance)
 import           Data.List (transpose)
 
+import           Data.IORef
 import           Control.Concurrent                 
 import           Control.Concurrent.ParallelIO
 import           Data.Accessor
@@ -128,9 +129,9 @@ data ChainStatus = Waiting
                  | Finished
                  deriving (Show, Eq)
 
-statusWorker :: [(Int, MVar ChainStatus)] -> IO ()
+statusWorker :: [(Int, IORef ChainStatus)] -> IO ()
 statusWorker chains = do
-    chains' <- forM chains $ \(i,status)->do s <- readMVar status
+    chains' <- forM chains $ \(i,status)->do s <- readIORef status
                                              return (i,s)
     hPutStr stderr "\n\n"
     forM_ chains' $ \(i,status)->do
@@ -180,7 +181,7 @@ main = do
       Just f  -> read <$> readFile f
 
   likelihoodVars <- forM [1..number_chains fargs] $ \i->do 
-      var <- newMVar Waiting
+      var <- newIORef Waiting
       return (i, var)
   forkIO $ statusWorker likelihoodVars
   chains <- parallelInterleaved
@@ -200,13 +201,13 @@ main = do
 type Chain = [ComponentParams]
 
 runChain :: FitArgs -> ComponentParams -> V.Vector Sample
-         -> MVar ChainStatus -> IO Chain
+         -> IORef ChainStatus -> IO Chain
 runChain fargs params samples chainN =
     withSystemRandom $ \mwc->
         sampleFrom mwc (runChain' fargs params samples chainN) :: IO Chain
 
 runChain' :: FitArgs -> ComponentParams -> V.Vector Sample
-          -> MVar ChainStatus -> RVarT IO Chain
+          -> IORef ChainStatus -> RVarT IO Chain
 runChain' fargs params samples likelihoodVar = do
     assignments0 <- lift $ updateAssignments samples params
     let f :: (ComponentParams, Assignments)
@@ -216,14 +217,14 @@ runChain' fargs params samples likelihoodVar = do
             let params' = estimateWeights a'
                         $ paramsFromAssignments samples (VB.map snd params) a'
                 l = scoreAssignments samples params a'
-            lift $ swapMVar likelihoodVar $ Running l
+            lift $ writeIORef likelihoodVar $ Running l
             return ((params', a'), params')
     steps <- replicateM' (chain_length fargs) f (params, assignments0)
 
     let paramSamples :: Chain
         paramSamples = takeEvery (sample_every fargs)
                        $ drop (burnin_length fargs) steps
-    lift $ swapMVar likelihoodVar Finished
+    lift $ writeIORef likelihoodVar Finished
     return paramSamples
 
 replicateM' :: Monad m => Int -> (a -> m (a,b)) -> a -> m [b]
