@@ -42,6 +42,7 @@ data FitArgs = FitArgs { chain_length     :: Int
                        , all_chains       :: Bool
                        , model            :: Maybe FilePath
                        , file             :: FilePath
+                       , output           :: FilePath
                        , channel          :: Int
                        , clockrate        :: Freq
                        , short_cutoff     :: RealTime
@@ -67,6 +68,8 @@ fitArgs = FitArgs
                    &= help "Produce plots showing model components"
     , all_chains = False &= groupname "Output"
                          &= help "Show statistics from all chains"
+    , output = "" &= groupname "Output"
+                  &= help "Output model to file"
     , verbose = False &= groupname "Output"
                       &= help "Display status updates during chain run"
     
@@ -268,6 +271,9 @@ main = do
   
   let paramSample = last $ last chains -- TODO: Correctly average
   when (plot fargs) $ plotParamSample samples paramSample
+  when (length (output fargs) > 0)
+      $ withFile (output fargs) WriteMode $ \f->do
+          hPrint f paramSample
 
 -- | Parameter samples of a chain
 type Chain = [ComponentParams]
