@@ -103,7 +103,7 @@ statusWorker :: [(Int, MVar ChainStatus)] -> IO ()
 statusWorker chains = do
     chains' <- forM chains $ \(i,status)->do s <- readMVar status
                                              return (i,s)
-    putStr "\n\n"
+    hPutStr stderr "\n\n"
     forM_ chains' $ \(i,status)->do
         case status of
             Running likelihood ->
