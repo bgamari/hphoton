@@ -182,7 +182,7 @@ runChain' fargs samples likelihoodVar = do
             a' <- lift $ updateAssignments samples params
             let params' = estimateWeights a'
                         $ paramsFromAssignments samples (VB.map snd params) a'
-                l = likelihood samples params a'
+                l = scoreAssignments samples params a'
             lift $ swapMVar likelihoodVar $ Running l
             return ((params', a'), params')
     steps <- replicateM' (chain_length fargs) f (initial, assignments0)
