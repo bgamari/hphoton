@@ -31,6 +31,7 @@ import           System.Console.CmdArgs
 import           Text.Printf
 
 type Freq = Double
+type RealTime = Double
 
 data FitArgs = FitArgs { chain_length     :: Int
                        , number_chains    :: Int
@@ -41,6 +42,7 @@ data FitArgs = FitArgs { chain_length     :: Int
                        , file             :: FilePath
                        , channel          :: Int
                        , clockrate        :: Freq
+                       , short_cutoff     :: RealTime
                        }
              deriving (Data, Typeable, Show)
        
@@ -53,6 +55,7 @@ fitArgs = FitArgs { chain_length = 100 &= help "Length of Markov chain"
                   , file = "" &= typFile &= argPos 0
                   , clockrate = 128e6 &= typ "FREQ" &= help "Instrument clockrate"
                   , channel = 0 &= help "Channel to fit"
+                  , short_cutoff = 1e-6 &= typ "TIME" &= help "Discard interarrival times smaller than TIME"
                   }
         &= program "fit-interarrivals"
         &= summary "fit-interarrivals"
@@ -157,7 +160,7 @@ main = do
   fargs <- cmdArgs fitArgs
   recs <- readRecords $ file fargs
   let jiffy = 1 / clockrate fargs
-      samples = V.filter (>1e-6)
+      samples = V.filter (>short_cutoff fargs)
                 $ V.map ((jiffy*) . realToFrac)
                 $ timesToInterarrivals
                 $ strobeTimes recs (argsChannel fargs)
