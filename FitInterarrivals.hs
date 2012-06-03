@@ -279,7 +279,7 @@ main = do
   when (plot fargs) $ plotParamSample samples paramSample
   when (length (output fargs) > 0)
       $ withFile (output fargs) WriteMode $ \f->do
-          hPrint f paramSample
+          hPrint f $ VB.toList paramSample
 
 -- | Parameter samples of a chain
 type Chain = [ComponentParams]
