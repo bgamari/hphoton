@@ -177,6 +177,8 @@ functionPlot n (a,b) f =
             $ defaultPlotLines
 
 showExponential :: Exponential -> String
+showExponential (FixedExp lambda beta) =
+    printf "Fixed Exponential: λ=%1.2e β=%1.2e" lambda beta
 showExponential (Exp lambda) =
     printf "Exponential: λ=%1.2e" lambda
 showExponential (StretchedExp lambda beta) =
