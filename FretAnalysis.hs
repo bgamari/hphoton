@@ -276,6 +276,7 @@ analyzeData rootName clk p fret = do
   let fretEffs = map (fretEfficiency (gamma p)) burstRates
       fitFailed :: SomeException -> IO (Maybe ComponentParams)
       fitFailed _ = putStrLn "Fit Failed" >> return Nothing
+  plotFretAnalysis rootName clk p fret (zip burstSpans burstRates)
   fitParams <- catch (Just `liftM` fitFretHist fretEffs) fitFailed
   let scale = realToFrac (length fretEffs) / realToFrac (n_bins p)
       layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs ]
@@ -284,7 +285,6 @@ analyzeData rootName clk p fret = do
                $ defaultLayout1
   renderableToSVGFile (toRenderable layout) 640 480 (rootName++"-fret_eff.svg")
 
-  --plotFretAnalysis clk gamma p fret (zip burstSpans burstRates)
   return ()
 
 fitFretHist :: [FretEff] -> IO ComponentParams
@@ -351,9 +351,9 @@ spansFill maxY title spans = toPlot fill
                    $ plot_fillbetween_title  ^= title
                    $ defaultPlotFillBetween
 
-plotFretAnalysis :: String -> Clock -> Gamma -> FretAnalysis -> Fret (V.Vector Time)
+plotFretAnalysis :: String -> Clock -> FretAnalysis -> Fret (V.Vector Time)
                  -> [(Span, Fret Rate)] -> IO ()
-plotFretAnalysis rootName clk gamma p times bursts = do
+plotFretAnalysis rootName clk p times bursts = do
   let (burstSpans, burstRates) = unzip bursts
       a = spansFill 20 "Bursts" $ map (\(a,b)->( timeToRealTime clk a
                                                , timeToRealTime clk b)
