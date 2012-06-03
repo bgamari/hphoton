@@ -272,6 +272,10 @@ main = do
   putStr $ execWriter $ showChainStats $ concat chains
   
   let paramSample = last $ last chains -- TODO: Correctly average
+  let mlScore = maxLikelihoodScore paramSample samples
+  printf "Score: %1.2e\n" (logFromLogFloat mlScore :: Double)
+  printf "Score/sample: %1.2e\n" (logFromLogFloat $ mlScore / realToFrac (V.length samples) :: Double)
+
   when (plot fargs) $ plotParamSample samples paramSample
   when (length (output fargs) > 0)
       $ withFile (output fargs) WriteMode $ \f->do
