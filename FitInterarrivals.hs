@@ -208,7 +208,7 @@ showChainStats chain = do
         tell $ "  〈τ²〉:        "++showStats (map tauVariance p)++"\n"
 
 data ChainStatus = Waiting
-                 | Running LogFloat
+                 | Running Int LogFloat
                  | Finished
                  deriving (Show, Eq)
 
@@ -219,9 +219,10 @@ statusWorker chains = do
     hPutStr stderr "\n\n"
     forM_ chains' $ \(i,status)->do
         case status of
-            Running score ->
-                hPutStr stderr $ printf "%3d: score %8f\n"
-                                        i (logFromLogFloat score :: Double)
+            Running nIter score -> do
+                hPutStr stderr $ printf "%3d: %3d iterations remaining" i nIter
+                hPutStr stderr $ printf "  score=%8f" (logFromLogFloat score :: Double)
+                hPutStr stderr "\n"
             otherwise -> return ()
     hPutStr stderr
         $ printf "%3d / %3d finished\n"
@@ -303,14 +304,14 @@ runChain' :: FitArgs -> ComponentParams -> V.Vector Sample
           -> IORef ChainStatus -> RVarT IO Chain
 runChain' fargs params samples scoreVar = do
     assignments0 <- lift $ updateAssignments samples params
-    let f :: (ComponentParams, Assignments)
+    let f :: Int -> (ComponentParams, Assignments)
           -> RVarT IO ((ComponentParams, Assignments), ComponentParams)
-        f (params, a) = do
+        f nIter (params, a) = do
             a' <- lift $ updateAssignments samples params
             let params' = estimateWeights a'
                         $ paramsFromAssignments samples (VB.map snd params) a'
                 l = scoreAssignments samples params a'
-            lift $ writeIORef scoreVar $ Running l
+            lift $ writeIORef scoreVar $ Running nIter l
             return ((params', a'), params')
     steps <- replicateM' (chain_length fargs) f (params, assignments0)
 
@@ -320,10 +321,10 @@ runChain' fargs params samples scoreVar = do
     lift $ writeIORef scoreVar Finished
     return paramSamples
 
-replicateM' :: Monad m => Int -> (a -> m (a,b)) -> a -> m [b]
+replicateM' :: Monad m => Int -> (Int -> a -> m (a,b)) -> a -> m [b]
 replicateM' n f a | n < 1 = error "Invalid count"
-replicateM' 1 f a = f a >>= return . (:[]) . snd
-replicateM' n f a = do (a',b) <- f a
+replicateM' 1 f a = f 1 a >>= return . (:[]) . snd
+replicateM' n f a = do (a',b) <- f n a
                        rest <- replicateM' (n-1) f a'
                        return (b:rest)
 
