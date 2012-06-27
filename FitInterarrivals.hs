@@ -28,11 +28,12 @@ import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Plot.Histogram
 import           HPhoton.FpgaTimetagger
 import           HPhoton.Utils
+import           HPhoton.Types hiding (Freq)
+import           HPhoton.Bin.Plot                 
 import           System.Console.CmdArgs
 import           Text.Printf
 
 type Freq = Double
-type RealTime = Double
 
 data FitArgs = FitArgs { chain_length     :: Int
                        , number_chains    :: Int
@@ -48,6 +49,11 @@ data FitArgs = FitArgs { chain_length     :: Int
                        , short_cutoff     :: RealTime
                        , verbose          :: Bool
                        }
+             | PlotArgs { model           :: Maybe FilePath
+                        , file            :: FilePath
+                        , channel         :: Int
+                        , clockrate       :: Freq
+                        }
              deriving (Data, Typeable, Show)
        
 fitArgs = FitArgs
@@ -156,7 +162,8 @@ argsChannel (FitArgs {channel=ch}) =
         
 initial :: [(Weight, Exponential)]
 initial = [ (0.7, Exp 50)
-          , (0.2, StretchedExp 5000 1)
+          --, (0.1, FixedExp 445e3 0.77)
+          , (0.2, StretchedExp 4000 1)
           ]
 
 longTime = 5e-2
@@ -255,6 +262,8 @@ main = do
   params <- VB.fromList <$> case model fargs of
       Nothing -> return initial
       Just f  -> read <$> readFile f
+  let times = strobeTimes recs (argsChannel fargs)
+  renderableToPDFFile (plotRecords times params) 1000 500 "hello.pdf"
 
   scoreVars <- forM [1..number_chains fargs] $ \i->do 
       var <- newIORef Waiting
@@ -321,3 +330,34 @@ replicateM' n f a = do (a',b) <- f a
 takeEvery :: Int -> [a] -> [a]
 takeEvery n xs | length xs < n = []
                | otherwise     = head xs : takeEvery n (drop n xs)
+          
+plotRecords :: V.Vector Time -> ComponentParams -> Renderable ()
+plotRecords times params = renderLayout1sStacked
+    [ withAnyOrdinate
+      $ layout1_plots ^= [Left bins]
+      $ defaultLayout1
+    , withAnyOrdinate
+      $ layout1_plots ^= [ Left $ photons (\odds->odds > 0 && odds < 2) green
+                         , Left $ photons (\odds->odds > 1 && odds < 2) blue
+                         , Left $ photons (\odds->odds > 2) red
+                         ]
+      $ defaultLayout1
+    ]
+    where clk = clockFromFreq (round 128e6)
+          bins = plotBins clk times 1e-2 "Donor" green
+          (bgWeight, bgParams) = params VB.! 0
+          (flWeight, flParams) = params VB.! 1
+          odds :: RealTime -> Prob
+          odds dt = (realToFrac flWeight * prob flParams dt)
+                  / (realToFrac bgWeight * prob bgParams dt)
+          photons cutoff color = toPlot
+                    $ plot_points_values ^= (V.toList
+                        -- $ V.filter (\(_,odds)->cutoff odds)
+                        $ V.map (\(t,odds)->(t, logFromLogFloat odds))
+                        $ V.map (\(t,dt)->( timeToRealTime clk t
+                                          , odds $ timeToRealTime clk dt))
+                        $ V.zip times (timesToInterarrivals times)
+                        )
+                    $ plot_points_style ^= plusses 1 0.1 (opaque color)
+                    $ defaultPlotPoints
+                    :: Plot RealTime Double
