@@ -263,7 +263,7 @@ main = do
       Nothing -> return initial
       Just f  -> read <$> readFile f
   let times = strobeTimes recs (argsChannel fargs)
-  renderableToPDFFile (plotRecords times params) 1000 500 "hello.pdf"
+  --renderableToPDFFile (plotRecords times params) 1000 500 "hello.pdf"
 
   scoreVars <- forM [1..number_chains fargs] $ \i->do 
       var <- newIORef Waiting
