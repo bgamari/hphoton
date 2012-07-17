@@ -4,6 +4,8 @@ module HPhoton.Bin ( bin
                    , binWithBounds
                    , binRange
                    , binRangeWithBounds
+                   -- Internal
+                   , bin'
                    ) where
 
 import HPhoton.Types
