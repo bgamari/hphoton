@@ -134,9 +134,54 @@ Executable fit-interarrivals
                      cereal,
                      vector-mmap,
                      statistics,
+                     logfloat,
+                     mixture-model,
+                     parallel-io
+
+Executable plot-interarrivals
+  Main-is:           PlotInterarrivals.hs
+  Ghc-options:       -rtsopts -threaded
+  Build-depends:     base,
+                     directory,
+                     filepath,
+                     ghc-prim,
+                     vector-algorithms,
+                     random-fu,
+                     vector,
+                     storable-endian,
+                     mwc-random,
+                     cmdargs,
+                     bytestring,
+                     transformers,
+                     cereal,
+                     vector-mmap,
+                     statistics,
                      data-accessor,
                      Chart,
                      chart-histogram,
                      logfloat,
-                     mixture-model,
-                     parallel-io
+                     mixture-model
+
+Executable learn-intensity
+  Main-is:           LearnIntensity.hs
+  Ghc-options:       -rtsopts -threaded
+  Build-depends:     base,
+                     directory,
+                     filepath,
+                     ghc-prim,
+                     vector-algorithms,
+                     random-fu,
+                     vector,
+                     storable-endian,
+                     mwc-random,
+                     cmdargs,
+                     bytestring,
+                     transformers,
+                     cereal,
+                     vector-mmap,
+                     statistics,
+                     data-accessor,
+                     Chart,
+                     chart-histogram,
+                     logfloat,
+                     mixture-model
