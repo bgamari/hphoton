@@ -24,11 +24,11 @@ chart :: (Ord x, Show x, RealFrac x, PlotValue x) => Int -> [x] -> Layout1 x Int
 chart _ xs | length xs < 2 = error "Can't histogram (nearly) empty list"
 chart nbins xs = layout
         where (min,max) = minMax xs
-              hist = plot_hist_values  ^= [xs]
+              hist = plot_hist_values  ^= xs
                      $ plot_hist_range ^= Just (min,max)
                      $ plot_hist_bins  ^= nbins
                      $ defaultPlotHist
-              layout = layout1_plots ^= [Left (histToBarsPlot hist)]
+              layout = layout1_plots ^= [Left $ histToPlot hist]
                      $ (layout1_bottom_axis .> laxis_generate) ^=
                            const (generateAxisData' nbins (min,max))
                      $ defaultLayout1

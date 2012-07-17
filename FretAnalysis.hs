@@ -335,11 +335,11 @@ functionPlot n (a,b) f =
 
 plotFretHist :: Int -> [FretEff] -> Plot FretEff Double
 plotFretHist nbins fretEffs =
-    histToFloatBarsPlot
-    $ plot_hist_values ^= [fretEffs]
+    histToPlot
+    $ plot_hist_values ^= fretEffs
     $ plot_hist_range  ^= Just (-0.1, 1.1)
     $ plot_hist_bins   ^= nbins
-    $ defaultPlotHist
+    $ defaultFloatPlotHist
 
 spansFill :: Int -> String -> [(RealTime, RealTime)] -> Plot RealTime Int    
 spansFill maxY title spans = toPlot fill
