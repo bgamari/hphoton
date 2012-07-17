@@ -21,15 +21,9 @@ import           Data.List (transpose)
 import           Data.IORef
 import           Control.Concurrent                 
 import           Control.Concurrent.ParallelIO
-import           Data.Accessor
-import           Data.Colour
-import           Data.Colour.Names
-import           Graphics.Rendering.Chart
-import           Graphics.Rendering.Chart.Plot.Histogram
 import           HPhoton.FpgaTimetagger
 import           HPhoton.Utils
 import           HPhoton.Types hiding (Freq)
-import           HPhoton.Bin.Plot                 
 import           System.Console.CmdArgs
 import           Text.Printf
 
@@ -39,7 +33,6 @@ data FitArgs = FitArgs { chain_length     :: Int
                        , number_chains    :: Int
                        , sample_every     :: Int
                        , burnin_length    :: Int
-                       , plot             :: Bool
                        , all_chains       :: Bool
                        , model            :: Maybe FilePath
                        , file             :: FilePath
@@ -49,11 +42,6 @@ data FitArgs = FitArgs { chain_length     :: Int
                        , short_cutoff     :: RealTime
                        , verbose          :: Bool
                        }
-             | PlotArgs { model           :: Maybe FilePath
-                        , file            :: FilePath
-                        , channel         :: Int
-                        , clockrate       :: Freq
-                        }
              deriving (Data, Typeable, Show)
        
 fitArgs = FitArgs
@@ -70,8 +58,6 @@ fitArgs = FitArgs
                       &= groupname "Model"
                       &= help "Model file"
 
-    , plot = False &= groupname "Output"
-                   &= help "Produce plots showing model components"
     , all_chains = False &= groupname "Output"
                          &= help "Show statistics from all chains"
     , output = "" &= groupname "Output"
@@ -163,25 +149,8 @@ argsChannel (FitArgs {channel=ch}) =
 initial :: [(Weight, Exponential)]
 initial = [ (0.7, Exp 50)
           --, (0.1, FixedExp 445e3 0.77)
-          , (0.2, StretchedExp 4000 1)
+          , (0.3, StretchedExp 4000 1)
           ]
-
-longTime = 5e-2
-
-histPlot :: (Double, Double) -> V.Vector Sample -> Plot Sample Double
-histPlot range xs = histToNormedLinesPlot
-              $ plot_hist_bins     ^= 4000
-              $ plot_hist_values   ^= [V.toList xs]
-              $ plot_hist_range    ^= Just range
-              $ plot_hist_no_zeros ^= True
-              $ defaultPlotHist
-
-functionPlot :: (RealFrac x, Enum x) => Int -> (x, x) -> (x -> y) -> Plot x y
-functionPlot n (a,b) f =
-  let xs = [a,a+(b-a)/realToFrac n..b]
-  in toPlot $ plot_lines_values ^= [map (\x->(x,f x)) xs]
-            $ plot_lines_style .> line_color ^= opaque red
-            $ defaultPlotLines
 
 showExponential :: Exponential -> String
 showExponential (FixedExp lambda beta) =
@@ -234,22 +203,6 @@ statusWorker chains = do
         then return ()
         else statusWorker chains
 
-plotFit :: V.Vector Sample -> (Double,Double) -> [Double->Double] -> Layout1 Double Double
-plotFit samples (a,b) fits =
-    layout1_plots ^= [ Left $ histPlot (a,b) samples ]
-                     ++ map (Left . functionPlot 1000 (a,b)) fits
-    $ (layout1_left_axis .> laxis_generate) ^= autoScaledLogAxis defaultLogAxis
-    $ defaultLayout1
-    
-plotParamSample :: V.Vector Sample -> ComponentParams -> IO ()
-plotParamSample samples paramSample = do
-  let dist x = sum $ map (\(w,p)->w * realToFrac (prob p x)) $ VB.toList paramSample
-  renderableToPDFFile (toRenderable $ plotFit samples (1e-7,longTime) [dist]) 640 480 "all.pdf"
-  forM_ (zip [1..] $ VB.toList paramSample) $ \(i,(w,p))->do
-      let c x = w * realToFrac (prob p x)
-          longTime = 10 * tauMean p
-      renderableToPDFFile (toRenderable $ plotFit samples (1e-7,longTime) [dist, c]) 640 480 (printf "component%03d.pdf" (i::Int))
-
 main = do
   fargs <- cmdArgs fitArgs
   recs <- readRecords $ file fargs
@@ -263,8 +216,6 @@ main = do
   params <- VB.fromList <$> case model fargs of
       Nothing -> return initial
       Just f  -> read <$> readFile f
-  let times = strobeTimes recs (argsChannel fargs)
-  --renderableToPDFFile (plotRecords times params) 1000 500 "hello.pdf"
 
   scoreVars <- forM [1..number_chains fargs] $ \i->do 
       var <- newIORef Waiting
@@ -286,7 +237,6 @@ main = do
   printf "Score: %1.2e\n" (logFromLogFloat mlScore :: Double)
   printf "Score/sample: %1.2e\n" (logFromLogFloat $ mlScore / realToFrac (V.length samples) :: Double)
 
-  when (plot fargs) $ plotParamSample samples paramSample
   when (length (output fargs) > 0)
       $ withFile (output fargs) WriteMode $ \f->do
           hPrint f $ VB.toList paramSample
@@ -332,33 +282,3 @@ takeEvery :: Int -> [a] -> [a]
 takeEvery n xs | length xs < n = []
                | otherwise     = head xs : takeEvery n (drop n xs)
           
-plotRecords :: V.Vector Time -> ComponentParams -> Renderable ()
-plotRecords times params = renderLayout1sStacked
-    [ withAnyOrdinate
-      $ layout1_plots ^= [Left bins]
-      $ defaultLayout1
-    , withAnyOrdinate
-      $ layout1_plots ^= [ Left $ photons (\odds->odds > 0 && odds < 2) green
-                         , Left $ photons (\odds->odds > 1 && odds < 2) blue
-                         , Left $ photons (\odds->odds > 2) red
-                         ]
-      $ defaultLayout1
-    ]
-    where clk = clockFromFreq (round 128e6)
-          bins = plotBins clk times 1e-2 "Donor" green
-          (bgWeight, bgParams) = params VB.! 0
-          (flWeight, flParams) = params VB.! 1
-          odds :: RealTime -> Prob
-          odds dt = (realToFrac flWeight * prob flParams dt)
-                  / (realToFrac bgWeight * prob bgParams dt)
-          photons cutoff color = toPlot
-                    $ plot_points_values ^= (V.toList
-                        -- $ V.filter (\(_,odds)->cutoff odds)
-                        $ V.map (\(t,odds)->(t, logFromLogFloat odds))
-                        $ V.map (\(t,dt)->( timeToRealTime clk t
-                                          , odds $ timeToRealTime clk dt))
-                        $ V.zip times (timesToInterarrivals times)
-                        )
-                    $ plot_points_style ^= plusses 1 0.1 (opaque color)
-                    $ defaultPlotPoints
-                    :: Plot RealTime Double
