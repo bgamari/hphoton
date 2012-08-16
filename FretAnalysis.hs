@@ -64,7 +64,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                     deriving (Show, Eq, Data, Typeable)
                              
 fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "General" &= help "Timetagger clockrate (Hz)"
-                            , n_bins = 20 &= groupname "General" &= help "Number of bins in efficiency histogram"
+                            , n_bins = 50 &= groupname "General" &= help "Number of bins in efficiency histogram"
                             , input = def &= args &= typFile
                             , burst_mode = enum [ BinThresh &= help "Use binning/thresholding for burst detection"
                                                 , Bayes &= help "Use Bayesian burst detection (acceptor channel)"
