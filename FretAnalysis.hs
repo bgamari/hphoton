@@ -258,7 +258,6 @@ analyzeData rootName clk p fret = do
   let range = (V.head $ fretA fret, V.last $ fretA fret)
   summarizeTimestamps clk p "A" $ fretA fret
   summarizeTimestamps clk p "D" $ fretD fret
-  print $ fretEfficiency' clk fret
 
   let duration = realDuration clk $ toList fret
   let buffer = realTimeToTime clk 1e-4
