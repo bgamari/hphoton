@@ -382,7 +382,7 @@ plotFretAnalysis rootName clk p times bursts = do
   renderableToPDFFile (renderLayout1sStacked [ withAnyOrdinate layout
                                              , withAnyOrdinate l2]
                       )
-                      5000 600 (rootName++"-bins.pdf")
+                      4000 600 (rootName++"-bins.pdf")
   return ()
 
 burstCounts :: [Fret (V.Vector Time)] -> [Fret Int]
