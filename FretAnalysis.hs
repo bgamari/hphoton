@@ -7,6 +7,7 @@ import           Data.Accessor
 import           Data.Foldable
 import           Data.List (genericLength, stripPrefix)
 import           Data.Maybe
+import           Data.Monoid
 import           Data.Traversable
 import qualified Data.Vector.Unboxed as V
 
@@ -237,6 +238,20 @@ correctCrosstalk :: Double -> Fret Double -> Fret Double
 correctCrosstalk alpha counts =
   let n = alpha * (fretA counts + fretD counts)
   in Fret {fretA=subtract n, fretD=(+n)} <*> counts 
+
+fac :: Int -> Int
+fac 0 = 1
+fac n = n*fac (n-1)
+
+poissonLikelihood :: Int -> Int -> Prob
+poissonLikelihood lambda k = realToFrac (lambda^k) * exp (realToFrac $ -k) / realToFrac (fac lambda)
+
+-- | Weight of a bin as the inverse likelihood under the expected
+-- background distribution
+-- FIXME
+--likelihoodWeight :: Fret Int -> Fret Int -> Double
+--likelihoodWeight bg counts =
+--    foldMap (\a b->Product $ a*b) $ poissonLikelihood <$> bg <*> counts
 
 analyzeData :: String -> Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO ()
 analyzeData rootName clk p fret = do 
