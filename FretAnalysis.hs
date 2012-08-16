@@ -261,7 +261,9 @@ analyzeData rootName clk p fret = do
   print $ fretEfficiency' clk fret
 
   let duration = realDuration clk $ toList fret
-  burstSpans <- fretBursts clk p fret
+  let buffer = realTimeToTime clk 1e-4
+  burstSpans <- map (\(a,b)->(a+buffer,b-buffer))
+                <$> fretBursts clk p fret
   let burstPhotons :: [Fret (V.Vector Time)]
       burstPhotons = filter (not . all V.null . toList)
                      $ flipFrets
