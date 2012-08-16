@@ -307,14 +307,15 @@ replicateM' n f a | n < 1 = error "Invalid count"
 replicateM' 1 f a = f a
 replicateM' n f a = f a >>= replicateM' (n-1) f
 
-priors :: [(Weight, BetaParam)]       
-priors = [ (0.5, paramFromMoments (0.1, 0.01))
-         , (0.5, paramFromMoments (0.9, 0.01))
-         ]
+priors :: Int -> [(Weight, BetaParam)]       
+priors ncomps = map component [1..ncomps]
+       where component i = ( 1/ realToFrac ncomps
+                           , paramFromMoments (realToFrac i/(realToFrac ncomps+2), 0.01)
+                           )
 
 runFit :: Int -> Int -> Samples -> RVar ComponentParams
 runFit ncomps niter samples = do
-    a0 <- updateAssignments' samples (V.fromList priors)
+    a0 <- updateAssignments' samples (V.fromList $ priors ncomps)
     a <- replicateM' 500 (updateAssignments samples ncomps) a0
     return $ estimateWeights a $ paramsFromAssignments samples ncomps a
 
