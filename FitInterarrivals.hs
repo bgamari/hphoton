@@ -107,7 +107,7 @@ fitArgs = FitArgs
                , "default model is given by,"
                , ""
                , "  [ (0.7, Exp 50)"
-               , "  , (0.2, StretchedExp 5000 1)"
+               , "  , (0.3, StretchedExp 5000 1)"
                , "  ]"
                , ""
                , ""
