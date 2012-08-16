@@ -26,7 +26,7 @@ import           HPhoton.Types
 import           HPhoton.Utils
 
 import           Control.Exception (catch, SomeException)                 
-import           Numeric.MixtureModel.Beta as Beta
+import           Numeric.MixtureModel.Beta as Beta hiding (Prob)
 import           System.Random.MWC       
 import           Data.Random       hiding (Gamma, gamma)
 
