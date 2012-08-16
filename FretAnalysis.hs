@@ -60,6 +60,8 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
 
                                  , crosstalk :: Double
                                  , gamma :: Gamma
+                  
+                                 , fit_ncomps :: Int
                                  }
                     deriving (Show, Eq, Data, Typeable)
                              
@@ -93,6 +95,9 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
                                             &= help "Measured efficiency for zero FRET (donor-only)"
                             , gamma = 1 &= groupname "Gamma correction"
                                         &= help "Gamma"
+             
+                            , fit_ncomps = 2 &= groupname "Histogram fit"
+                                             &= help "Number of components"
                             }
 
 fretChs = Fret { fretA = Ch1
@@ -277,7 +282,7 @@ analyzeData rootName clk p fret = do
       fitFailed :: SomeException -> IO (Maybe ComponentParams)
       fitFailed _ = putStrLn "Fit Failed" >> return Nothing
   plotFretAnalysis rootName clk p fret (zip burstSpans burstRates)
-  fitParams <- catch (Just `liftM` fitFretHist fretEffs) fitFailed
+  fitParams <- catch (Just `liftM` fitFretHist (fit_ncomps p) fretEffs) fitFailed
   let scale = realToFrac (length fretEffs) / realToFrac (n_bins p)
       layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs ]
                                 ++ maybe [] (map Left . plotFit scale) fitParams
@@ -287,10 +292,10 @@ analyzeData rootName clk p fret = do
 
   return ()
 
-fitFretHist :: [FretEff] -> IO ComponentParams
-fitFretHist fretEffs = do
+fitFretHist :: Int -> [FretEff] -> IO ComponentParams
+fitFretHist ncomps fretEffs = do
   mwc <- create
-  fitParams <- runRVar (runFit 250 $ V.fromList $ filter (\x->x>0 && x<1) fretEffs) mwc
+  fitParams <- runRVar (runFit ncomps 250 $ V.fromList $ filter (\x->x>0 && x<1) fretEffs) mwc
   putStrLn $ unlines 
            $ map (\(w,p)->let (mu,sigma) = paramToMoments p
                           in printf "weight=%1.2f, mu=%1.2f, sigma^2=%1.2f" w mu sigma
@@ -307,11 +312,11 @@ priors = [ (0.5, paramFromMoments (0.1, 0.01))
          , (0.5, paramFromMoments (0.9, 0.01))
          ]
 
-runFit :: Int -> Samples -> RVar ComponentParams
-runFit niter samples = do
+runFit :: Int -> Int -> Samples -> RVar ComponentParams
+runFit ncomps niter samples = do
     a0 <- updateAssignments' samples (V.fromList priors)
-    a <- replicateM' 500 (updateAssignments samples 2) a0
-    return $ estimateWeights a $ paramsFromAssignments samples 2 a
+    a <- replicateM' 500 (updateAssignments samples ncomps) a0
+    return $ estimateWeights a $ paramsFromAssignments samples ncomps a
 
 plotFit :: Double -> ComponentParams -> [Plot FretEff Double]
 plotFit scale fitParams =
