@@ -317,7 +317,7 @@ plotFit :: Double -> ComponentParams -> [Plot FretEff Double]
 plotFit scale fitParams =
     [ functionPlot 1000 (0.01,0.99) $ \x->scale * dist x
     , toPlot
-      $ plot_annotation_values ^= [(1,5,label)]
+      $ plot_annotation_values ^= [(0.9,10,label)]
       $ defaultPlotAnnotation
     ]
     where dist x = sum $ map (\(w,p)->w * realToFrac (betaProb p x)) $ V.toList fitParams
@@ -376,6 +376,7 @@ plotFretAnalysis rootName clk p times bursts = do
                             , Left $ toPlot c]
          $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (30,60)
          $ (layout1_left_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (0,1)
+         $ layout1_title ^= rootName
          $ defaultLayout1
 
   renderableToPDFFile (renderLayout1sStacked [ withAnyOrdinate layout
