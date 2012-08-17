@@ -1,5 +1,6 @@
 module HPhoton.Fret.Types ( FretChannel(..)
                           , Fret(..)
+                          , getFretChannel
                           -- * Useful type synonyms
                           , FretEff, ProxRatio
                           , Gamma
@@ -26,4 +27,8 @@ instance Foldable Fret where
 instance Applicative Fret where
   pure x = Fret x x
   (Fret a b) <*> (Fret x y) = Fret (a x) (b y)
+
+getFretChannel :: Fret a -> FretChannel -> a
+getFretChannel f Donor    = fretD f
+getFretChannel f Acceptor = fretA f
 
