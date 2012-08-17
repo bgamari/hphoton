@@ -40,14 +40,24 @@ import           Text.Printf
 -- | A rate measured in real time
 type Rate = Double
 
-data BurstMode = Bayes
-               | BayesCombined
-               | BinThresh deriving (Show, Eq, Data, Typeable)
+data BurstIdentChannel = SingleChannel FretChannel
+                       | CombinedChannels
+                       deriving (Show, Eq)
+
+data BurstMode = Bayes { bayesWindow       :: Int
+                       , bayesBetaThresh   :: Double
+                       , bayesProbB        :: Prob
+                       , bayesBurstRateFactor :: Double
+                       , bayesBgRateFactor :: Double
+                       , bayesChannel      :: BurstIdentChannel
+                       }
+               | BinThresh RealTime BinThreshold -- ^ BinThresh binWidth thresholdType
+               deriving (Show, Eq)
 
 data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , n_bins :: Int
                                  , input :: [FilePath]
-                                 , burst_mode :: BurstMode
+                                 , burst_mode :: String
 
                                  , bin_width :: RealTime
                                  , burst_thresh :: Double
@@ -65,14 +75,18 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , fit_ncomps :: Int
                                  }
                     deriving (Show, Eq, Data, Typeable)
-                             
+
 fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "General" &= help "Timetagger clockrate (Hz)"
                             , n_bins = 50 &= groupname "General" &= help "Number of bins in efficiency histogram"
                             , input = def &= args &= typFile
-                            , burst_mode = enum [ BinThresh &= help "Use binning/thresholding for burst detection"
-                                                , Bayes &= help "Use Bayesian burst detection (acceptor channel)"
-                                                , BayesCombined &= help "Use Bayesian burst detection (both channels)"
-                                                ]
+                            , burst_mode = enum
+                              [ "bin-thresh"
+                                &= help "Use binning/thresholding for burst detection"
+                              , "bayes"
+                                &= help "Use Bayesian burst detection (acceptor channel)"
+                              , "bayes-combined"
+                                &= help "Use Bayesian burst detection (both channels)"
+                              ]
                             
                             , bin_width = 10 &= groupname "Bin/threshold burst detection"
                                              &= help "Bin width in milliseconds"
@@ -118,24 +132,6 @@ burstSpans mp betaThresh times =
                    $ timesToInterarrivals times
   in V.toList $ compressSpans (3*mpTauBurst mp) burstTimes
 
-donorSpans :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> [Span]
-donorSpans clk p d =
-  let mp = modelParams clk p $ photonsRate clk (fretD d)
-  in burstSpans mp (beta_thresh p) (fretD d)
-
-acceptorSpans :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> [Span]
-acceptorSpans clk p d =
-  let mp = modelParams clk p $ photonsRate clk (fretA d)
-  in burstSpans mp (beta_thresh p) (fretA d)
-
-modelParams :: Clock -> FretAnalysis -> Rate -> ModelParams
-modelParams clk p avgRate =
-  ModelParams { mpWindow = window p
-              , mpProbB = prob_b p
-              , mpTauBurst = round $ 1 / (avgRate * burst_rate p) / jiffy clk
-              , mpTauBg = round $ 1 / (avgRate * bg_rate p) / jiffy clk
-              }
-
 fretEfficiency' :: Clock -> Fret (V.Vector Time) -> FretEff
 fretEfficiency' clk times =               
   let binWidth = realTimeToTime clk 5e-3
@@ -152,29 +148,24 @@ fretEfficiency' clk times =
 photonsRate :: Clock -> V.Vector Time -> Rate
 photonsRate clk times = realToFrac (V.length times) / realDuration clk [times]
 
-fretBursts :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO [Span]
-fretBursts clk p@(FretAnalysis {burst_mode=BayesCombined}) d = do
-  let combined = combineChannels $ toList d
-      mp = modelParams clk p $ photonsRate clk combined
-  putStrLn "Bayesian burst identification (combined) parameters:"
-  print mp
-  return $ burstSpans mp (beta_thresh p) combined
+fretBursts :: Clock -> BurstMode -> Fret (V.Vector Time) -> [Span]
+fretBursts clk b@(Bayes {}) d = 
+  let channel = case bayesChannel b of
+                     SingleChannel c  -> getFretChannel d c
+                     CombinedChannels -> combineChannels $ toList d
+      avgRate = photonsRate clk channel
+      mp = ModelParams { mpWindow = bayesWindow b
+                       , mpProbB = bayesProbB b
+                       , mpTauBurst = round $ 1 / (avgRate * bayesBurstRateFactor b) / jiffy clk
+                       , mpTauBg = round $ 1 / (avgRate * bayesBgRateFactor b) / jiffy clk
+                       }
+  in burstSpans mp (bayesBetaThresh b) channel
 
-fretBursts clk p@(FretAnalysis {burst_mode=Bayes}) d = do
-  let mp = modelParams clk p $ photonsRate clk (fretA d)
-  putStrLn "Bayesian burst identification (acceptor) parameters:"
-  print mp
-  return $ burstSpans mp (beta_thresh p) (fretA d)
-
-fretBursts clk p@(FretAnalysis {burst_mode=BinThresh}) d = do
+fretBursts clk (BinThresh binWidth thresh) d =
   let combined = combineChannels $ toList d
-      binWidthTicks = round $ 1e-3*bin_width p / jiffy clk
+      binWidthTicks = round $ 1e-3*binWidth / jiffy clk
       len = realToFrac $ V.length combined :: Double
-      dur = realDuration clk [combined]
-      thresh = MultMeanThresh $ burst_thresh p
-      spans = V.toList $ findBursts binWidthTicks thresh combined
-  printf "Bin/threshold burst identification: bin width=%f ms, threshold=%s\n" (bin_width p) (show thresh)
-  return spans
+  in V.toList $ findBursts binWidthTicks thresh combined
      
 main' = do
   p <- cmdArgs fretAnalysis
@@ -253,6 +244,22 @@ poissonLikelihood lambda k = realToFrac (lambda^k) * exp (realToFrac $ -k) / rea
 --likelihoodWeight bg counts =
 --    foldMap (\a b->Product $ a*b) $ poissonLikelihood <$> bg <*> counts
 
+fretAnalysisToBurstMode :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> BurstMode
+fretAnalysisToBurstMode clk p d =
+  let rateA = photonsRate clk (fretA d)
+      rateD = photonsRate clk (fretD d)
+      bayes ch = Bayes { bayesWindow          = window p
+                       , bayesBetaThresh      = beta_thresh p
+                       , bayesProbB           = prob_b p
+                       , bayesBurstRateFactor = burst_rate p
+                       , bayesBgRateFactor    = bg_rate p
+                       , bayesChannel         = ch
+                       }
+  in case burst_mode p of
+     "bin-thresh" -> BinThresh (bin_width p) (MultMeanThresh $ burst_thresh p)
+     "bayes" -> bayes (SingleChannel Donor)
+     "bayes-combined" -> bayes CombinedChannels
+
 analyzeData :: String -> Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO ()
 analyzeData rootName clk p fret = do 
   let range = (V.head $ fretA fret, V.last $ fretA fret)
@@ -260,23 +267,19 @@ analyzeData rootName clk p fret = do
   summarizeTimestamps clk p "D" $ fretD fret
 
   let duration = realDuration clk $ toList fret
-  let buffer = realTimeToTime clk 1e-4
-  burstSpans <- map (\(a,b)->(a+buffer,b-buffer))
-                <$> fretBursts clk p fret
-  let burstPhotons :: [Fret (V.Vector Time)]
+      burstMode = fretAnalysisToBurstMode clk p fret
+      buffer = realTimeToTime clk 1e-4
+      burstSpans = map (\(a,b)->(a+buffer,b-buffer))
+                   $ fretBursts clk burstMode fret
       burstPhotons = filter (not . all V.null . toList)
                      $ flipFrets
-                     $ fmap (spansPhotons burstSpans) fret
+                     $ fmap (spansPhotons burstSpans)
+                     $ fret
 
-      bg_rate :: Fret Rate
-      bg_rate = fmap (backgroundRate clk burstSpans) fret
+  let bg_rate = fmap (backgroundRate clk burstSpans) fret :: Fret Rate
   printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
   let (mu,sigma) = meanVariance $ V.fromList $ map (realSpanDuration clk) burstSpans
   printf "Burst lengths: mu=%1.2e seconds, sigma=%1.2e seconds\n" mu sigma
-
-  let dSpans = donorSpans clk p fret
-      aSpans = acceptorSpans clk p fret
-      dOnlySpans = burstSpans `subtractSpans` aSpans
   printf "Crosstalk: %1.2f\n" (crosstalk p)
 
   let burstDur :: [RealTime]
