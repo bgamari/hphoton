@@ -295,10 +295,18 @@ analyzeData rootName clk p fret = do
     $ unlines $ map (show . fretEfficiency (gamma p)) burstRates
   
   let fretEffs = map (fretEfficiency (gamma p)) burstRates
-      fitFailed :: SomeException -> IO (Maybe ComponentParams)
-      fitFailed _ = putStrLn "Fit Failed" >> return Nothing
   plotFretAnalysis rootName clk p fret (zip burstSpans burstRates)
+
+  let fitFailed :: SomeException -> IO (Maybe ComponentParams)
+      fitFailed _ = putStrLn "Fit Failed" >> return Nothing
   fitParams <- catch (Just `liftM` fitFretHist (fit_ncomps p) fretEffs) fitFailed
+  let formatFit params = let formatComp (w,p) = let (mu,sigma) = paramToMoments p
+                                                in printf "%1.3e\t%1.3e\t%1.3e" w mu sigma
+                             header = "# weight\tmu\tsigma"
+                         in unlines $ header:(map formatComp $ V.toList params)
+  writeFile (rootName++"-fit.txt") $ maybe "" formatFit fitParams
+
+
   let scale = realToFrac (length fretEffs) / realToFrac (n_bins p)
       layout = layout1_plots ^= [ Left $ plotFretHist (n_bins p) fretEffs ]
                                 ++ maybe [] (map Left . plotFit scale) fitParams
