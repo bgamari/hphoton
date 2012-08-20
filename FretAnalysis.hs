@@ -79,14 +79,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
 fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "General" &= help "Timetagger clockrate (Hz)"
                             , n_bins = 50 &= groupname "General" &= help "Number of bins in efficiency histogram"
                             , input = def &= args &= typFile
-                            , burst_mode = enum
-                              [ "bin-thresh"
-                                &= help "Use binning/thresholding for burst detection"
-                              , "bayes"
-                                &= help "Use Bayesian burst detection (acceptor channel)"
-                              , "bayes-combined"
-                                &= help "Use Bayesian burst detection (both channels)"
-                              ]
+                            , burst_mode = "bin-thresh" &= help "Method of burst identification to be used"
                             
                             , bin_width = 10 &= groupname "Bin/threshold burst detection"
                                              &= help "Bin width in milliseconds"
@@ -256,9 +249,10 @@ fretAnalysisToBurstMode clk p d =
                        , bayesChannel         = ch
                        }
   in case burst_mode p of
-     "bin-thresh" -> BinThresh (bin_width p) (MultMeanThresh $ burst_thresh p)
-     "bayes" -> bayes (SingleChannel Donor)
+     "bin-thresh"     -> BinThresh (bin_width p) (MultMeanThresh $ burst_thresh p)
+     "bayes"          -> bayes (SingleChannel Donor)
      "bayes-combined" -> bayes CombinedChannels
+     otherwise        -> error "Unknown burst mode"
 
 analyzeData :: String -> Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO ()
 analyzeData rootName clk p fret = do 
