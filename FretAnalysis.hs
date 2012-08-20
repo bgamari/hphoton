@@ -333,7 +333,7 @@ replicateM' n f a = f a >>= replicateM' (n-1) f
 
 priors :: Int -> [(Weight, BetaParam)]       
 priors ncomps = map component [1..ncomps]
-       where component i = ( 1/ realToFrac ncomps
+       where component i = ( 1 / realToFrac ncomps
                            , paramFromMoments (realToFrac i/(realToFrac ncomps+2), 0.01)
                            )
 
