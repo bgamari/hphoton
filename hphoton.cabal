@@ -185,3 +185,12 @@ Executable learn-intensity
                      chart-histogram,
                      logfloat,
                      mixture-model
+
+Executable analyze-many
+  Main-is:           AnalyzeMany.hs
+  Ghc-options:       -rtsopts -threaded
+  Build-depends:     base,
+                     directory,
+                     filepath,
+                     aeson,
+                     process
