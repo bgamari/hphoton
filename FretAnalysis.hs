@@ -40,6 +40,9 @@ import           Text.Printf
 -- | A rate measured in real time
 type Rate = Double
 
+-- | The Crosstalk parameter, alpha
+type CrosstalkParam = Double
+
 data BurstIdentChannel = SingleChannel FretChannel
                        | CombinedChannels
                        deriving (Show, Eq)
@@ -69,7 +72,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , prob_b :: Double
                                  , window :: Int
 
-                                 , crosstalk :: Double
+                                 , crosstalk :: FretEff
                                  , gamma :: Gamma
                   
                                  , fit_ncomps :: Int
@@ -209,7 +212,7 @@ correctFretBackground :: Fret Rate -> RealTime -> Fret Double -> Fret Double
 correctFretBackground rate dur counts = correctBackground <$> rate <*> pure dur <*> counts
 
 -- | Compute the crosstalk parameter alpha from donor-only spans
-crosstalkParam :: Clock -> Fret (V.Vector Time) -> [Span] -> Double
+crosstalkParam :: Clock -> Fret (V.Vector Time) -> [Span] -> CrosstalkParam
 crosstalkParam clk v dOnlySpans =
   mean $ V.fromList
   $ map (proximityRatio . fmap realToFrac)
@@ -218,7 +221,7 @@ crosstalkParam clk v dOnlySpans =
   $ flipFrets
   $ fmap (spansPhotons dOnlySpans) v
   
-correctCrosstalk :: Double -> Fret Double -> Fret Double
+correctCrosstalk :: CrosstalkParam -> Fret Double -> Fret Double
 correctCrosstalk alpha counts =
   let n = alpha * (fretA counts + fretD counts)
   in Fret {fretA=subtract n, fretD=(+n)} <*> counts 
