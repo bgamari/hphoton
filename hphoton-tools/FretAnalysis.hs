@@ -1,21 +1,17 @@
-{-# LANGUAGE DeriveDataTypeable, PatternGuards #-}
-    
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE PatternGuards      #-}
+
 import           Control.Applicative
-import           Control.Monad (guard, liftM, when)
-import           Control.Arrow (first, second)
+import           Control.Arrow                             (first, second)
+import           Control.Monad                             (guard, liftM, when)
 import           Data.Accessor
 import           Data.Foldable
-import           Data.List (genericLength, stripPrefix)
+import           Data.List                                 (genericLength,
+                                                            stripPrefix)
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Traversable
-import qualified Data.Vector.Unboxed as V
-
-import           Graphics.Rendering.Chart
-import           Graphics.Rendering.Chart.Plot.Histogram
-import           Graphics.Rendering.Chart.Simple.Histogram
-import           Data.Colour
-import           Data.Colour.Names                 
+import qualified Data.Vector.Unboxed                       as V
 
 import           HPhoton.Bin
 import           HPhoton.Bin.Plot
@@ -26,16 +22,25 @@ import           HPhoton.Fret
 import           HPhoton.Types
 import           HPhoton.Utils
 
-import           Control.Exception (catch, SomeException)                 
-import           Numeric.MixtureModel.Beta as Beta hiding (Prob)
-import           System.Random.MWC       
-import           Data.Random       hiding (Gamma, gamma)
+import           Control.Exception                         (SomeException,
+                                                            catch)
+import           Data.Random                               hiding (Gamma, gamma)
+import           Numeric.MixtureModel.Beta                 as Beta hiding (Prob)
+import           System.Random.MWC
 
-import           Prelude hiding (foldl1, concat, all, sum, catch, mapM_)
+import           Prelude                                   hiding (all, catch,
+                                                            concat, foldl1,
+                                                            mapM_, sum)
 import           Statistics.Sample
 import           System.Console.CmdArgs
 import           System.Environment
 import           Text.Printf
+
+import           Data.Colour
+import           Data.Colour.Names
+import           Graphics.Rendering.Chart
+import           Graphics.Rendering.Chart.Plot.Histogram
+import           Graphics.Rendering.Chart.Simple.Histogram
 
 -- | A rate measured in real time
 type Rate = Double
@@ -64,7 +69,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
 
                                  , bin_width :: RealTime
                                  , burst_thresh :: Double
-                                 
+
                                  , beta_thresh :: Double
                                  , bg_rate :: Double
                                  , burst_size :: Int
@@ -74,7 +79,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
 
                                  , crosstalk :: FretEff
                                  , gamma :: Gamma
-                  
+
                                  , fit_ncomps :: Int
                                  }
                     deriving (Show, Eq, Data, Typeable)
@@ -83,12 +88,12 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
                             , n_bins = 50 &= groupname "General" &= help "Number of bins in efficiency histogram"
                             , input = def &= args &= typFile
                             , burst_mode = "bin-thresh" &= help "Method of burst identification to be used"
-                            
+
                             , bin_width = 10 &= groupname "Bin/threshold burst detection"
                                              &= help "Bin width in milliseconds"
                             , burst_thresh = 2 &= groupname "Bin/threshold burst detection"
                                                &= help "Threshold rate over background rate (multiples of sigma)"
-                            
+
                             , burst_size = 10 &= groupname "Bayesian burst detection"
                                               &= help "Minimum burst size"
                             , burst_rate = 3 &= groupname "Bayesian burst detection"
@@ -106,7 +111,7 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
                                             &= help "Measured efficiency for zero FRET (donor-only)"
                             , gamma = 1 &= groupname "Gamma correction"
                                         &= help "Gamma"
-             
+
                             , fit_ncomps = 2 &= groupname "Histogram fit"
                                              &= help "Number of components"
                             }
@@ -114,13 +119,13 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
 fretChs = Fret { fretA = Ch1
                , fretD = Ch0
                }
-     
+
 summarizeTimestamps :: Clock -> FretAnalysis -> String -> V.Vector Time -> IO ()
 summarizeTimestamps clk p label photons =
   let len = realToFrac $ V.length photons :: Double
       dur = realDuration clk [photons]
   in printf "%-8s: %1.1e photons, %1.2e sec, %1.2e Hz\n" label len dur (len/dur)
-     
+
 burstSpans :: ModelParams -> Double -> V.Vector Time -> [Span]
 burstSpans mp betaThresh times =
   let burstTimes = V.backpermute times
@@ -129,7 +134,7 @@ burstSpans mp betaThresh times =
   in V.toList $ compressSpans (3*mpTauBurst mp) burstTimes
 
 fretEfficiency' :: Clock -> Fret (V.Vector Time) -> FretEff
-fretEfficiency' clk times =               
+fretEfficiency' clk times =
   let binWidth = realTimeToTime clk 5e-3
       bins = fmap (bin binWidth) times :: Fret (V.Vector Int)
       prior = 5
@@ -140,12 +145,12 @@ fretEfficiency' clk times =
       donorOnlyBins = fmap (V.backpermute $ V.findIndices (<0.4) a) bins
       fretBins = fmap (V.backpermute $ V.findIndices (>0.6) a) bins
   in 1 - mean (V.map realToFrac $ fretD donorOnlyBins) / mean (V.map realToFrac $ fretD fretBins)
-  
+
 photonsRate :: Clock -> V.Vector Time -> Rate
 photonsRate clk times = realToFrac (V.length times) / realDuration clk [times]
 
 fretBursts :: Clock -> BurstMode -> Fret (V.Vector Time) -> [Span]
-fretBursts clk b@(Bayes {}) d = 
+fretBursts clk b@(Bayes {}) d =
   let channel = case bayesChannel b of
                      SingleChannel c  -> getFretChannel d c
                      CombinedChannels -> combineChannels $ toList d
@@ -162,39 +167,39 @@ fretBursts clk (BinThresh binWidth thresh) d =
       binWidthTicks = round $ 1e-3*binWidth / jiffy clk
       len = realToFrac $ V.length combined :: Double
   in V.toList $ findBursts binWidthTicks thresh combined
-     
+
 main' = do
   p <- cmdArgs fretAnalysis
   when (null $ input p) $ error "Need at least one input file"
   mapM_ (fileMain p) $ input p
-               
-stripSuffix :: String -> String -> String             
+
+stripSuffix :: String -> String -> String
 stripSuffix suffix = reverse . maybe (error "Invalid filename") id . stripPrefix (reverse suffix) . reverse
 
 fileMain :: FretAnalysis -> FilePath -> IO ()
-fileMain p input = do         
+fileMain p input = do
   printf "\nProcessing %s...\n" input
   recs <- readRecords input
   let fret = fmap (strobeTimes recs) fretChs
       rootName = stripSuffix ".timetag" input
 
   analyzeData rootName (clockFromFreq $ clockrate p) p fret
-  
+
 -- | Return the rates of each of a list of spans
 spansRates :: Clock -> [Span] -> V.Vector Time -> [Double]
-spansRates clk spans times = 
+spansRates clk spans times =
   map (\b->(realToFrac (V.length b) + 0.5) / realDuration clk [b])
   $ filter (\b->V.length b > 20) -- Ensure we have enough statistics to make for good estimate
   $ spansPhotons spans times
 
 -- | Return the average rate of a set of spans
 spansRate :: Clock -> [Span] -> V.Vector Time -> Double
-spansRate clk spans times = 
+spansRate clk spans times =
   let (n,t) = foldl' (\(n,t) a -> (n + realToFrac (V.length a) + 0.5, t + realDuration clk [a])) (0,0)
               $ filter (\b->V.length b > 2)
               $ spansPhotons spans times
   in n / t
-            
+
 -- | Background rate in Hz
 backgroundRate :: Clock -> [Span] -> V.Vector Time  -> Double
 backgroundRate clk bursts times =
@@ -204,7 +209,7 @@ backgroundRate clk bursts times =
   --in mean $ V.fromList span_rates -- FIXME?
   --in realToFrac (V.length times) / realDuration clk [times]
   in spansRate clk (invertSpans range bursts) times
-  
+
 correctBackground :: Rate -> RealTime -> Double -> Double
 correctBackground rate dur n = n - dur*rate
 
@@ -220,11 +225,11 @@ crosstalkParam clk v dOnlySpans =
   $ burstCounts
   $ flipFrets
   $ fmap (spansPhotons dOnlySpans) v
-  
+
 correctCrosstalk :: CrosstalkParam -> Fret Double -> Fret Double
 correctCrosstalk alpha counts =
   let n = alpha * (fretA counts + fretD counts)
-  in Fret {fretA=subtract n, fretD=(+n)} <*> counts 
+  in Fret {fretA=subtract n, fretD=(+n)} <*> counts
 
 fac :: Int -> Int
 fac 0 = 1
@@ -258,7 +263,7 @@ fretAnalysisToBurstMode clk p d =
      otherwise        -> error "Unknown burst mode"
 
 analyzeData :: String -> Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO ()
-analyzeData rootName clk p fret = do 
+analyzeData rootName clk p fret = do
   let range = (V.head $ fretA fret, V.last $ fretA fret)
   summarizeTimestamps clk p "A" $ fretA fret
   summarizeTimestamps clk p "D" $ fretD fret
@@ -293,7 +298,7 @@ analyzeData rootName clk p fret = do
     (genericLength burstRates / duration)
   writeFile (rootName++"-fret_eff.txt")
     $ unlines $ map (show . fretEfficiency (gamma p)) burstRates
-  
+
   let fretEffs = map (fretEfficiency (gamma p)) burstRates
   plotFretAnalysis rootName clk p fret (zip burstSpans burstRates)
 
@@ -323,18 +328,18 @@ fitFretHist ncomps fretEffs = do
                         $ V.fromList
                         $ filter (\x->x>0 && x<1) fretEffs
                        ) mwc
-  putStrLn $ unlines 
+  putStrLn $ unlines
            $ map (\(w,p)->let (mu,sigma) = paramToMoments p
                           in printf "weight=%1.2f, mu=%1.2f, sigma^2=%1.2f" w mu sigma
                  ) $ V.toList fitParams
   return fitParams
-  
+
 replicateM' :: Monad m => Int -> (a -> m a) -> a -> m a
 replicateM' n f a | n < 1 = error "Invalid count"
 replicateM' 1 f a = f a
 replicateM' n f a = f a >>= replicateM' (n-1) f
 
-priors :: Int -> [(Weight, BetaParam)]       
+priors :: Int -> [(Weight, BetaParam)]
 priors ncomps = map component [1..ncomps]
        where component i = ( 1 / realToFrac ncomps
                            , paramFromMoments (realToFrac i/(realToFrac ncomps+2), 0.01)
@@ -354,7 +359,7 @@ plotFit scale fitParams =
       $ defaultPlotAnnotation
     ]
     where dist x = sum $ map (\(w,p)->w * realToFrac (betaProb p x)) $ V.toList fitParams
-          label = unlines 
+          label = unlines
                   $ map (\(w,p)->let (mu,sigma) = paramToMoments p
                                  in printf "weight=%1.2f, mu=%1.2f, sigma^2=%1.2f" w mu sigma
                         ) $ V.toList fitParams
@@ -374,7 +379,7 @@ plotFretHist nbins fretEffs =
     $ plot_hist_bins   ^= nbins
     $ defaultFloatPlotHist
 
-spansFill :: Int -> String -> [(RealTime, RealTime)] -> Plot RealTime Int    
+spansFill :: Int -> String -> [(RealTime, RealTime)] -> Plot RealTime Int
 spansFill maxY title spans = toPlot fill
         where coords = concat $ map f spans
                       where f (a,b) = [ (a, (0,0)), (a, (0,maxY))
@@ -440,5 +445,5 @@ testMain = do
                        , burst_size = 0
                        }
   analyzeData "test" testClock p testData'
-  
+
 main = main'
