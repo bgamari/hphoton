@@ -14,6 +14,8 @@ module HPhoton.FpgaTimetagger ( Channel(..)
                                 
                                 -- * Utilities
                               , buildRecord
+       
+                              , module HPhoton.FpgaTimetagger.Metadata
                               ) where
 
 import Data.Maybe (catMaybes)
@@ -33,6 +35,8 @@ import qualified Data.ByteString as BS
 
 import Control.Monad (liftM, when)
 import Control.Monad.Trans.State
+
+import HPhoton.FpgaTimetagger.Metadata
 
 data Channel = Ch0 | Ch1 | Ch2 | Ch3 deriving (Show, Eq, Enum, Bounded)
 

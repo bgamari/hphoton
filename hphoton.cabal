@@ -17,6 +17,7 @@ Library
                      HPhoton.Fret.Alex,
                      HPhoton.FpgaTimetagger,
                      HPhoton.FpgaTimetagger.Alex,
+                     HPhoton.FpgaTimetagger.Metadata,
                      HPhoton.BurstIdent.Bayes,
                      HPhoton.BurstIdent.BinThreshold
                      HPhoton.Types,
@@ -24,8 +25,12 @@ Library
                      Graphics.Rendering.Chart.Simple.Histogram
   Build-depends:     base,
                      directory,
+                     containers,
+                     time,
+                     old-locale,
                      filepath,
                      ghc-prim,
+                     text,
                      vector-algorithms,
                      random-fu,
                      vector,
