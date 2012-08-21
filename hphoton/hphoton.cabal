@@ -1,0 +1,75 @@
+Name:                hphoton
+Version:             0.1
+Synopsis:            Utilities for working with single-molecule photon trajectories
+-- Description:         
+License:             BSD3
+License-file:        LICENSE
+Author:              Ben Gamari
+Maintainer:          bgamari@physics.umass.edu
+Category:            Math
+Build-type:          Simple
+Cabal-version:       >=1.2
+
+Library
+  Exposed-Modules:   HPhoton.Bin,
+                     HPhoton.Bin.Plot,
+                     HPhoton.Fret,
+                     HPhoton.Fret.Types,
+                     HPhoton.Fret.Alex,
+                     HPhoton.BurstIdent.Bayes,
+                     HPhoton.BurstIdent.BinThreshold
+                     HPhoton.Types,
+                     HPhoton.RawTimestamps,
+                     HPhoton.Utils,
+                     Graphics.Rendering.Chart.Simple.Histogram
+
+  Build-depends:     base,
+                     directory,
+                     filepath,
+                     ghc-prim,
+                     text,
+                     vector-algorithms,
+                     random-fu,
+                     vector,
+                     storable-endian,
+                     mwc-random,
+                     cmdargs,
+                     bytestring,
+                     transformers,
+                     cereal,
+                     vector-mmap,
+                     statistics,
+                     data-accessor,
+                     Chart,
+                     chart-histogram,
+                     colour,
+                     fclabels
+
+Executable Test
+  Hs-source-dirs:    .,tests
+  Main-is:           Test.hs
+  Build-depends:     base,
+                     directory,
+                     filepath,
+                     ghc-prim,
+                     vector-algorithms,
+                     random-fu,
+                     vector,
+                     storable-endian,
+                     mwc-random,
+                     cmdargs,
+                     bytestring,
+                     transformers,
+                     cereal,
+                     vector-mmap,
+                     statistics,
+                     data-accessor,
+                     Chart,
+                     chart-histogram,
+                     fclabels,
+                     QuickCheck,
+                     test-framework,
+                     test-framework-quickcheck2,
+                     test-framework-hunit,
+                     HUnit
+		     

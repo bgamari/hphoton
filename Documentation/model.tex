@@ -1,0 +1,18 @@
+\documentclass{article}
+
+\begin{document}
+
+Given a time series of photon arrivals, $\{ t_i \}$, we want to
+estimate a state $s_i$ for each photon, reflecting the origin of the
+photon (e.g. background $A$ or burst $B$). We note that bursts can be
+said to have a characteristic distribution of lengths, described by an
+auto-correlation $G(\tau) = ...$
+
+We assume that the state $\{s_i\}$ constitutes a Markov chain with
+finite memory. Moreover, we assume that photons originate from one of
+two homogenous Poisson processes, $A$ or $B$. 
+
+To capture the correlation between temporally local states, we introduce a factor $\phi_{s_i}$,
+\[ \phi_{s_i}(s_i=B \vert s_0 ... s_i, t_0 ... t_i) = \prod_j G(t_i - t_j) P(s_j=B) \]
+
+\end{document}

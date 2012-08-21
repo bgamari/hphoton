@@ -1,0 +1,32 @@
+Name:                hphoton-fpga-timetagger
+Version:             0.1
+Synopsis:            Interface to Goldnerlab FPGA timetagger
+-- Description:         
+License:             BSD3
+License-file:        LICENSE
+Author:              Ben Gamari
+Maintainer:          bgamari@physics.umass.edu
+Category:            Math
+Build-type:          Simple
+Cabal-version:       >=1.2
+
+Library
+  Exposed-Modules:   HPhoton.FpgaTimetagger,
+                     HPhoton.FpgaTimetagger.Alex,
+                     HPhoton.FpgaTimetagger.Metadata
+
+  Build-depends:     base,
+                     ghc-prim,
+                     directory,
+                     text,
+                     containers,
+                     transformers,
+                     vector,
+                     filepath,
+                     storable-endian,
+                     time,
+                     old-locale,
+                     bytestring,
+                     aeson,
+                     hphoton,
+                     cereal

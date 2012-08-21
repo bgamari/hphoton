@@ -1,4 +1,4 @@
-Name:                hphoton
+Name:                hphoton-tools
 Version:             0.1
 Synopsis:            Utilities for working with single-molecule photon trajectories
 -- Description:         
@@ -10,76 +10,10 @@ Category:            Math
 Build-type:          Simple
 Cabal-version:       >=1.2
 
-Library
-  Exposed-Modules:   HPhoton.Bin,
-                     HPhoton.Fret,
-                     HPhoton.Fret.Types,
-                     HPhoton.Fret.Alex,
-                     HPhoton.FpgaTimetagger,
-                     HPhoton.FpgaTimetagger.Alex,
-                     HPhoton.FpgaTimetagger.Metadata,
-                     HPhoton.BurstIdent.Bayes,
-                     HPhoton.BurstIdent.BinThreshold
-                     HPhoton.Types,
-                     HPhoton.RawTimestamps,
-                     Graphics.Rendering.Chart.Simple.Histogram
-  Build-depends:     base,
-                     directory,
-                     containers,
-                     time,
-                     old-locale,
-                     filepath,
-                     ghc-prim,
-                     text,
-                     vector-algorithms,
-                     random-fu,
-                     vector,
-                     storable-endian,
-                     mwc-random,
-                     cmdargs,
-                     bytestring,
-                     transformers,
-                     cereal,
-                     vector-mmap,
-                     statistics,
-                     data-accessor,
-                     Chart,
-                     chart-histogram,
-                     colour,
-                     fclabels
-
-Executable Test
-  Hs-source-dirs:    .,tests
-  Main-is:           Test.hs
-  Build-depends:     base,
-                     directory,
-                     filepath,
-                     ghc-prim,
-                     vector-algorithms,
-                     random-fu,
-                     vector,
-                     storable-endian,
-                     mwc-random,
-                     cmdargs,
-                     bytestring,
-                     transformers,
-                     cereal,
-                     vector-mmap,
-                     statistics,
-                     data-accessor,
-                     Chart,
-                     chart-histogram,
-                     fclabels,
-                     QuickCheck,
-                     test-framework,
-                     test-framework-quickcheck2,
-                     test-framework-hunit,
-                     HUnit
-		     
-  
 Executable bayes-burst-find
   Main-is:           BayesBurstFind.hs
   Build-depends:     base,
+                     hphoton,
                      directory,
                      filepath,
                      ghc-prim,
@@ -96,7 +30,9 @@ Executable bayes-burst-find
                      statistics,
                      data-accessor,
                      Chart,
-                     chart-histogram
+                     chart-histogram,
+                     hphoton,
+                     hphoton-fpga-timetagger
 
 Executable fret-analysis
   Main-is:           FretAnalysis.hs
@@ -119,7 +55,9 @@ Executable fret-analysis
                      data-accessor,
                      Chart,
                      chart-histogram,
-                     mixture-model
+                     mixture-model,
+                     hphoton,
+                     hphoton-fpga-timetagger
 
 Executable fit-interarrivals
   Main-is:           FitInterarrivals.hs
@@ -141,13 +79,16 @@ Executable fit-interarrivals
                      statistics,
                      logfloat,
                      mixture-model,
-                     parallel-io
+                     parallel-io,
+                     hphoton,
+                     hphoton-fpga-timetagger
 
 Executable plot-interarrivals
   Main-is:           PlotInterarrivals.hs
   Ghc-options:       -rtsopts -threaded
   Build-depends:     base,
                      directory,
+                     hphoton,
                      filepath,
                      ghc-prim,
                      vector-algorithms,
@@ -164,14 +105,18 @@ Executable plot-interarrivals
                      data-accessor,
                      Chart,
                      chart-histogram,
+                     colour,
                      logfloat,
-                     mixture-model
+                     mixture-model,
+                     hphoton,
+                     hphoton-fpga-timetagger
 
 Executable learn-intensity
   Main-is:           LearnIntensity.hs
   Ghc-options:       -rtsopts -threaded
   Build-depends:     base,
                      directory,
+                     hphoton,
                      filepath,
                      ghc-prim,
                      vector-algorithms,
@@ -189,13 +134,16 @@ Executable learn-intensity
                      Chart,
                      chart-histogram,
                      logfloat,
-                     mixture-model
+                     mixture-model,
+                     hphoton,
+                     hphoton-fpga-timetagger
 
 Executable analyze-many
   Main-is:           AnalyzeMany.hs
   Ghc-options:       -rtsopts -threaded
   Build-depends:     base,
                      directory,
+                     hphoton,
                      filepath,
                      aeson,
                      process

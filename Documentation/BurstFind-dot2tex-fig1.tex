@@ -1,0 +1,22 @@
+
+\begin{tikzpicture}[>=latex,line join=bevel,]
+%%
+\node (p1) at (225bp,92bp) [draw,ellipse] {$\tau_{i+1}$};
+  \node (pEll) at (267bp,92bp) [draw,draw=none] {$...$};
+  \node (mN) at (19bp,92bp) [draw,ellipse] {$\tau_{i-N}$};
+  \node (0) at (180bp,92bp) [draw,ellipse] {$\tau_i$};
+  \node (b) at (200bp,11bp) [draw,ellipse] {$B_i$};
+  \node (m1) at (131bp,92bp) [draw,ellipse] {$\tau_{i-1}$};
+  \node (mEll) at (89bp,92bp) [draw,draw=none] {$...$};
+  \node (pN) at (311bp,92bp) [draw,ellipse] {$\tau_{i+N}$};
+  \draw [] (p1) ..controls (217.33bp,67.136bp) and (208.18bp,37.489bp)  .. (b);
+  \draw [] (m1) ..controls (122.96bp,71.488bp) and (118.36bp,52.736bp)  .. (127bp,40bp) .. controls (140.71bp,19.803bp) and (170.94bp,13.672bp)  .. (b);
+  \definecolor{strokecol}{rgb}{0.0,0.0,0.0};
+  \pgfsetstrokecolor{strokecol}
+  \draw (155bp,52bp) node {$\phi(\tau_{i-1, B_i})$};
+  \draw [] (mN) ..controls (21.117bp,70.453bp) and (25.343bp,50.635bp)  .. (38bp,40bp) .. controls (60.859bp,20.792bp) and (154.37bp,13.618bp)  .. (b);
+  \draw (67bp,52bp) node {$\phi(\tau_{i-N, B_i})$};
+  \draw [] (pN) ..controls (289.93bp,72.638bp) and (268.72bp,53.964bp)  .. (249bp,40bp) .. controls (236.25bp,30.974bp) and (220.58bp,22.043bp)  .. (b);
+  \draw [] (0) ..controls (185.92bp,68.029bp) and (193.35bp,37.952bp)  .. (b);
+%
+\end{tikzpicture}
