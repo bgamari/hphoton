@@ -190,7 +190,7 @@ statusWorker chains = do
         case status of
             Running nIter score -> do
                 hPutStr stderr $ printf "%3d: %3d iterations remaining" i nIter
-                hPutStr stderr $ printf "  score=%8f" (logFromLogFloat score :: Double)
+                --hPutStr stderr $ printf "  score=%8f" (logFromLogFloat score :: Double)
                 hPutStr stderr "\n"
             otherwise -> return ()
     hPutStr stderr
