@@ -1,4 +1,5 @@
 ./hphoton
 ./hphoton-fpga-timetagger
 ./hphoton-tools
-
+./mixture-model
+./chart-histogram

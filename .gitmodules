@@ -1,0 +1,6 @@
+[submodule "chart-histogram"]
+	path = chart-histogram
+	url = git@github.com:bgamari/chart-histogram.git
+[submodule "mixture-model"]
+	path = mixture-model
+	url = git@github.com:bgamari/mixture-model.git
