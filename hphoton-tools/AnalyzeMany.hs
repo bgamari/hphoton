@@ -1,19 +1,16 @@
-import System.Cmd               
-import System.Environment (getArgs)
-import Control.Applicative               ((<$>))
-import Data.Maybe (mapMaybe, listToMaybe, fromJust)
-import Data.Char
-import Data.Aeson
-import Control.Monad (filterM, (=<<))
-import System.Directory (doesFileExist)       
-import System.FilePath ((</>))
-import           Data.List (stripPrefix, (!!), sortBy)
-import           Data.Function (on)
-import Debug.Trace (traceShow)
-import Text.Printf
+import           Control.Applicative ((<$>))
+import           Control.Monad       (filterM, (=<<))
+import           Data.Aeson
+import           Data.Char
+import           Data.Function       (on)
+import           Data.List           (sortBy, stripPrefix, (!!))
+import           Data.Maybe          (fromJust, listToMaybe, mapMaybe)
+import           System.Cmd
+import           System.Directory    (doesFileExist)
+import           System.Environment  (getArgs)
+import           System.FilePath     ((</>))
+import           Text.Printf
 
-tr x = traceShow x x                 
-                 
 type FretEff = Double
 type Tag = String
 
@@ -36,18 +33,18 @@ getDataSets dir = do
                                 s  -> Just $ DataSet { dsFileName = dir </> head s
                                                      , dsTags     = tail s
                                                      }
-                               
+
 processDirectory :: FilePath -> IO ()
 processDirectory dir = do
     dss <- filter (not . (`hasTag` "ignore")) <$> getDataSets dir
     mapM_ (processDataSet dss) $ filter (`hasTag` "da") dss
     return ()
-    
-stripSuffix :: String -> String -> String             
+
+stripSuffix :: String -> String -> String
 stripSuffix suffix = reverse . maybe (error "Invalid filename") id . stripPrefix (reverse suffix) . reverse
 
 runFretAnalysis = rawSystem "/home/ben/lori/analysis/hphoton/cabal-dev/bin/fret-analysis"
-                
+
 readFit :: FilePath -> IO [(Double, Double, Double)]
 readFit fitFile = do
     a <- lines <$> readFile fitFile
@@ -75,11 +72,11 @@ findDonorOnlySets sets tag =
     $ filter (`hasTag` tag)
     $ filter (`hasTag` "d")
     $ sets
-    
+
 getDataSetSystem :: DataSet -> Maybe Tag
 getDataSetSystem (DataSet {dsTags=tags}) =
     listToMaybe $ filter (`elem` systems) tags
-    
+
 main = do
     dir:_ <- getArgs
     dss <- getDataSets dir
