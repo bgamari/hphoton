@@ -319,7 +319,10 @@ analyzeData rootName clk p fret = do
 fitFretHist :: Int -> [FretEff] -> IO ComponentParams
 fitFretHist ncomps fretEffs = do
   mwc <- create
-  fitParams <- runRVar (runFit ncomps 250 $ V.fromList $ filter (\x->x>0 && x<1) fretEffs) mwc
+  fitParams <- runRVar (runFit ncomps 250
+                        $ V.fromList
+                        $ filter (\x->x>0 && x<1) fretEffs
+                       ) mwc
   putStrLn $ unlines 
            $ map (\(w,p)->let (mu,sigma) = paramToMoments p
                           in printf "weight=%1.2f, mu=%1.2f, sigma^2=%1.2f" w mu sigma
