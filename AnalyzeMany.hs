@@ -7,7 +7,8 @@ import Data.Aeson
 import Control.Monad (filterM, (=<<))
 import System.Directory (doesFileExist)       
 import System.FilePath ((</>))
-import           Data.List (stripPrefix, (!!))
+import           Data.List (stripPrefix, (!!), sortBy)
+import           Data.Function (on)
 import Debug.Trace (traceShow)
 import Text.Printf
 
@@ -47,16 +48,17 @@ stripSuffix suffix = reverse . maybe (error "Invalid filename") id . stripPrefix
 
 runFretAnalysis = rawSystem "/home/ben/lori/analysis/hphoton/cabal-dev/bin/fret-analysis"
                 
-readFit :: FilePath -> IO [(Double, Double)]
+readFit :: FilePath -> IO [(Double, Double, Double)]
 readFit fitFile = do
     a <- lines <$> readFile fitFile
-    return $ map (\l->let [w,mu,sigma] = words l in (read mu, read sigma)) $ tail a
+    return $ map (\l->let [w,mu,sigma] = words l in (read w, read mu, read sigma)) $ tail a
 
 getDonorOnlyPeak :: DataSet -> IO FretEff
 getDonorOnlyPeak ds = do
-    runFretAnalysis ["--fit-ncomps=1", dsFileName ds]
+    runFretAnalysis ["--fit-ncomps=2", dsFileName ds]
     fit <- readFit $ stripSuffix ".timetag" (dsFileName ds) ++ "-fit.txt"
-    return $ fst $ head fit
+    let (m,mu,sigma) = last $ sortBy (compare `on` \(w,mu,sigma)->w) fit
+    return mu
 
 processDataSet :: [DataSet] -> DataSet -> IO ()
 processDataSet dss ds = do
