@@ -275,13 +275,13 @@ analyzeData rootName clk p fret = do
                    $ filter (\x->fretA x + fretD x > burst_size p)
                    $ burstCounts burstPhotons
 
+    let fretEffs = map (fretEfficiency _gamma) burstRates
     printf "Found %d bursts (%1.1f per second)\n"
       (length burstRates)
       (genericLength burstRates / duration)
     writeFile (rootName++"-fret_eff.txt")
-      $ unlines $ map (show . fretEfficiency (gamma p)) burstRates
+      $ unlines $ map show fretEffs
 
-    let fretEffs = map (fretEfficiency (gamma p)) burstRates
     plotFretAnalysis rootName clk p fret (zip burstSpans burstRates)
 
     let fitFailed :: SomeException -> IO (Maybe ComponentParams)
@@ -421,4 +421,4 @@ fileMain p input = do
     let fret = fmap (strobeTimes recs) fretChs
         rootName = stripSuffix ".timetag" input
     analyzeData rootName (clockFromFreq $ clockrate p) p fret
-
+  
