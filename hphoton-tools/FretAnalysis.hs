@@ -168,7 +168,7 @@ fretBursts clk (BinThresh binWidth thresh) d =
       len = realToFrac $ V.length combined :: Double
   in V.toList $ findBursts binWidthTicks thresh combined
 
-main' = do
+main = do
   p <- cmdArgs fretAnalysis
   when (null $ input p) $ error "Need at least one input file"
   mapM_ (fileMain p) $ input p
@@ -426,24 +426,3 @@ plotFretAnalysis rootName clk p times bursts = do
 burstCounts :: [Fret (V.Vector Time)] -> [Fret Int]
 burstCounts = map (fmap V.length)
 
-testClock = clockFromFreq 1000000
-
-testData :: Fret (V.Vector Time)
-testData = Fret { fretA = V.generate 100000 (\i->fromIntegral $ i*1000)
-                , fretD = V.generate 100000 (\i->fromIntegral $ i*1000)
-                }
-testData' :: Fret (V.Vector Time)
-testData' = Fret { fretA=times e, fretD=times (1-e) }
-          where e = 0.3
-                times :: Double -> V.Vector Time
-                times a = V.scanl1 (+)
-                          $ V.concat $ replicate 10
-                          $ V.replicate (round $ 1000 * a) (round $ realToFrac (freq testClock) * 1e-3 / a) V.++ V.singleton (freq testClock)
-
-testMain = do
-  let p = fretAnalysis { burst_thresh = 0.5
-                       , burst_size = 0
-                       }
-  analyzeData "test" testClock p testData'
-
-main = main'
