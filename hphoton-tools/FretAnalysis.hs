@@ -42,6 +42,10 @@ import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Plot.Histogram
 import           Graphics.Rendering.Chart.Simple.Histogram
 
+stripSuffix :: String -> String -> String
+stripSuffix suffix =
+    reverse . maybe (error "Invalid filename") id . stripPrefix (reverse suffix) . reverse
+
 -- | A rate measured in real time
 type Rate = Double
 
@@ -168,23 +172,6 @@ fretBursts clk (BinThresh binWidth thresh) d =
       len = realToFrac $ V.length combined :: Double
   in V.toList $ findBursts binWidthTicks thresh combined
 
-main = do
-  p <- cmdArgs fretAnalysis
-  when (null $ input p) $ error "Need at least one input file"
-  mapM_ (fileMain p) $ input p
-
-stripSuffix :: String -> String -> String
-stripSuffix suffix = reverse . maybe (error "Invalid filename") id . stripPrefix (reverse suffix) . reverse
-
-fileMain :: FretAnalysis -> FilePath -> IO ()
-fileMain p input = do
-  printf "\nProcessing %s...\n" input
-  recs <- readRecords input
-  let fret = fmap (strobeTimes recs) fretChs
-      rootName = stripSuffix ".timetag" input
-
-  analyzeData rootName (clockFromFreq $ clockrate p) p fret
-
 -- | Return the rates of each of a list of spans
 spansRates :: Clock -> [Span] -> V.Vector Time -> [Double]
 spansRates clk spans times =
@@ -237,13 +224,6 @@ fac n = n*fac (n-1)
 
 poissonLikelihood :: Int -> Int -> Prob
 poissonLikelihood lambda k = realToFrac (lambda^k) * exp (realToFrac $ -k) / realToFrac (fac lambda)
-
--- | Weight of a bin as the inverse likelihood under the expected
--- background distribution
--- FIXME
---likelihoodWeight :: Fret Int -> Fret Int -> Double
---likelihoodWeight bg counts =
---    foldMap (\a b->Product $ a*b) $ poissonLikelihood <$> bg <*> counts
 
 fretAnalysisToBurstMode :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> BurstMode
 fretAnalysisToBurstMode clk p d =
@@ -425,4 +405,18 @@ plotFretAnalysis rootName clk p times bursts = do
 
 burstCounts :: [Fret (V.Vector Time)] -> [Fret Int]
 burstCounts = map (fmap V.length)
+
+main = do
+    p <- cmdArgs fretAnalysis
+    when (null $ input p) $ error "Need at least one input file"
+    mapM_ (fileMain p) $ input p
+
+fileMain :: FretAnalysis -> FilePath -> IO ()
+fileMain p input = do
+    printf "\nProcessing %s...\n" input
+    recs <- readRecords input
+
+    let fret = fmap (strobeTimes recs) fretChs
+        rootName = stripSuffix ".timetag" input
+    analyzeData rootName (clockFromFreq $ clockrate p) p fret
 
