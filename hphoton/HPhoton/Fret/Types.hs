@@ -8,6 +8,7 @@ module HPhoton.Fret.Types ( FretChannel(..)
 
 import Data.Foldable
 import Data.Monoid
+import Data.Traversable
 import Control.Applicative       
 
 type FretEff = Double
@@ -27,6 +28,9 @@ instance Foldable Fret where
 instance Applicative Fret where
   pure x = Fret x x
   (Fret a b) <*> (Fret x y) = Fret (a x) (b y)
+  
+instance Traversable Fret where
+  traverse f (Fret x y) = Fret <$> f x <*> f y
 
 getFretChannel :: Fret a -> FretChannel -> a
 getFretChannel f Donor    = fretD f
