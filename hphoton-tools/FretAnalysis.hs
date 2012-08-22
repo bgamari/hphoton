@@ -173,14 +173,14 @@ fretBursts clk (BinThresh binWidth thresh) d =
     in V.toList $ findBursts binWidthTicks thresh combined
 
 -- | Return the rates of each of a list of spans
-spansRates :: Clock -> [Span] -> V.Vector Time -> [Double]
+spansRates :: Clock -> [Span] -> V.Vector Time -> [Rate]
 spansRates clk spans times =
     map (\b->(realToFrac (V.length b) + 0.5) / realDuration clk [b])
-    $ filter (\b->V.length b > 20) -- Ensure we have enough statistics to make for good estimate
+    $ filter (\b->V.length b > 20) -- Ensure we have enough statistics for a good estimate
     $ spansPhotons spans times
 
 -- | Return the average rate of a set of spans
-spansRate :: Clock -> [Span] -> V.Vector Time -> Double
+spansRate :: Clock -> [Span] -> V.Vector Time -> Rate
 spansRate clk spans times =
     let (n,t) = foldl' (\(n,t) a -> (n + realToFrac (V.length a) + 0.5, t + realDuration clk [a])) (0,0)
                 $ filter (\b->V.length b > 2)
@@ -188,7 +188,7 @@ spansRate clk spans times =
     in n / t
 
 -- | Background rate in Hz
-backgroundRate :: Clock -> [Span] -> V.Vector Time  -> Double
+backgroundRate :: Clock -> [Span] -> V.Vector Time -> Rate
 backgroundRate clk bursts times =
     let range = (V.head times, V.last times)
         span_rates :: [Double]
