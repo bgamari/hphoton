@@ -7,7 +7,8 @@ import           Control.Monad                             (guard, liftM, when)
 import           Data.Accessor
 import           Data.Foldable
 import           Data.List                                 (genericLength,
-                                                            stripPrefix)
+                                                            stripPrefix,
+                                                            partition)
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Traversable
@@ -82,7 +83,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , window :: Int
 
                                  , crosstalk :: FretEff
-                                 , gamma :: Gamma
+                                 , gamma :: Bool
 
                                  , fit_ncomps :: Int
                                  }
@@ -113,8 +114,8 @@ fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "
 
                             , crosstalk = 0 &= groupname "Crosstalk Correction"
                                             &= help "Measured efficiency for zero FRET (donor-only)"
-                            , gamma = 1 &= groupname "Gamma correction"
-                                        &= help "Gamma"
+                            , gamma = False &= groupname "Gamma correction"
+                                            &= help "Enable gamma correction"
 
                             , fit_ncomps = 2 &= groupname "Histogram fit"
                                              &= help "Number of components"
@@ -219,6 +220,13 @@ correctCrosstalk alpha counts =
     let n = alpha * (fretA counts + fretD counts)
     in Fret {fretA=subtract n, fretD=(+n)} <*> counts
 
+-- | Compute gamma from change in intensity between donor-only and donor-acceptor
+gammaFromDelta :: CrosstalkParam -> Fret Rate -> Fret Rate -> Fret Rate -> Gamma
+gammaFromDelta crosstalk background donorOnly donorAcceptor =
+    crosstalk - fretA deltaI / fretD deltaI
+    where deltaI = (-) <$> donorAcceptor <*> donorOnly'
+          donorOnly' = (-) <$> donorOnly <*> background
+
 fac :: Int -> Int
 fac 0 = 1
 fac n = n*fac (n-1)
@@ -260,7 +268,7 @@ analyzeData rootName clk p fret = do
                        $ fmap (spansPhotons burstSpans)
                        $ fret
 
-    let bg_rate = fmap (backgroundRate clk burstSpans) fret :: Fret Rate
+    let bg_rate = backgroundRate clk burstSpans <$> fret :: Fret Rate
     printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
     let (mu,sigma) = meanVariance $ V.fromList $ map (realSpanDuration clk) burstSpans
     printf "Burst lengths: mu=%1.2e seconds, sigma=%1.2e seconds\n" mu sigma
@@ -274,6 +282,14 @@ analyzeData rootName clk p fret = do
                    $ map (fmap realToFrac)
                    $ filter (\x->fretA x + fretD x > burst_size p)
                    $ burstCounts burstPhotons
+
+    let (daRates,dRates) = partition (\span->proximityRatio span > 0.25) burstRates
+        daRate = fmap (max 0 . mean . V.fromList) $ unflipFrets daRates
+        dRate = fmap (max 0 . mean . V.fromList) $ unflipFrets dRates
+        _gamma = case gamma p of 
+                     True  -> gammaFromDelta (crosstalk p) bg_rate dRate daRate
+                     False -> 1
+    printf "Gamma=%f\n" _gamma
 
     let fretEffs = map (fretEfficiency _gamma) burstRates
     printf "Found %d bursts (%1.1f per second)\n"
