@@ -221,11 +221,10 @@ correctCrosstalk alpha counts =
     in Fret {fretA=subtract n, fretD=(+n)} <*> counts
 
 -- | Compute gamma from change in intensity between donor-only and donor-acceptor
-gammaFromDelta :: CrosstalkParam -> Fret Rate -> Fret Rate -> Fret Rate -> Gamma
-gammaFromDelta crosstalk background donorOnly donorAcceptor =
+gammaFromDelta :: CrosstalkParam -> Fret Rate -> Fret Rate -> Gamma
+gammaFromDelta crosstalk donorOnly donorAcceptor =
     crosstalk - fretA deltaI / fretD deltaI
-    where deltaI = (-) <$> donorAcceptor <*> donorOnly'
-          donorOnly' = (-) <$> donorOnly <*> background
+    where deltaI = (-) <$> donorAcceptor <*> donorOnly
 
 fac :: Int -> Int
 fac 0 = 1
@@ -268,8 +267,8 @@ analyzeData rootName clk p fret = do
                        $ fmap (spansPhotons burstSpans)
                        $ fret
 
-    let bg_rate = backgroundRate clk burstSpans <$> fret :: Fret Rate
-    printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bg_rate) (fretA bg_rate)
+    let bgRate = backgroundRate clk burstSpans <$> fret :: Fret Rate
+    printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bgRate) (fretA bgRate)
     let (mu,sigma) = meanVariance $ V.fromList $ map (realSpanDuration clk) burstSpans
     printf "Burst lengths: mu=%1.2e seconds, sigma=%1.2e seconds\n" mu sigma
     printf "Crosstalk: %1.2f\n" (crosstalk p)
@@ -278,7 +277,7 @@ analyzeData rootName clk p fret = do
         burstDur = map (realDuration clk . toList) burstPhotons
         burstRates :: [Fret Rate]
         burstRates = map (correctCrosstalk $ crosstalk p)
-                   $ zipWith (correctFretBackground bg_rate) burstDur
+                   $ zipWith (correctFretBackground bgRate) burstDur
                    $ map (fmap realToFrac)
                    $ filter (\x->fretA x + fretD x > burst_size p)
                    $ burstCounts burstPhotons
@@ -287,7 +286,7 @@ analyzeData rootName clk p fret = do
         daRate = fmap (max 0 . mean . V.fromList) $ unflipFrets daRates
         dRate = fmap (max 0 . mean . V.fromList) $ unflipFrets dRates
         _gamma = case gamma p of 
-                     True  -> gammaFromDelta (crosstalk p) bg_rate dRate daRate
+                     True  -> gammaFromDelta (crosstalk p) dRate daRate
                      False -> 1
     printf "Gamma=%f\n" _gamma
 
