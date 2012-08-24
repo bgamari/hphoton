@@ -1,38 +1,19 @@
 import           Control.Applicative ((<$>))
-import           Control.Monad       (filterM, (=<<), forM_)
-import           Data.Aeson
+import           Control.Monad       ((=<<), forM_)
 import           Data.Char
 import           Data.Function       (on)
 import           Data.List           (sortBy, stripPrefix, (!!))
 import           Data.Maybe          (fromJust, listToMaybe, mapMaybe)
 import           System.Cmd
-import           System.Directory    (doesFileExist)
 import           System.Environment  (getArgs)
 import           System.FilePath     ((</>))
 import           Text.Printf
 
+import           DataSet                 
+
 type FretEff = Double
-type Tag = String
-
-data DataSet = DataSet { dsTags :: [Tag]
-                       , dsFileName :: FilePath
-                       }
-               deriving (Show)
-
-hasTag :: DataSet -> Tag -> Bool
-hasTag ds tag = tag `elem` dsTags ds
 
 systems = [ "frna", "rrna" ] :: [Tag]
-
-getDataSets :: FilePath -> IO [DataSet]
-getDataSets dir = do
-    f <- readFile $ dir </> "tags"
-    filterM (doesFileExist . dsFileName) $ mapMaybe parseTags $ lines f
-    where parseTags line = case words line of
-                                []         -> Nothing
-                                file:tags  -> Just $ DataSet { dsFileName = dir </> file
-                                                             , dsTags     = tags
-                                                             }
 
 processDirectory :: FilePath -> IO ()
 processDirectory dir = do
