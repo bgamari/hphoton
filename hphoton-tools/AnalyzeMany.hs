@@ -29,10 +29,10 @@ getDataSets dir = do
     f <- readFile $ dir </> "tags"
     filterM (doesFileExist . dsFileName) $ mapMaybe parseTags $ lines f
     where parseTags line = case words line of
-                                [] -> Nothing
-                                s  -> Just $ DataSet { dsFileName = dir </> head s
-                                                     , dsTags     = tail s
-                                                     }
+                                []         -> Nothing
+                                file:tags  -> Just $ DataSet { dsFileName = dir </> file
+                                                             , dsTags     = tags
+                                                             }
 
 processDirectory :: FilePath -> IO ()
 processDirectory dir = do
