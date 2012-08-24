@@ -54,19 +54,26 @@ readFit fitFile = do
                                otherwise    -> Nothing
                       ) a
 
-getDonorOnlyPeak :: DataSet -> IO FretEff
+getDonorOnlyPeak :: DataSet -> IO (Maybe FretEff)
 getDonorOnlyPeak ds = do
     runFretAnalysis ["--fit-ncomps=2", dsFileName ds]
     fit <- readFit $ stripSuffix ".timetag" (dsFileName ds) ++ "-fit.txt"
-    let (m,mu,sigma) = last $ sortBy (compare `on` \(w,mu,sigma)->w) fit
-    return mu
+    case fit of
+         [] -> return Nothing
+         otherwise -> let (m,mu,sigma) = last $ sortBy (compare `on` \(w,mu,sigma)->w) fit
+                      in return $ Just mu
 
 processDataSet :: [DataSet] -> DataSet -> IO ()
 processDataSet dss ds = do
     dOnlyFret <- case findDonorOnlySets dss (fromJust $ getDataSetSystem ds) of
                  [] -> error $ "No donor only set for "++dsFileName ds
-                 a:_ -> do printf "Using donor-only %s for %s\n" (dsFileName a) (dsFileName ds)
-                           getDonorOnlyPeak a
+                 a:_ -> do printf "Using donor-only %s for %s\n"
+                                  (dsFileName a) (dsFileName ds)
+                           dOnly <- getDonorOnlyPeak a
+                           case dOnly of
+                                Nothing -> do printf "Donor only fit failed, assuming crosstalk=0\n"
+                                              return 0
+                                Just a  -> return a
     runFretAnalysis ["--crosstalk="++show dOnlyFret, dsFileName ds]
     return ()
 
