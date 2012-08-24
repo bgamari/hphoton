@@ -259,8 +259,7 @@ analyzeData rootName clk p fret = do
 
     let duration = realDuration clk $ toList fret
         burstMode = fretAnalysisToBurstMode clk p fret
-        buffer = realTimeToTime clk 1e-4
-        burstSpans = map (\(a,b)->(a+buffer,b-buffer))
+        burstSpans = filter (\span->realSpanDuration clk span > 1e-4)
                      $ fretBursts clk burstMode fret
         burstPhotons = filter (not . all V.null . toList)
                        $ flipFrets
