@@ -1,5 +1,5 @@
 import           Control.Applicative ((<$>))
-import           Control.Monad       (filterM, (=<<))
+import           Control.Monad       (filterM, (=<<), forM_)
 import           Data.Aeson
 import           Data.Char
 import           Data.Function       (on)
@@ -94,6 +94,8 @@ getDataSetSystem (DataSet {dsTags=tags}) =
     listToMaybe $ filter (`elem` systems) tags
 
 main = do
-    dir:_ <- getArgs
-    dss <- getDataSets dir
-    mapM_ (processDataSet dss) $ filter (`hasTag` "da") dss
+    dirs <- getArgs
+    forM_ dirs $ \dir->do
+        dss <- getDataSets dir
+        mapM_ (processDataSet dss) $ filter (`hasTag` "da") dss
+
