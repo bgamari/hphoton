@@ -74,7 +74,12 @@ processDataSet dss ds = do
                                 Nothing -> do printf "Donor only fit failed, assuming crosstalk=0\n"
                                               return 0
                                 Just a  -> return a
-    runFretAnalysis ["--crosstalk="++show dOnlyFret, dsFileName ds]
+    runFretAnalysis [ "--crosstalk="++show dOnlyFret
+                    , "--burst-mode=bayes-combined"
+                    , "--burst-rate=1.5"
+                    , "--gamma"
+                    , dsFileName ds
+                    ]
     return ()
 
 findDonorOnlySets :: [DataSet] -> Tag -> [DataSet]
