@@ -266,6 +266,9 @@ analyzeData rootName clk p fret = do
                        $ fmap (spansPhotons burstSpans)
                        $ fret
 
+    writeFile (rootName++"-burst-length.txt")
+        $ unlines $ map (show . realSpanDuration clk) burstSpans
+
     let bgRate = backgroundRate clk burstSpans <$> fret :: Fret Rate
     printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bgRate) (fretA bgRate)
     let (mu,sigma) = meanVariance $ V.fromList $ map (realSpanDuration clk) burstSpans
