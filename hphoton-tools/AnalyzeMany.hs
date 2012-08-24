@@ -2,7 +2,7 @@ import           Control.Applicative ((<$>))
 import           Control.Monad       ((=<<), forM_)
 import           Data.Char
 import           Data.Function       (on)
-import           Data.List           (sortBy, stripPrefix, (!!))
+import           Data.List           (sortBy)
 import           Data.Maybe          (fromJust, listToMaybe, mapMaybe)
 import           System.Cmd
 import           System.Environment  (getArgs)
@@ -21,9 +21,6 @@ processDirectory dir = do
     mapM_ (processDataSet dss) $ filter (`hasTag` "da") dss
     return ()
 
-stripSuffix :: String -> String -> String
-stripSuffix suffix = reverse . maybe (error "Invalid filename") id . stripPrefix (reverse suffix) . reverse
-
 runFretAnalysis = rawSystem "/home/ben/lori/analysis/hphoton/cabal-dev/bin/fret-analysis"
 
 readFit :: FilePath -> IO [(Double, Double, Double)]
@@ -38,7 +35,7 @@ readFit fitFile = do
 getDonorOnlyPeak :: DataSet -> IO (Maybe FretEff)
 getDonorOnlyPeak ds = do
     runFretAnalysis ["--fit-ncomps=2", dsFileName ds]
-    fit <- readFit $ stripSuffix ".timetag" (dsFileName ds) ++ "-fit.txt"
+    fit <- readFit $ dsRoot ds++"-fit.txt"
     case fit of
          [] -> return Nothing
          otherwise -> let (m,mu,sigma) = last $ sortBy (compare `on` \(w,mu,sigma)->w) fit

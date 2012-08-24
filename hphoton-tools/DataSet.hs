@@ -1,14 +1,16 @@
 module DataSet ( Tag
                , DataSet (..)
+               , dsRoot
                , getDataSets
                , hasTag
                ) where
 
-import           System.FilePath     ((</>))
-import           System.Directory    (doesFileExist)
-import           Data.Maybe          (fromJust, listToMaybe, mapMaybe)
 import           Data.Aeson
+import           Data.List (stripPrefix)                 
+import           Data.Maybe          (fromJust, listToMaybe, mapMaybe)
 import           Control.Monad       (filterM)
+import           System.Directory    (doesFileExist)
+import           System.FilePath     ((</>))
                
 type Tag = String
 
@@ -16,6 +18,14 @@ data DataSet = DataSet { dsTags :: [Tag]
                        , dsFileName :: FilePath
                        }
                deriving (Show)
+     
+-- | Strip the given suffix from a string     
+stripSuffix :: String -> String -> String
+stripSuffix suffix = reverse . maybe (error "Invalid filename") id . stripPrefix (reverse suffix) . reverse
+
+-- | The root file name of a data set
+dsRoot :: DataSet -> String
+dsRoot = stripSuffix ".timetag" . dsFileName
 
 -- | Test whether a data set is tagged with the given tag
 hasTag :: DataSet -> Tag -> Bool
