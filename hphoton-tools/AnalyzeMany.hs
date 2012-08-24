@@ -48,7 +48,11 @@ runFretAnalysis = rawSystem "/home/ben/lori/analysis/hphoton/cabal-dev/bin/fret-
 readFit :: FilePath -> IO [(Double, Double, Double)]
 readFit fitFile = do
     a <- lines <$> readFile fitFile
-    return $ map (\l->let [w,mu,sigma] = words l in (read w, read mu, read sigma)) $ tail a
+    return $ mapMaybe (\l->case words l of
+                               "#":_        -> Nothing
+                               [w,mu,sigma] -> Just (read w, read mu, read sigma)
+                               otherwise    -> Nothing
+                      ) a
 
 getDonorOnlyPeak :: DataSet -> IO FretEff
 getDonorOnlyPeak ds = do
