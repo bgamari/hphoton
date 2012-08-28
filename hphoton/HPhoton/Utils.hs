@@ -41,7 +41,7 @@ invertSpans (start,end) ((a,b):rest)
   | a == start              = invertSpans (b,end) rest
 invertSpans _ [] = []
 
--- | 'spansPhotons ts spans' returns the photons in a set of spans
+-- | 'spansPhotons spans ts' is the photons in each spans
 spansPhotons :: [Span] -> V.Vector Time -> [V.Vector Time]
 spansPhotons spans ts = evalState (mapM f spans) ts
   where f :: Span -> State (V.Vector Time) (V.Vector Time)
