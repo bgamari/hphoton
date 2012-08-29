@@ -45,7 +45,7 @@ Library
                      colour,
                      fclabels
 
-Executable Test
+Executable test-hphoton
   Hs-source-dirs:    .,tests
   Main-is:           Test.hs
   Build-depends:     base,
