@@ -146,4 +146,6 @@ Executable analyze-many
                      hphoton,
                      filepath,
                      aeson,
-                     process
+                     process,
+                     parallel-io
+

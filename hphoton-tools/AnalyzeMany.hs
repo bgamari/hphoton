@@ -8,6 +8,7 @@ import           System.Cmd
 import           System.Environment  (getArgs)
 import           System.FilePath     ((</>))
 import           System.IO (hSetBuffering, stdout, BufferMode(LineBuffering))
+import           Control.Concurrent.ParallelIO.Global                 
 import           Text.Printf
 
 import           DataSet                 
@@ -77,5 +78,6 @@ main = do
     dirs <- getArgs
     forM_ dirs $ \dir->do
         dss <- getDataSets dir
-        mapM_ (processDataSet dss) $ filter (`hasTag` "da") dss
+        parallel_ $ map (processDataSet dss) $ filter (`hasTag` "da") dss
 
+    stopGlobalPool
