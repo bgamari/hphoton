@@ -21,7 +21,7 @@ processDirectory dir = do
     mapM_ (processDataSet dss) $ filter (`hasTag` "da") dss
     return ()
 
-runFretAnalysis = rawSystem "/home/ben/lori/analysis/hphoton/cabal-dev/bin/fret-analysis"
+runFretAnalysis = rawSystem "fret-analysis"
 
 readFit :: FilePath -> IO [(Double, Double, Double)]
 readFit fitFile = do
