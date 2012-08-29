@@ -4,3 +4,6 @@
 [submodule "mixture-model"]
 	path = mixture-model
 	url = git@github.com:bgamari/mixture-model.git
+[submodule "logfloat-unboxed"]
+	path = logfloat-unboxed
+	url = git@github.com:bgamari/logfloat-unboxed.git

@@ -3,3 +3,4 @@
 ./hphoton-tools
 ./mixture-model
 ./chart-histogram
+./logfloat-unboxed
