@@ -28,7 +28,15 @@ testSpansPhotons spans = map (uncurry testCase)
   ]
   where times = V.enumFromN 0 1000
         res = spansPhotons spans times
+  
+testSpansCounts :: [Span] -> Test
+testSpansCounts spans = 
+    testCase "Matches spansPhotons"                
+    $ assertBool "Matches spansPhotons"
+    $ map V.length (spansPhotons spans times) == spansCounts spans times
+    where times = V.enumFromN 0 1000
         
-tests = [ testGroup "Zero length span" $ testSpansPhotons [(0,0)]
-        , testGroup "One length span" $ testSpansPhotons [(0,1)]
+tests = [ testGroup "spansPhotons: Zero length span" $ testSpansPhotons [(0,0)]
+        , testGroup "spansPhotons: One length span" $ testSpansPhotons [(0,1)]
+        , testSpansCounts [(0,1)]
         ]

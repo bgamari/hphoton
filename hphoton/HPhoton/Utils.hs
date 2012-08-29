@@ -4,6 +4,7 @@ module HPhoton.Utils ( zeroTime
                      , combineChannels
                      , invertSpans
                      , spansPhotons
+                     , spansCounts
                      , subtractSpans
                      ) where
 
@@ -52,6 +53,18 @@ spansPhotons spans ts = evalState (mapM f spans) ts
                            let (a,b) = V.span (<end) $ snd $ V.span (<start) ts
                            put b
                            return a
+ 
+-- | 'spansCounts spans ts' is the number of photons in each span.
+-- | Identity: 'spansCounts spans ts == map V.length $ spansPhotons spans ts'
+spansCounts :: [Span] -> V.Vector Time -> [Int]
+spansCounts spans ts = f spans ts 0
+  where f :: [Span] -> V.Vector Time -> Int -> [Int]
+        f _ ts n | V.null ts     = [n]
+        f spans@((a,b):rest) ts n
+            | V.head ts < a      = f spans (V.tail ts) 0
+            | V.head ts >= b     = n : f rest ts 0
+            | otherwise          = f spans (V.tail ts) (n+1)
+        f [] ts n                = []
 
 subtractSpans :: [Span] -> [Span] -> [Span]
 subtractSpans [] _       = []  
