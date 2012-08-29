@@ -176,7 +176,7 @@ fretBursts clk (BinThresh binWidth thresh) d =
 -- | Return the rates of each of a list of spans
 spansRates :: Clock -> [Span] -> V.Vector Time -> [Rate]
 spansRates clk spans times =
-    map (\b->(realToFrac (V.length b) + 0.5) / realDuration clk [b])
+    map (\b->(realToFrac $ V.length b) / realDuration clk [b])
     $ filter (\b->V.length b > 20) -- Ensure we have enough statistics for a good estimate
     $ spansPhotons spans times
 
@@ -275,16 +275,19 @@ analyzeData rootName clk p fret = do
     printf "Burst lengths: mu=%1.2e seconds, sigma=%1.2e seconds\n" mu sigma
     printf "Crosstalk: %1.2f\n" (crosstalk p)
 
-    let burstDur :: [RealTime]
-        burstDur = map (realDuration clk . toList) burstPhotons
+    let bursts :: [(Time, Fret Int)]
+        bursts = filter ((\x->fretA x + fretD x > burst_size p) . snd)
+                 $ zip (map spanDuration burstSpans)
+                       (flipFrets $ spansCounts burstSpans <$> fret)
         burstRates :: [Fret Rate]
         burstRates = map (correctCrosstalk $ crosstalk p)
-                   $ zipWith (correctFretBackground bgRate) burstDur
-                   $ map (fmap realToFrac)
-                   $ filter (\x->fretA x + fretD x > burst_size p)
-                   $ burstCounts burstPhotons
+                   $ map (\(dur,counts)->(/timeToRealTime clk dur) <$> counts)
+                   $ map (\(dur,counts)->(dur, correctFretBackground bgRate (timeToRealTime clk dur) counts))
+                   $ map (second (fmap realToFrac))
+                   $ bursts
 
-    let (daRates,dRates) = partition (\span->proximityRatio span > 0.25) burstRates
+    let (daRates,dRates) = partition (\span->proximityRatio span > 0.35) -- FIXME
+                           $ burstRates
         daRate = fmap (max 0 . mean . V.fromList) $ unflipFrets daRates
         dRate = fmap (max 0 . mean . V.fromList) $ unflipFrets dRates
         _gamma = case gamma p of 
