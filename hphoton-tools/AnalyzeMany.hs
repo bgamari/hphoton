@@ -7,6 +7,7 @@ import           Data.Maybe          (fromJust, listToMaybe, mapMaybe)
 import           System.Cmd
 import           System.Environment  (getArgs)
 import           System.FilePath     ((</>))
+import           System.IO (hSetBuffering, stdout, BufferMode(LineBuffering))
 import           Text.Printf
 
 import           DataSet                 
@@ -72,6 +73,7 @@ getDataSetSystem (DataSet {dsTags=tags}) =
     listToMaybe $ filter (`elem` systems) tags
 
 main = do
+    hSetBuffering stdout LineBuffering
     dirs <- getArgs
     forM_ dirs $ \dir->do
         dss <- getDataSets dir
