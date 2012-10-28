@@ -11,6 +11,9 @@ import           Test.QuickCheck.Arbitrary
 import           Test.QuickCheck.Modifiers
 import           Test.QuickCheck.Property
 
+import           Test.Framework.Providers.HUnit (testCase)
+import           Test.HUnit
+
 import           HPhoton.Corr.PackedVec               (PackedVec (..))
 import           HPhoton.Corr.PackedVec.Tests         ()
 import           HPhoton.Corr.SparseCorr
@@ -41,9 +44,14 @@ prop_rebin_monotonic (Positive width) bv =
            _ | V.all (>0) dts   -> succeeded
            _ | otherwise        -> failed { reason=show dts }
 
+rebin_test1 = assertEqual "Case 1" res (rebin 10 ts)
+    where ts = vecFromStamps $ V.fromList [1,2,3, 1001, 1002, 1003] :: BinnedVec Int Int
+          res = Binned 10 $ PVec $ V.fromList [(0,3), (1000,3)]
+
 tests =
     [ testProperty "Total counts invariant on rebinning"
           (prop_rebin_counts_invar :: Positive Int -> BinnedVec Time Int -> Result)
     , testProperty "Bin times monotonic"
           (prop_rebin_monotonic :: Positive Int -> BinnedVec Time Int -> Result)
+    , testCase "Rebinning test" rebin_test1
     ]
