@@ -45,11 +45,13 @@ Library
                      Chart,
                      chart-histogram,
                      colour,
+                     QuickCheck,
                      fclabels
 
-Executable test-hphoton
+test-suite Main
   Hs-source-dirs:    .,tests
   Main-is:           Test.hs
+  Type:              exitcode-stdio-1.0
   Build-depends:     base,
                      directory,
                      filepath,
@@ -59,7 +61,6 @@ Executable test-hphoton
                      vector,
                      storable-endian,
                      mwc-random,
-                     cmdargs,
                      bytestring,
                      transformers,
                      cereal,
