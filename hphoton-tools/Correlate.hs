@@ -59,7 +59,7 @@ opts = Args
     <*> option    ( help "Number of lags to computer per decade"
                  <> long "nbins"
                  <> short 'n'
-                 <> value 300
+                 <> value 20
                   )
 description = intercalate "\n"
     [ "Corr efficiently computes correlation functions for single-dimensional"
@@ -96,11 +96,6 @@ main = do
     let pts = logCorr clk (shortlag args, longlag args) (nlags args)
                       (vecFromStamps' a) (vecFromStamps' b)
 
-    --let lags = linspace nlags (shortlag args, longlag args)
-    --let lags = logspace (nlags args) (log10 (shortlag args), log10 (longlag args))
-    --let pts = computeSplitCorr (round $ 1e-3 / jiffy args) (jiffy args) lags a b
-    --let pts = computeCorr clk lags (packedVecFromStamps a) (packedVecFromStamps b)
-
     forM_ pts $ \(lag, gee, bar) -> do
         printf "%1.4e\t%1.8f\t%1.8e\n" lag gee bar
         hFlush stdout
@@ -116,7 +111,7 @@ logCorr clk (minLag, maxLag) lagsPerDecade a b =
                 b' = rebin binSz b
                 width = binnedWidth a'
                 lag' = realTimeToTime clk lag `quot` width * width
-                (gee, bar) = corr (realTimeToTime clk maxLag) a' b' lag' --(realTimeToTime clk lag)
+                (gee, bar) = corr (realTimeToTime clk maxLag) a' b' lag'
             in (lag, gee, bar) : f rest a' b'
     in f (zip lags (cycle $ replicate (lagsPerDecade-1) 1 ++ [10])) a b
 
