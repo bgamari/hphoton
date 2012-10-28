@@ -149,3 +149,10 @@ Executable analyze-many
                      process,
                      parallel-io
 
+Executable correlate
+  Main-is:           Correlate.hs
+  Build-depends:     base,
+                     hphoton,
+                     vector-algorithms,
+                     optparse-applicative
+                     

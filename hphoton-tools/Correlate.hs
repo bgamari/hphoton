@@ -2,8 +2,6 @@ module Main (main) where
 
 import           Control.Applicative
 import           Control.Monad           (forM_, liftM)
-import qualified Data.Binary.Get         as B
-import qualified Data.ByteString.Lazy    as BS
 import           Data.List
 import           Data.Monoid
 import qualified Data.Vector.Unboxed     as V
