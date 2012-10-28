@@ -5,7 +5,7 @@ module HPhoton.Corr.SparseCorr ( corr
                                , Binned(..), binnedWidth, unBinned
                                , PackedVec
                                , BinnedVec
-                               , vecFromStamps
+                               , vecFromStamps, vecFromStamps'
                                ) where
 
 import qualified Data.Vector.Unboxed as V
@@ -33,6 +33,10 @@ type BinnedVec t v = Binned t (PackedVec t v)
 vecFromStamps :: (Num t, Ord t, V.Unbox t, V.Unbox v, Num v)
               => V.Vector t -> Binned t (PackedVec t v)
 vecFromStamps = Binned 1 . PV.packedVec . V.map (,1) 
+
+vecFromStamps' :: (Num t, Ord t, V.Unbox t, V.Unbox v, Num v)
+              => V.Vector t -> Binned t (PackedVec t v)
+vecFromStamps' = Binned 1 . PV.packedVec' . V.map (,1) 
 
 -- | Shifted sparse dot product
 shiftedDot :: (Ord t, Num t, Num v, V.Unbox t, V.Unbox v)

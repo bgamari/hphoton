@@ -94,7 +94,7 @@ main = do
 
     let clk = clockFromJiffy $ jiffy_ args
     let pts = logCorr clk (shortlag args, longlag args) (nlags args)
-                      (vecFromStamps a) (vecFromStamps b)
+                      (vecFromStamps' a) (vecFromStamps' b)
 
     --let lags = linspace nlags (shortlag args, longlag args)
     --let lags = logspace (nlags args) (log10 (shortlag args), log10 (longlag args))
