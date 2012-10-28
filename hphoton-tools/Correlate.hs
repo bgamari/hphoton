@@ -88,7 +88,7 @@ main = do
        <> progDesc description
         )
 
-    let f = V.take 100000 . V.drop 1024 . V.convert -- HACK
+    let f = V.drop 1024 . V.convert -- HACK
     a <- f <$> readStamps (xfile args)
     b <- f <$> readStamps (yfile args)
     checkMonotonic a

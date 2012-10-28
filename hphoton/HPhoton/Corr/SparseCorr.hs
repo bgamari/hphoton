@@ -8,7 +8,6 @@ module HPhoton.Corr.SparseCorr ( corr
                                , vecFromStamps
                                ) where
 
-import Debug.Trace       
 import qualified Data.Vector.Unboxed as V
 import Data.Foldable (foldl')
 import Control.Monad
@@ -70,15 +69,15 @@ rebin n (Binned oldWidth (PVec v)) = Binned width (PVec $ V.fromList bins)
 
 -- | Compute the correlation function G(lag). We don't do anything here to
 -- ensure that the zone size is sane, etc. This is left to calling code
-corr' :: (Ord t, Num t, Integral t, V.Unbox t, V.Unbox v, Real v)
-      => PackedVec t v -> PackedVec t v -> t -> (Double, Double)
-corr' (PVec a) (PVec b) lag
+corr' :: (Ord t, Num t, Integral t, V.Unbox t, V.Unbox v, Real v, Show t)
+      => t -> PackedVec t v -> PackedVec t v -> t -> (Double, Double)
+corr' width (PVec a) (PVec b) lag
     | V.null a || V.null b = (0,0)
     | otherwise =
         let timespan x = (fst $ V.last x) - (fst $ V.head x)
             ta = timespan a
             tb = timespan b
-            t = fromIntegral $ min ta tb :: Double
+            t = fromIntegral (min ta tb) / realToFrac width :: Double
         
             dot = realToFrac $ shiftedDot lag (PVec a) (PVec b)
             ss = realToFrac $ shiftedDot2 lag (PVec a) (PVec b)
@@ -98,7 +97,7 @@ corr longlag (Binned ta a) (Binned tb b) lag
     | lag `mod` ta /= 0  = error $ "Lag ("++show lag++") must be multiple of bin time of b ("++show tb++")"
 corr longlag (Binned t a) (Binned _ b) lag =
     let (a',b') = trimData longlag a b lag
-    in corr' a' b' lag
+    in corr' t a' b' lag
 
 -- | Here we try to ensure that the zone is sized such that the same amount
 -- of data is used in the correlation over various lags. This requires that
