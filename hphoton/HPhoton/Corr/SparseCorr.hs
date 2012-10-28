@@ -73,20 +73,20 @@ rebin n (Binned oldWidth (PVec v)) = Binned width (PVec $ V.fromList bins)
 corr' :: (Ord t, Num t, Integral t, V.Unbox t, V.Unbox v, Real v)
       => PackedVec t v -> PackedVec t v -> t -> (Double, Double)
 corr' (PVec a) (PVec b) lag
-        | V.null a || V.null b = (0,0)
-        | otherwise = let timespan x = (fst $ V.last x) - (fst $ V.head x)
-                          ta = timespan a
-                          tb = timespan b
-                          t = fromIntegral $ min ta tb :: Double
-
-                          dot = realToFrac $ shiftedDot lag (PVec a) (PVec b)
-                          ss = realToFrac $ shiftedDot2 lag (PVec a) (PVec b)
-                          count x = realToFrac $ V.sum $ V.map snd x
-                          norm_denom :: Double
-                          norm_denom = (count a / t) * (count b / t)
-                          g = dot / norm_denom / t
-                          bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
-                      in (g, sqrt bar2)
+    | V.null a || V.null b = (0,0)
+    | otherwise =
+        let timespan x = (fst $ V.last x) - (fst $ V.head x)
+            ta = timespan a
+            tb = timespan b
+            t = fromIntegral $ min ta tb :: Double
+        
+            dot = realToFrac $ shiftedDot lag (PVec a) (PVec b)
+            ss = realToFrac $ shiftedDot2 lag (PVec a) (PVec b)
+            count = realToFrac . V.sum . V.map snd
+            norm_denom = (count a / t) * (count b / t) :: Double
+            g = dot / norm_denom / t
+            bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
+        in (g, sqrt bar2)
 
 {-# SPECIALIZE corr :: Time -> BinnedVec Time Int -> BinnedVec Time Int -> Time -> (Double,Double) #-}
 {-# INLINEABLE corr #-}
