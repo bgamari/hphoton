@@ -21,6 +21,8 @@ Library
                      HPhoton.Types,
                      HPhoton.RawTimestamps,
                      HPhoton.Utils,
+                     HPhoton.Corr.SparseCorr,
+                     HPhoton.Corr.PackedVec,
                      Graphics.Rendering.Chart.Simple.Histogram
 
   Build-depends:     base,
