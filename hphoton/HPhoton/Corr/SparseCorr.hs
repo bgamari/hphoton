@@ -55,19 +55,18 @@ rebin :: (Num t, Ord t, Integral t, V.Unbox t, V.Unbox v, Num v, Eq v)
       => Int -> BinnedVec t v -> BinnedVec t v
 rebin n v | n <= 0 = error "Invalid rebin size"
 rebin 1 v = v
-rebin n (Binned oldWidth (PVec v)) = 
-        let start_bin = floor $ realToFrac (fst $ V.head v) / realToFrac width
-            bins = f start_bin 0 $ V.toList v
-        in Binned width (PVec $ V.fromList bins)
-        where width = oldWidth * fromIntegral n
-              f bin accum [] = if accum /= 0 then [(bin*width, accum)]
-                                             else []
-              f bin accum ((a,o):rest) 
-                | a <  width*bin      = error "Time went backwards. Did something overflow?"
-                | a >= width*(bin+1)  = if accum /= 0
-                                           then (bin*width, accum):f (bin+1) o rest
-                                           else f (bin+1) o rest
-                | otherwise           = f bin (accum+o) rest
+rebin n (Binned oldWidth (PVec v)) = Binned width (PVec $ V.fromList bins)
+    where width = oldWidth * fromIntegral n
+          start_bin t = floor $ realToFrac t / realToFrac width
+          bins = f (start_bin $ fst $ V.head v) 0 $ V.toList v
+          f bin accum [] = if accum /= 0 then [(bin*width, accum)]
+                                         else []
+          f bin accum ((a,o):rest) 
+            | a <  width*bin      = error "Time went backwards. Did something overflow?"
+            | a >= width*(bin+1)  = if accum /= 0
+                                       then (bin*width, accum):f (start_bin a) o rest
+                                       else f (start_bin a) o rest
+            | otherwise           = f bin (accum+o) rest
 
 -- | Compute the correlation function G(lag). We don't do anything here to
 -- ensure that the zone size is sane, etc. This is left to calling code
