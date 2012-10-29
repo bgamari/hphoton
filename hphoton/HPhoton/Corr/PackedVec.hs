@@ -35,21 +35,24 @@ packedVec' = PVec
 -- | Sparse vector dot product
 dot :: (Ord i, Num v, V.Unbox i, V.Unbox v)
     => PackedVec i v -> PackedVec i v -> v
-dot (PVec as) (PVec bs) = dot' (V.toList as) (V.toList bs) 0
+dot (PVec as) (PVec bs) = dot' as bs 0
 {-# SPECIALIZE dot :: PackedVec Time Int -> PackedVec Time Int -> Int #-}
 {-# INLINEABLE dot #-}
 
-dot' :: (Ord i, Eq i, Num v) => [(i,v)] -> [(i,v)] -> v -> v
-dot' !(a:as) !(b:bs) !s
-    | aa == ab  = let x = snd a * snd b
-                  in dot' as bs (s+x)
-    | aa >  ab  = dot' (a:as) bs s
-    | aa <  ab  = dot' as (b:bs) s
+dot' :: (Ord i, Eq i, Num v, V.Unbox i, V.Unbox v)
+     => V.Vector (i,v) -> V.Vector (i,v) -> v -> v
+dot' !as !bs !s
+    | V.null as  = s
+    | V.null bs  = s
+    | aa == ab   = let x = snd a * snd b
+                   in dot' (V.tail as) (V.tail bs) (s+x)
+    | aa >  ab   = dot' as (V.tail bs) s
+    | aa <  ab   = dot' (V.tail as) bs s
     where
+    a = V.head as
+    b = V.head bs
     aa = fst a
     ab = fst b
-dot' _ [] !s = s
-dot' [] _ !s = s
 
 -- | Fetch element i
 index :: (Eq i, Num v, V.Unbox i, V.Unbox v) => PackedVec i v -> i -> v
