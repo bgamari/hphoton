@@ -151,7 +151,9 @@ Executable analyze-many
 
 Executable correlate
   Main-is:           Correlate.hs
+  Ghc-options:       -threaded
   Build-depends:     base,
+                     parallel,
                      hphoton,
                      vector-algorithms,
                      optparse-applicative

@@ -6,6 +6,7 @@ import           Data.List
 import           Data.Monoid
 import qualified Data.Vector.Unboxed     as V
 import           Data.Word
+import           Control.Parallel.Strategies                 
 
 import           HPhoton.Corr.PackedVec  (PackedVec (PVec))
 import           HPhoton.Corr.SparseCorr
@@ -93,8 +94,9 @@ main = do
     checkMonotonic b
 
     let clk = clockFromJiffy $ jiffy_ args
-    let pts = logCorr clk (shortlag args, longlag args) (nlags args)
-                      (vecFromStamps' a) (vecFromStamps' b)
+    let pts = withStrategy (parList rdeepseq)
+              $ logCorr clk (shortlag args, longlag args) (nlags args)
+                        (vecFromStamps' a) (vecFromStamps' b)
 
     forM_ pts $ \(lag, gee, bar) -> do
         printf "%1.4e\t%1.8f\t%1.8e\n" lag gee bar
@@ -105,6 +107,8 @@ logCorr :: Clock -> (RealTime, RealTime) -> Int
 logCorr clk (minLag, maxLag) lagsPerDecade a b =
     let nDecades = round $ log10 maxLag - log10 minLag
         lags = logspace (nDecades*lagsPerDecade) (log10 minLag, log10 maxLag)
+        initialBinSize = 1 -- TODO
+        binResizes = initialBinSize:tail (cycle $ replicate (lagsPerDecade-1) 1 ++ [10])
         f [] _ _ = []
         f ((lag,binSz):rest) a b =
             let a' = rebin binSz a
@@ -113,5 +117,5 @@ logCorr clk (minLag, maxLag) lagsPerDecade a b =
                 lag' = realTimeToTime clk lag `quot` width * width
                 (gee, bar) = corr (realTimeToTime clk maxLag) a' b' lag'
             in (lag, gee, bar) : f rest a' b'
-    in f (zip lags (cycle $ replicate (lagsPerDecade-1) 1 ++ [10])) a b
+    in f (zip lags binResizes) a b
 
