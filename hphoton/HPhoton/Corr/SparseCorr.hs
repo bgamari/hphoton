@@ -97,8 +97,8 @@ corr :: (Show t, Num t, Integral t, Ord t, Real v, V.Unbox t, V.Unbox v)
      => t -> BinnedVec t v -> BinnedVec t v -> t -> (Double, Double)
 corr longlag (Binned ta a) (Binned tb b) lag
     | ta /= tb           = error "Can't correlate vectors of different bin lengths"
+    | lag < ta           = error $ "Lag must be larger than bin time"
     | lag `mod` ta /= 0  = error $ "Lag ("++show lag++") must be multiple of bin time of a ("++show ta++")"
-    | lag `mod` ta /= 0  = error $ "Lag ("++show lag++") must be multiple of bin time of b ("++show tb++")"
 corr longlag (Binned t a) (Binned _ b) lag =
     let (a',b') = trimData longlag a b lag
     in corr' t a' b' lag
