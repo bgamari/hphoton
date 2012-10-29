@@ -33,11 +33,11 @@ packedVec' :: (V.Unbox i, V.Unbox v) => V.Vector (i,v) -> PackedVec i v
 packedVec' = PVec
 
 -- | Sparse vector dot product
-{-# SPECIALIZE dot :: PackedVec Time Int -> PackedVec Time Int -> Int #-}
-{-# INLINEABLE dot #-}
 dot :: (Ord i, Num v, V.Unbox i, V.Unbox v)
     => PackedVec i v -> PackedVec i v -> v
 dot (PVec as) (PVec bs) = dot' (V.toList as) (V.toList bs) 0
+{-# SPECIALIZE dot :: PackedVec Time Int -> PackedVec Time Int -> Int #-}
+{-# INLINEABLE dot #-}
 
 dot' :: (Ord i, Eq i, Num v) => [(i,v)] -> [(i,v)] -> v -> v
 dot' !(a:as) !(b:bs) !s
@@ -61,17 +61,21 @@ index (PVec v) i =
 -- | Shift the abscissas in a sparse vector
 shiftVec :: (Num i, V.Unbox i, V.Unbox v) => i -> PackedVec i v -> PackedVec i v
 shiftVec shift (PVec v) = PVec $ V.map (\(a,o)->(a+shift, o)) v
+{-# INLINEABLE shiftVec #-}
 
 -- | Zero elements until index i
 dropUntil :: (Ord i, V.Unbox i, V.Unbox v) => i -> PackedVec i v -> PackedVec i v
 dropUntil i (PVec v) = PVec $ V.dropWhile (\(a,o)->a < i) v
+{-# INLINEABLE dropUntil #-}
 
 -- | Zero elements after index i
 takeUntil :: (Ord i, V.Unbox i, V.Unbox v) => i -> PackedVec i v -> PackedVec i v
 takeUntil i (PVec v) = PVec $ V.takeWhile (\(a,o)->a < i) v
+{-# INLINEABLE takeUntil #-}
 
 -- | Map operation
 -- Note that this will only map non-zero entries
 map :: (V.Unbox i, V.Unbox v, V.Unbox v') => (v -> v') -> PackedVec i v -> PackedVec i v'
 map f (PVec v) = PVec $ V.map (\(x,y)->(x, f y)) v
+{-# INLINEABLE map #-}
 
