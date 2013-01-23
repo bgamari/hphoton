@@ -16,9 +16,9 @@ import HPhoton.FpgaTimetagger
 import qualified Data.Vector.Unboxed as V
 import Control.Monad.Trans.State.Strict
   
-import GHC.Generics
 import qualified Data.ByteString as BS
-import qualified Data.Serialize as S
+import qualified Data.Binary as B
+import Data.Vector.Binary ()
 import System.FilePath
 import System.Directory
 import Control.Monad
@@ -26,10 +26,6 @@ import Control.Monad
 data AlexChannels = AlexChannels { alexExc, alexEm :: Fret Channel }
                     deriving (Show, Eq)
                     
-instance (V.Unbox a, S.Serialize a) => S.Serialize (V.Vector a) where
-  put = S.put . V.toList
-  get = V.fromList `liftM` S.get
-                              
 -- | Extract timestamps for alternating laser excitation analysis
 alexTimes :: Time -> AlexChannels -> V.Vector Record -> Alex (V.Vector Time)
 alexTimes offset channels recs =
@@ -49,14 +45,14 @@ data AlexState = AlexState { sAccept :: !Bool
                  
 getTimes :: Time -> Channel -> Channel -> V.Vector Record -> V.Vector Time
 getTimes offset excCh emCh recs =
-  sResult $ execState (V.mapM_ f recs) initial
+    sResult $ execState (V.mapM_ go recs) initial
   where initial = AlexState { sAccept = False
                             , sDiscardT = 0
                             , sStartT = 0
                             , sResult = V.empty
                             }
-        f :: Record -> State AlexState ()
-        f rec = do
+        go :: Record -> State AlexState ()
+        go rec = do
           state <- get
           case sAccept state of
             False | recDelta rec && recChannel rec excCh ->
@@ -81,15 +77,12 @@ getCachedAlex :: FilePath -> IO (Maybe (Alex (V.Vector Time)))
 getCachedAlex fname = do
   exists <- doesFileExist cachePath
   if exists
-    then do a <- S.decode `liftM` BS.readFile cachePath
-            return $ case a of
-              Left _  -> Nothing
-              Right a -> Just a
+    then Just `fmap` B.decodeFile cachePath
     else return Nothing
   where cachePath = cachedAlexPath fname
   
 putCachedAlex :: FilePath -> Alex (V.Vector Time) -> IO ()
 putCachedAlex fname alex = 
-  BS.writeFile cachePath $ S.encode alex
+  B.encodeFile cachePath alex
   where cachePath = cachedAlexPath fname
   

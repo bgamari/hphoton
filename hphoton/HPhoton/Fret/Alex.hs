@@ -6,8 +6,8 @@ module HPhoton.Fret.Alex ( Alex(..)
                          , stoiciometry
                          ) where
 
-import GHC.Generics
-import qualified Data.Serialize as S
+import GHC.Generics (Generic)
+import qualified Data.Binary as B
 import Control.Applicative       
 
 data Alex a = Alex { alexAexcAem :: a
@@ -17,7 +17,7 @@ data Alex a = Alex { alexAexcAem :: a
                    }
             deriving (Show, Eq, Generic)
                      
-instance (S.Serialize a) => S.Serialize (Alex a)
+instance (B.Binary a) => B.Binary (Alex a)
          
 instance Functor Alex where
   fmap f a = Alex { alexAexcAem = f $ alexAexcAem a

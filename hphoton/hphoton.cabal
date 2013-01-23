@@ -38,7 +38,7 @@ Library
                      cmdargs,
                      bytestring,
                      transformers,
-                     cereal,
+                     binary,
                      vector-mmap,
                      statistics,
                      data-accessor,

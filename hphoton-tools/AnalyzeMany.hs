@@ -15,7 +15,7 @@ import           DataSet
 
 type FretEff = Double
 
-systems = [ "frna", "rrna" ] :: [Tag]
+systems = [ "wpd", "gap1", "gap5", "gap10", "nick" ] :: [Tag]
 
 processDirectory :: FilePath -> IO ()
 processDirectory dir = do
@@ -57,7 +57,6 @@ processDataSet dss ds = do
     runFretAnalysis [ "--crosstalk="++show dOnlyFret
                     , "--burst-mode=bayes-combined"
                     , "--burst-rate=1.5"
-                    , "--gamma"
                     , dsFileName ds
                     ]
     return ()

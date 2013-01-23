@@ -29,4 +29,5 @@ Library
                      bytestring,
                      aeson,
                      hphoton,
-                     cereal
+                     binary,
+                     vector-binary-instances
