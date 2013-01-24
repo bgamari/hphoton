@@ -10,7 +10,7 @@ module HPhoton.FpgaTimetagger ( -- * Types and fields
                                          
                                 -- * Reading records
                               , readRecords
-                              , decodeRecords
+                              , decodeRecords, decodeRecord
                               , strobeTimes
                                 
                                 -- * Metadata
