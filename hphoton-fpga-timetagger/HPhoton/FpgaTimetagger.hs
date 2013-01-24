@@ -88,9 +88,10 @@ recLost = from record . bitAt 47
 
 -- | The time field of a record
 recTime :: Lens' Record Time
-recTime = from record . lens (.&. 0xfffff)  set
-  where set r t | t > 0xfffff = error "FpgaTimetagger: Time too large"
-                | otherwise   = (r .&. complement 0xfffff) .|. t
+recTime = from record . lens (.&. mask)  set
+  where set r t | t > mask   = error "FpgaTimetagger: Time too large"
+                | otherwise  = (r .&. complement mask) .|. t
+        mask = 0xfffffffff
 
 -- | Is the given channel's bit set
 recChannel :: Channel -> Lens' Record Bool
@@ -128,12 +129,12 @@ decodeRecord :: BS.ByteString -> Maybe Record
 decodeRecord bs
     | BS.length bs < 6 = Nothing
     | otherwise        = Just $ Record
-                         $ sum [ byte 0
-                               , byte 1 `shift` 8
-                               , byte 2 `shift` 16
-                               , byte 3 `shift` 24
-                               , byte 4 `shift` 32
-                               , byte 5 `shift` 40
+                         $ sum [ byte 5
+                               , byte 4 `shift` 8
+                               , byte 3 `shift` 16
+                               , byte 2 `shift` 24
+                               , byte 1 `shift` 32
+                               , byte 0 `shift` 40
                                ]
     where byte i = fromIntegral $ bs `BSU.unsafeIndex` i
     
