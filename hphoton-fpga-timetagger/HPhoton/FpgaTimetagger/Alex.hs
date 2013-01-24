@@ -3,10 +3,6 @@
 module HPhoton.FpgaTimetagger.Alex ( Fret(..)
                                    , AlexChannels(..)
                                    , alexTimes
-                                     
-                                     -- * ALEX cache
-                                   , getCachedAlex
-                                   , putCachedAlex
                                    ) where
 
 import HPhoton.Types
@@ -15,6 +11,7 @@ import HPhoton.Fret.Alex
 import HPhoton.FpgaTimetagger
 import qualified Data.Vector.Unboxed as V
 import Control.Monad.Trans.State.Strict
+import Control.Lens
   
 import qualified Data.ByteString as BS
 import qualified Data.Binary as B
@@ -40,7 +37,7 @@ alexTimes offset channels recs =
 data AlexState = AlexState { sAccept :: !Bool
                            , sDiscardT :: !Time
                            , sStartT :: !Time
-                           , sResult :: V.Vector Time
+                           , sResult :: !(V.Vector Time)
                            }
                  
 getTimes :: Time -> Channel -> Channel -> V.Vector Record -> V.Vector Time
@@ -52,37 +49,20 @@ getTimes offset excCh emCh recs =
                             , sResult = V.empty
                             }
         go :: Record -> State AlexState ()
-        go rec = do
+        go r = do
           state <- get
           case sAccept state of
-            False | recDelta rec && recChannel rec excCh ->
+            False | r^.recDelta && r^.recChannel excCh ->
               put $! state { sAccept = True
-                           , sStartT = recTime rec + offset
-                           , sDiscardT = sDiscardT state + recTime rec - sStartT state
+                           , sStartT = r^.recTime + offset
+                           , sDiscardT = sDiscardT state + r^.recTime - sStartT state
                            }
             False -> return ()
-            True | recDelta rec && not (recChannel rec excCh) -> do
+            True | r^.recDelta && not (r^.recChannel excCh) -> do
               put $! state { sAccept = False
-                           , sStartT = recTime rec
+                           , sStartT = r^.recTime
                            }
-            True | recStrobe rec && recTime rec > sStartT state && recChannel rec emCh -> do
-              put $! state { sResult = sResult state V.++ V.singleton (recTime rec - sDiscardT state) }
+            True | r^.recStrobe && r^.recTime > sStartT state && r^.recChannel emCh -> do
+              put $! state { sResult = sResult state V.++ V.singleton (r^.recTime - sDiscardT state) }
             otherwise -> return ()
 
-cachedAlexPath fname =
-  let cacheName = "."++takeFileName fname++".alex"
-  in  dropFileName fname </> cacheName
-                  
-getCachedAlex :: FilePath -> IO (Maybe (Alex (V.Vector Time)))
-getCachedAlex fname = do
-  exists <- doesFileExist cachePath
-  if exists
-    then Just `fmap` B.decodeFile cachePath
-    else return Nothing
-  where cachePath = cachedAlexPath fname
-  
-putCachedAlex :: FilePath -> Alex (V.Vector Time) -> IO ()
-putCachedAlex fname alex = 
-  B.encodeFile cachePath alex
-  where cachePath = cachedAlexPath fname
-  

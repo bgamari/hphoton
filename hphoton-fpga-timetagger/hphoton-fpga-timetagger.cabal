@@ -30,4 +30,6 @@ Library
                      aeson,
                      hphoton,
                      binary,
-                     vector-binary-instances
+                     vector-binary-instances,
+                     vector-th-unbox >= 0.2,
+                     lens
