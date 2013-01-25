@@ -13,7 +13,8 @@ Cabal-version:       >=1.2
 Library
   Exposed-Modules:   HPhoton.FpgaTimetagger,
                      HPhoton.FpgaTimetagger.Alex,
-                     HPhoton.FpgaTimetagger.Metadata
+                     HPhoton.FpgaTimetagger.Metadata,
+                     HPhoton.FpgaTimetagger.Pipe
 
   Build-depends:     base,
                      ghc-prim,
@@ -32,4 +33,6 @@ Library
                      binary,
                      vector-binary-instances,
                      vector-th-unbox >= 0.2,
-                     lens
+                     lens,
+                     pipes,
+                     pipes-bytestring
