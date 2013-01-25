@@ -8,9 +8,12 @@ module HPhoton.FpgaTimetagger ( -- * Types and fields
                               , recChannel, recChannels
                               , recLost, recWrap
                                          
-                                -- * Reading records
+                                -- * Encoding and decoding records
                               , readRecords, readRecords'
                               , decodeRecords, decodeRecord
+                              , encodeRecord
+                              
+                                -- * Utilities
                               , strobeTimes
                                 
                                 -- * Metadata
@@ -143,6 +146,11 @@ decodeRecord bs
                                , byte 0 `shift` 40
                                ]
     where byte i = fromIntegral $ bs `BSU.unsafeIndex` i
+
+-- | Encode a single record to a bytestring
+encodeRecord :: Record -> BS.ByteString
+encodeRecord (Record r) =
+    BS.pack [ fromIntegral (r `shiftR` 8*i) | i <- [0..5] ]
     
 -- | Fix timing wraparounds
 unwrapTimes :: Time -> Vector Time -> Vector Time
