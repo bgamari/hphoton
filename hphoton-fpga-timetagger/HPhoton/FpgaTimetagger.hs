@@ -7,6 +7,7 @@ module HPhoton.FpgaTimetagger ( -- * Types and fields
                               , Channel(..)
                               , recChannel, recChannels
                               , recLost, recWrap
+                              , recTimeMask
                                          
                                 -- * Encoding and decoding records
                               , readRecords, readRecords'
@@ -91,10 +92,12 @@ recLost = from record . bitAt 47
 
 -- | The time field of a record
 recTime :: Lens' Record Time
-recTime = from record . lens (.&. mask)  set
-  where set r t | t > mask   = error "FpgaTimetagger: Time too large"
-                | otherwise  = (r .&. complement mask) .|. t
-        mask = 0xfffffffff
+recTime = from record . lens (.&. recTimeMask)  set
+  where set r t | t > recTimeMask  = error "FpgaTimetagger: Time too large"
+                | otherwise        = (r .&. complement recTimeMask) .|. t
+
+-- | A mask of a record's time field
+recTimeMask = 0xfffffffff :: Time
 
 -- | Is the given channel's bit set
 recChannel :: Channel -> Lens' Record Bool

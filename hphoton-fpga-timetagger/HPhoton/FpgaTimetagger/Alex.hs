@@ -42,7 +42,7 @@ getTimes offsetT excCh emCh recs =
           accept <- get
           case accept of
             Nothing | r^.recDelta && r^.recChannel excCh -> do
-                put $! Just $ r^.recTime + offsetT
+                put $! Just $ (r^.recTime + offsetT) .&. recTimeMask
                 return False
 
             Just _ | r^.recDelta && not (r^.recChannel excCh) -> do
