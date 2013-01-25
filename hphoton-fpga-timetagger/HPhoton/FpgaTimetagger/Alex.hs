@@ -34,35 +34,23 @@ alexTimes offset channels recs =
   where doAlex exc em = getTimes offset exc em recs
         AlexChannels { alexExc=excChs, alexEm=emChs } = channels
         
-data AlexState = AlexState { sAccept :: !Bool
-                           , sDiscardT :: !Time
-                           , sStartT :: !Time
-                           , sResult :: !(V.Vector Time)
-                           }
-                 
-getTimes :: Time -> Channel -> Channel -> V.Vector Record -> V.Vector Time
-getTimes offset excCh emCh recs =
-    sResult $ execState (V.mapM_ go recs) initial
-  where initial = AlexState { sAccept = False
-                            , sDiscardT = 0
-                            , sStartT = 0
-                            , sResult = V.empty
-                            }
-        go :: Record -> State AlexState ()
+getTimes :: Time -> Channel -> Channel -> V.Vector Record -> V.Vector Record
+getTimes offsetT excCh emCh recs =
+    evalState (V.filterM go recs) Nothing
+  where go :: Record -> State (Maybe Time) Bool
         go r = do
-          state <- get
-          case sAccept state of
-            False | r^.recDelta && r^.recChannel excCh ->
-              put $! state { sAccept = True
-                           , sStartT = r^.recTime + offset
-                           , sDiscardT = sDiscardT state + r^.recTime - sStartT state
-                           }
-            False -> return ()
-            True | r^.recDelta && not (r^.recChannel excCh) -> do
-              put $! state { sAccept = False
-                           , sStartT = r^.recTime
-                           }
-            True | r^.recStrobe && r^.recTime > sStartT state && r^.recChannel emCh -> do
-              put $! state { sResult = sResult state V.++ V.singleton (r^.recTime - sDiscardT state) }
-            otherwise -> return ()
+          accept <- get
+          case accept of
+            Nothing | r^.recDelta && r^.recChannel excCh -> do
+                put $! Just $ r^.recTime + offsetT
+                return False
 
+            Just _ | r^.recDelta && not (r^.recChannel excCh) -> do
+                put Nothing
+                return False
+
+            Just startT | r^.recStrobe && r^.recTime > startT && r^.recChannel emCh ->
+                return True
+
+            otherwise ->
+                return False
