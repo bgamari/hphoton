@@ -126,7 +126,7 @@ readRecords' fname = decodeRecords <$> BS.readFile fname
 decodeRecords :: BS.ByteString -> Vector Record
 decodeRecords = G.unfoldr f
     where f bs | BS.length bs < 6  = Nothing
-               | otherwise         = case decodeRecord $ BS.take 6 bs of
+               | otherwise         = case decodeRecord bs of
                                          Just r  -> Just (r, BS.drop 6 bs)
                                          Nothing -> f (BS.drop 6 bs)
     
