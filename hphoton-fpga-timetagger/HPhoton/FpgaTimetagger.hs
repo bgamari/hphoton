@@ -9,7 +9,7 @@ module HPhoton.FpgaTimetagger ( -- * Types and fields
                               , recLost, recWrap
                                          
                                 -- * Reading records
-                              , readRecords
+                              , readRecords, readRecords'
                               , decodeRecords, decodeRecord
                               , strobeTimes
                                 
@@ -114,7 +114,13 @@ derivingUnbox "Record"
 -- Note that this will drop the first 1024 records
 -- as a precaution against records leaking from stale buffers
 readRecords :: FilePath -> IO (Vector Record)
-readRecords fname = G.drop 1024 . decodeRecords <$> BS.readFile fname
+readRecords fname = G.drop 1024 <$> readRecords' fname
+
+-- | Read records from a file
+-- This does not drop possibly corrupt records at the beginning of the
+-- file
+readRecords' :: FilePath -> IO (Vector Record)
+readRecords' fname = decodeRecords <$> BS.readFile fname
     
 -- | Decode records from a bytestring
 decodeRecords :: BS.ByteString -> Vector Record
