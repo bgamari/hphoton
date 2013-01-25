@@ -5,20 +5,21 @@ module HPhoton.FpgaTimetagger.Alex ( Fret(..)
                                    , alexTimes
                                    ) where
 
-import HPhoton.Types
-import HPhoton.Fret (Fret(..))
-import HPhoton.Fret.Alex
-import HPhoton.FpgaTimetagger
+import           HPhoton.Types
+import           HPhoton.Fret (Fret(..))
+import           HPhoton.Fret.Alex
+import           HPhoton.FpgaTimetagger
 import qualified Data.Vector.Unboxed as V
-import Control.Monad.Trans.State.Strict
-import Control.Lens
+import           Control.Monad.Trans.State.Strict
+import           Control.Lens
   
-import qualified Data.ByteString as BS
+import           Control.Monad
 import qualified Data.Binary as B
-import Data.Vector.Binary ()
-import System.FilePath
-import System.Directory
-import Control.Monad
+import           Data.Bits
+import qualified Data.ByteString as BS
+import           Data.Vector.Binary ()
+import           System.Directory
+import           System.FilePath
                                      
 data AlexChannels = AlexChannels { alexExc, alexEm :: Fret Channel }
                     deriving (Show, Eq)
@@ -34,9 +35,9 @@ alexTimes offset channels recs =
   where doAlex exc em = getTimes offset exc em recs
         AlexChannels { alexExc=excChs, alexEm=emChs } = channels
         
-getTimes :: Time -> Channel -> Channel -> V.Vector Record -> V.Vector Record
+getTimes :: Time -> Channel -> Channel -> V.Vector Record -> V.Vector Time
 getTimes offsetT excCh emCh recs =
-    evalState (V.filterM go recs) Nothing
+    V.map (view recTime) $ evalState (V.filterM go recs) Nothing
   where go :: Record -> State (Maybe Time) Bool
         go r = do
           accept <- get
