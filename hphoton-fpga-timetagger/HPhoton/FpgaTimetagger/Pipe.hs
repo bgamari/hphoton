@@ -1,4 +1,5 @@
 module HPhoton.FpgaTimetagger.Pipe ( decodeRecordsP
+                                   , encodeRecordsP
                                    , module HPhoton.FpgaTimetagger
                                    ) where
 
@@ -18,3 +19,6 @@ decodeRecordsP = P.runIdentityK (go BS.empty) where
                                    Just r  -> P.respond r >>= go (BU.unsafeDrop 6 bs)
                                    Nothing -> go (BU.unsafeDrop 6 bs) x
     
+
+encodeRecordsP :: (Monad m, Proxy p) => () -> Pipe p Record BS.ByteString m ()
+encodeRecordsP = mapD encodeRecord
