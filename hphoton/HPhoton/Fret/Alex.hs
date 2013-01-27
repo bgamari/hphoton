@@ -23,11 +23,7 @@ data Alex a = Alex { alexAexcAem :: a
 instance (B.Binary a) => B.Binary (Alex a)
          
 instance Functor Alex where
-  fmap f a = Alex { alexAexcAem = f $ alexAexcAem a
-                  , alexAexcDem = f $ alexAexcDem a
-                  , alexDexcDem = f $ alexDexcDem a
-                  , alexDexcAem = f $ alexDexcAem a
-                  }
+  fmap f (Alex a b c d) = Alex (f a) (f b) (f c) (f d)
   
 instance Applicative Alex where
   pure x = Alex x x x x
