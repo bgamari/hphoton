@@ -7,3 +7,6 @@
 [submodule "logfloat-unboxed"]
 	path = logfloat-unboxed
 	url = git@github.com:bgamari/logfloat-unboxed.git
+[submodule "pipes-bytestring"]
+	path = pipes-bytestring
+	url = git://github.com/Gabriel439/Haskell-Pipes-ByteString-Library.git
