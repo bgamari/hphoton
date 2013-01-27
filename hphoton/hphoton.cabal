@@ -12,6 +12,7 @@ Cabal-version:       >=1.2
 
 Library
   Exposed-Modules:   HPhoton.Bin,
+                     HPhoton.Bin.Alex,
                      HPhoton.Bin.Plot,
                      HPhoton.Fret,
                      HPhoton.Fret.Types,
