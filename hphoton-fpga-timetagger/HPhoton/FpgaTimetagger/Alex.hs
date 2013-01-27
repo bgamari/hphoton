@@ -10,7 +10,7 @@ import           HPhoton.Fret (Fret(..))
 import           HPhoton.Fret.Alex
 import           HPhoton.FpgaTimetagger
 import qualified Data.Vector.Unboxed as V
-import           Control.Monad.Trans.State.Strict
+import           Control.Monad.Trans.State
 import           Control.Lens
   
 import           Control.Monad
