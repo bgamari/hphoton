@@ -25,15 +25,15 @@ binWithBounds width ts = V.zip times bins
           bins = V.fromList $ bin' width (V.toList ts) Nothing bin0 0
           times = V.generate (V.length bins) (\i->fromIntegral i*width + V.head ts)
 
--- | 'binRange width times (start,end)' is a list of bin counts
+-- | 'binRange width (start,end) times' is a list of bin counts
 -- of bin width 'width'. The bins will begin at time 'start' and end
 -- at 'end'
-binRange :: Time -> V.Vector Time -> (Time, Time) -> V.Vector Int
-binRange width ts (start_t, end_t) =
+binRange :: Time -> (Time, Time) -> V.Vector Time -> V.Vector Int
+binRange width (start_t, end_t) ts =
     V.fromList $ bin' width (V.toList ts) (Just end_t) (fromIntegral $ start_t `quot` width) 0
 
-binRangeWithBounds :: Time -> V.Vector Time -> (Time, Time) -> V.Vector (Time, Int)
-binRangeWithBounds width ts (start_t, end_t) = V.zip times bins
+binRangeWithBounds :: Time -> (Time, Time) -> V.Vector Time -> V.Vector (Time, Int)
+binRangeWithBounds width (start_t, end_t) ts = V.zip times bins
     where bin0 = fromIntegral $ start_t `quot` width
           bins = V.fromList $ bin' width (V.toList ts) (Just end_t) bin0 0
           times = V.generate (V.length bins) (\i->fromIntegral i*width + start_t)
