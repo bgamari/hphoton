@@ -1,26 +1,33 @@
 {-# LANGUAGE BangPatterns #-}
 
-module HPhoton.Bin ( bin
+module HPhoton.Bin ( -- * Temporal photon binning
+                     bin
                    , binWithBounds
                    , binRange
                    , binRangeWithBounds
-                   -- Internal
+                   -- * Internal
                    , bin'
                    ) where
 
 import HPhoton.Types
 import qualified Data.Vector.Unboxed as V
 
+-- | 'bin width times' is a list of binned counts of bin width 'width'
 bin :: Time -> V.Vector Time -> V.Vector Int
 bin width ts =
     V.fromList $ bin' width (V.toList ts) Nothing (fromIntegral $ V.head ts `quot` width) 0
                 
+-- | 'binWithBounds width times' is a list of bin counts and start
+-- times of bin width 'width'
 binWithBounds :: Time -> V.Vector Time -> V.Vector (Time, Int)
 binWithBounds width ts = V.zip times bins
     where bin0 = fromIntegral $ V.head ts `quot` width
           bins = V.fromList $ bin' width (V.toList ts) Nothing bin0 0
           times = V.generate (V.length bins) (\i->fromIntegral i*width + V.head ts)
 
+-- | 'binRange width times (start,end)' is a list of bin counts
+-- of bin width 'width'. The bins will begin at time 'start' and end
+-- at 'end'
 binRange :: Time -> V.Vector Time -> (Time, Time) -> V.Vector Int
 binRange width ts (start_t, end_t) =
     V.fromList $ bin' width (V.toList ts) (Just end_t) (fromIntegral $ start_t `quot` width) 0
