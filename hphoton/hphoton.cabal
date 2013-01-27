@@ -46,7 +46,7 @@ Library
                      chart-histogram,
                      colour,
                      QuickCheck,
-                     fclabels
+                     lens
 
 test-suite Main
   Hs-source-dirs:    .,tests
