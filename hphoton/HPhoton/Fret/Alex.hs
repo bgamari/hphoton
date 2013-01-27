@@ -6,9 +6,12 @@ module HPhoton.Fret.Alex ( Alex(..)
                          , stoiciometry
                          ) where
 
-import GHC.Generics (Generic)
+import           Control.Applicative
 import qualified Data.Binary as B
-import Control.Applicative       
+import           Data.Traversable
+import           Data.Foldable
+import           Data.Monoid
+import           GHC.Generics (Generic)
 
 data Alex a = Alex { alexAexcAem :: a
                    , alexAexcDem :: a
@@ -29,6 +32,12 @@ instance Functor Alex where
 instance Applicative Alex where
   pure x = Alex x x x x
   (Alex a b c d) <*> (Alex x y z w) = Alex (a x) (b y) (c z) (d w)
+
+instance Foldable Alex where
+  foldMap f (Alex a b c d) = f a <> f b <> f c <> f d
+
+instance Traversable Alex where
+  traverse f (Alex a b c d) = Alex <$> f a <*> f b <*> f c <*> f d
 
 fretEff :: Double -> Alex Double -> Double
 fretEff gamma alex = iA / (iA + gamma*iD)
