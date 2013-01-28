@@ -1,18 +1,18 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE PatternGuards      #-}
 
+import           Prelude hiding (all, catch, concat, foldl1, mapM_, sum)
+
 import           Control.Applicative
-import           Control.Arrow                             (first, second)
-import           Control.Monad                             (guard, liftM, when)
-import           Data.Accessor
+import           Control.Arrow (second)
+import           Control.Monad (guard, liftM, when)
 import           Data.Foldable
-import           Data.List                                 (genericLength,
-                                                            stripPrefix,
-                                                            partition)
+import           Data.List (genericLength, stripPrefix, partition)
+import           Text.Printf
+
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Traversable
-import qualified Data.Vector.Unboxed                       as V
+import qualified Data.Vector.Unboxed as V
 
 import           HPhoton.Bin
 import           HPhoton.Bin.Plot
@@ -23,20 +23,15 @@ import           HPhoton.Fret
 import           HPhoton.Types
 import           HPhoton.Utils
 
-import           Control.Exception                         (SomeException,
-                                                            catch)
-import           Data.Random                               hiding (Gamma, gamma)
-import           Numeric.MixtureModel.Beta                 as Beta hiding (Prob)
+import           Control.Exception (SomeException, catch)
+import           Options.Applicative
+
+import           Data.Random hiding (Gamma, gamma)
+import           Numeric.MixtureModel.Beta as Beta hiding (Prob)
 import           System.Random.MWC
-
-import           Prelude                                   hiding (all, catch,
-                                                            concat, foldl1,
-                                                            mapM_, sum)
 import           Statistics.Sample
-import           System.Console.CmdArgs
-import           System.Environment
-import           Text.Printf
 
+import           Data.Accessor
 import           Data.Colour
 import           Data.Colour.Names
 import           Graphics.Rendering.Chart
@@ -70,60 +65,78 @@ data BurstMode = Bayes { bayesWindow       :: Int
 data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , n_bins :: Int
                                  , input :: [FilePath]
-                                 , burst_mode :: String
-
-                                 , bin_width :: RealTime
-                                 , burst_thresh :: Double
-
-                                 , beta_thresh :: Double
-                                 , bg_rate :: Double
                                  , burst_size :: Int
-                                 , burst_rate :: Double
-                                 , prob_b :: Double
-                                 , window :: Int
+                                 , burst_mode :: BurstMode
 
                                  , crosstalk :: FretEff
                                  , gamma :: Bool
 
                                  , fit_ncomps :: Int
                                  }
-                    deriving (Show, Eq, Data, Typeable)
+                    deriving (Show, Eq)
 
-fretAnalysis = FretAnalysis { clockrate = round $ (128e6::Double) &= groupname "General" &= help "Timetagger clockrate (Hz)"
-                            , n_bins = 50 &= groupname "General" &= help "Number of bins in efficiency histogram"
-                            , input = def &= args &= typFile
-                            , burst_mode = "bin-thresh" &= help "Method of burst identification to be used"
+burstMode :: Parser BurstMode
+burstMode = bayes <|> binThresh
+  where bayes = Bayes
+                <$> option ( long "bayes-window" <> value 10
+                          <> help "Window size" )
+                <*> option ( long "bayes-beta-thresh" <> value 2
+                          <> help "Threshold on beta" )
+                <*> option ( long "bayes-prob-b" <> value 0.01
+                          <> help "Burst probability" )
+                <*> option ( long "bayes-burst-rate" <> value 3
+                          <> help "Burst rate factor" )
+                <*> option ( long "bayes-bg-rate" <> value 1
+                          <> help "Background rate factor" )
+                <*> ( ((const CombinedChannels) <$> switch
+                          ( long "bayes-combined"
+                         <> help "Run Bayesian burst detection on combined"
+                          )
+                      )
+                      <|>
+                      (SingleChannel <$> nullOption
+                           ( long "bayes-single" <> reader (const $ pure Donor)
+                          <> help "Run Bayesian burst detection on a single channel"
+                           )
+                      )
+                    )
+                <*  switch ( long "bayes" <> help "Use Bayesian burst detection" )
+        binThresh = BinThresh
+                    <$> option ( long "bin-width" <> value 10
+                              <> help "Binning bin width in milliseconds" )
+                    <*> nullOption ( long "burst-thresh" <> reader (pure . MultMeanThresh . read)
+                                  <> value (MultMeanThresh 2)
+                                  <> help "Burst count threshold" )
+                    <*  switch ( long "bin-thresh"
+                              <> help "Use binning/thresholding for burst detection" )
 
-                            , bin_width = 10 &= groupname "Bin/threshold burst detection"
-                                             &= help "Bin width in milliseconds"
-                            , burst_thresh = 2 &= groupname "Bin/threshold burst detection"
-                                               &= help "Threshold rate over background rate (multiples of sigma)"
+fretAnalysis :: Parser FretAnalysis
+fretAnalysis = FretAnalysis
+    <$> option ( long "clockrate" <> short 'c'
+              <> value (round $ (128e6::Double))
+              <> help "Timetagger clockrate (Hz)"
+               )
+    <*> option ( long "nbins" <> short 'n'
+              <> value 50
+              <> help "Number of bins in efficiency histogram"
+               )
+    <*> arguments1 Just ( help "Input files" )
+    <*> option ( long "burst-size" <> short 's'
+              <> value 10
+              <> help "Minimum burst size in photons"
+               )
+    <*> burstMode
+    <*> option ( long "crosstalk" <> value 0
+              <> help "Measured efficiency for zero FRET to compute crosstalk correction"
+               )
+    <*> switch ( long "gamma"
+              <> help "Enable gamma correction from donor-only signal"
+               )
+    <*> option ( long "fit" <> value 2
+              <> help "Number of Beta components to fit histogram against"
+               )
 
-                            , burst_size = 10 &= groupname "Bayesian burst detection"
-                                              &= help "Minimum burst size"
-                            , burst_rate = 3 &= groupname "Bayesian burst detection"
-                                             &= help "Burst rate (multiple of avg.)"
-                            , bg_rate = 1 &= groupname "Bayesian burst detection"
-                                          &= help "Background rate (multiple of avg.)"
-                            , window = 10 &= groupname "Bayesian burst detection"
-                                          &= help "Burst window (photons)"
-                            , prob_b = 0.01 &= groupname "Bayesian burst detection"
-                                            &= help "Probability of burst"
-                            , beta_thresh = 2 &= groupname "Bayesian burst detection"
-                                              &= help "Beta threshold"
-
-                            , crosstalk = 0 &= groupname "Crosstalk Correction"
-                                            &= help "Measured efficiency for zero FRET (donor-only)"
-                            , gamma = False &= groupname "Gamma correction"
-                                            &= help "Enable gamma correction"
-
-                            , fit_ncomps = 2 &= groupname "Histogram fit"
-                                             &= help "Number of components"
-                            }
-
-fretChs = Fret { fretA = Ch1
-               , fretD = Ch0
-               }
+fretChs = Fret { fretA = Ch1, fretD = Ch0 }
 
 summarizeTimestamps :: Clock -> FretAnalysis -> String -> V.Vector Time -> IO ()
 summarizeTimestamps clk p label photons =
@@ -234,23 +247,6 @@ poissonLikelihood :: Int -> Int -> Prob
 poissonLikelihood lambda k =
     realToFrac (lambda^k) * exp (realToFrac $ -k) / realToFrac (fac lambda)
 
-fretAnalysisToBurstMode :: Clock -> FretAnalysis -> Fret (V.Vector Time) -> BurstMode
-fretAnalysisToBurstMode clk p d =
-    let rateA = photonsRate clk (fretA d)
-        rateD = photonsRate clk (fretD d)
-        bayes ch = Bayes { bayesWindow          = window p
-                         , bayesBetaThresh      = beta_thresh p
-                         , bayesProbB           = prob_b p
-                         , bayesBurstRateFactor = burst_rate p
-                         , bayesBgRateFactor    = bg_rate p
-                         , bayesChannel         = ch
-                         }
-    in case burst_mode p of
-       "bin-thresh"     -> BinThresh (bin_width p) (MultMeanThresh $ burst_thresh p)
-       "bayes"          -> bayes (SingleChannel Donor)
-       "bayes-combined" -> bayes CombinedChannels
-       otherwise        -> error "Unknown burst mode"
-
 analyzeData :: String -> Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO ()
 analyzeData rootName clk p fret = do
     let range = (V.head $ fretA fret, V.last $ fretA fret)
@@ -258,9 +254,8 @@ analyzeData rootName clk p fret = do
     summarizeTimestamps clk p "D" $ fretD fret
 
     let duration = realDuration clk $ toList fret
-        burstMode = fretAnalysisToBurstMode clk p fret
         burstSpans = filter (\span->realSpanDuration clk span > 1e-4)
-                     $ fretBursts clk burstMode fret
+                     $ fretBursts clk (burst_mode p) fret
         burstPhotons = filter (not . all V.null . toList)
                        $ flipFrets
                        $ fmap (spansPhotons burstSpans)
@@ -429,7 +424,11 @@ burstCounts :: [Fret (V.Vector Time)] -> [Fret Int]
 burstCounts = map (fmap V.length)
 
 main = do
-    p <- cmdArgs fretAnalysis
+    let opts = info (helper <*> fretAnalysis)
+                    ( fullDesc 
+                   <> progDesc "FRET analysis"
+                   <> header "fret-analysis - A simple FRET analysis" )
+    p <- execParser opts
     when (null $ input p) $ error "Need at least one input file"
     mapM_ (fileMain p) $ input p
 
