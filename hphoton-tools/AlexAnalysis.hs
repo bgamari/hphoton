@@ -1,4 +1,4 @@
-import           Control.Lens hiding ((^=))
+import           Control.Lens hiding ((^=), (.>))
 import           Data.Accessor
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
@@ -22,6 +22,7 @@ import           HPhoton.Bin.Alex
 import           HPhoton.Fret.Alex
 
 import           Graphics.Rendering.Chart
+import           Graphics.Rendering.Chart.Plot.Histogram
 import           Data.Colour
 import           Data.Colour.Names
 
@@ -104,13 +105,8 @@ goFile p fname = do
     let s = fmap stoiciometry bins
         e = fmap proxRatio bins
     writeFile (fname++"-se") $ unlines $ zipWith (\s e->show s++"\t"++show e) s e
+    renderableToPDFFile (layoutSE s e) 640 480 (fname++"-se.pdf")
     
-    let chart = layout1_plots ^= [Left $ toPlot pts] $ defaultLayout1
-        pts = plot_points_values ^= zip e s
-              $ plot_points_style ^= filledCircles 2 (opaque blue)
-              $ defaultPlotPoints
-    renderableToPDFFile (toRenderable chart) 640 480 (fname++"-se.pdf")
-
     renderableToPDFFile 
         (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA bins)
         500 500 (fname++"-bins.pdf")
@@ -133,3 +129,25 @@ plotBinTimeseries counts =
     $ plot_points_style ^= filledCircles 0.5 (opaque blue)
     $ defaultPlotPoints
     
+layoutSE :: [Double] -> [Double] -> Renderable ()
+layoutSE s e =
+    let pts = toPlot
+              $ plot_points_values ^= zip e s
+              $ plot_points_style ^= filledCircles 2 (opaque blue)
+              $ defaultPlotPoints
+        e_hist = histToPlot
+                 $ plot_hist_bins ^= 50
+                 $ plot_hist_values ^= e
+                 $ plot_hist_range ^= Just (0,1)
+                 $ defaultPlotHist
+    in renderLayout1sStacked
+       [ withAnyOrdinate
+         $ layout1_plots ^= [Left pts]
+         $ layout1_left_axis   .> laxis_title ^= "Stoiciometry"
+         $ defaultLayout1
+       , withAnyOrdinate
+         $ layout1_plots ^= [Left e_hist]
+         $ layout1_bottom_axis .> laxis_title ^= "Proximity Ratio"
+         $ layout1_left_axis   .> laxis_title ^= "Stoiciometry"
+         $ defaultLayout1
+       ]
