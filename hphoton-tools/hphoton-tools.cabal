@@ -59,6 +59,29 @@ Executable fret-analysis
                      hphoton,
                      hphoton-fpga-timetagger
 
+Executable alex-analysis
+  Main-is:           AlexAnalysis.hs
+  Ghc-options:       -rtsopts
+  Build-depends:     base,
+                     directory,
+                     filepath,
+                     primitive,
+                     vector,
+                     math-functions,
+                     lens,
+                     pipes,
+                     pipes-vector,
+                     pipes-bytestring,
+                     optparse-applicative,
+                     transformers,
+                     statistics,
+                     data-accessor,
+                     Chart,
+                     chart-histogram,
+                     mixture-model,
+                     hphoton,
+                     hphoton-fpga-timetagger
+
 Executable fit-interarrivals
   Main-is:           FitInterarrivals.hs
   Ghc-options:       -rtsopts -threaded
