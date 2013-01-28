@@ -1,4 +1,4 @@
-module HPhoton.Bin.Alex ( alexBin) where
+module HPhoton.Bin.Alex (alexBin) where
 
 import           Control.Applicative
 import           Data.Foldable as F
@@ -10,8 +10,8 @@ import           HPhoton.Bin
 import           HPhoton.Types
 import           HPhoton.Fret.Alex
 
-alexBin :: Time -> Alex (VU.Vector Time) -> V.Vector (Alex Int)
+alexBin :: Time -> Alex (VU.Vector Time) -> [Alex Int]
 alexBin binWidth times =
-    T.sequence $ pure (V.convert . binRange binWidth (start,end)) <*> times
+    getZipList $ T.sequenceA $ pure (ZipList . binRangeL binWidth (start,end)) <*> times
     where start = F.maximum $ fmap VU.head times
           end   = F.minimum $ fmap VU.last times
