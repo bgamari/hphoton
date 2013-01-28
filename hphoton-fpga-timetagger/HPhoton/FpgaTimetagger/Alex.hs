@@ -37,7 +37,9 @@ alexTimes offset channels recs =
         
 getTimes :: Time -> Channel -> Channel -> V.Vector Record -> V.Vector Time
 getTimes offsetT excCh emCh recs =
-    V.map (view recTime) $ evalState (V.filterM go recs) Nothing
+    unwrapTimes recTimeMask
+    $ V.map (view recTime)
+    $ evalState (V.filterM go recs) Nothing
   where go :: Record -> State (Maybe Time) Bool
         go r = do
           accept <- get
