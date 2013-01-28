@@ -16,6 +16,7 @@ module HPhoton.FpgaTimetagger ( -- * Types and fields
                               
                                 -- * Utilities
                               , strobeTimes
+                              , unwrapTimes
                                 
                                 -- * Metadata
                               , module HPhoton.FpgaTimetagger.Metadata
