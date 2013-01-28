@@ -114,25 +114,31 @@ fretAnalysis :: Parser FretAnalysis
 fretAnalysis = FretAnalysis
     <$> option ( long "clockrate" <> short 'c'
               <> value (round $ (128e6::Double))
+              <> metavar "FREQ"
               <> help "Timetagger clockrate (Hz)"
                )
     <*> option ( long "nbins" <> short 'n'
               <> value 50
+              <> metavar "N"
               <> help "Number of bins in efficiency histogram"
                )
-    <*> arguments1 Just ( help "Input files" )
+    <*> arguments1 Just ( help "Input files" <> action "file" )
     <*> option ( long "burst-size" <> short 's'
               <> value 10
+              <> metavar "N"
               <> help "Minimum burst size in photons"
                )
     <*> burstMode
     <*> option ( long "crosstalk" <> value 0
+              <> metavar "E"
               <> help "Measured efficiency for zero FRET to compute crosstalk correction"
                )
     <*> switch ( long "gamma"
+              <> metavar "N"
               <> help "Enable gamma correction from donor-only signal"
                )
     <*> option ( long "fit" <> value 2
+              <> metavar "N"
               <> help "Number of Beta components to fit histogram against"
                )
 
