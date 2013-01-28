@@ -1,6 +1,8 @@
 import           Control.Lens hiding ((^=))
 import           Data.Accessor
 import qualified Data.Foldable as F
+import qualified Data.Traversable as T
+import           Data.Monoid
 import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Primitive
@@ -24,8 +26,30 @@ import           Data.Colour
 import           Data.Colour.Names
 
 import           Numeric.SpecFunctions (factorial)
+                 
+import           Options.Applicative
 
 type Rate = Double
+
+data AlexAnalysis = AlexAnalysis { clockrate :: Freq
+                                 , input :: [FilePath]
+                                 , burst_size :: Int
+                                 }
+                    deriving (Show, Eq)
+
+alexAnalysis :: Parser AlexAnalysis
+alexAnalysis = AlexAnalysis
+    <$> option ( long "clockrate" <> short 'c'
+              <> value (round $ (128e6::Double))
+              <> metavar "FREQ"
+              <> help "Timetagger clockrate (Hz)"
+               )
+    <*> arguments1 Just ( help "Input files" <> action "file" )
+    <*> option ( long "burst-size" <> short 's'
+              <> value 2
+              <> metavar "N"
+              <> help "Minimum burst size in photons"
+               )
 
 poissonP :: Rate -> Int -> Double
 poissonP l k = l^k / factorial k * exp (-l)
@@ -33,8 +57,25 @@ poissonP l k = l^k / factorial k * exp (-l)
 bgOdds :: Rate -> Rate -> Int -> Double
 bgOdds bg fg k = poissonP fg k / poissonP bg k
 
+data Average a = Average !Int !a deriving (Read, Show)
+    
+instance Num a => Monoid (Average a) where
+    mempty = Average 0 0
+    Average n a `mappend` Average m b = Average (n+m) (a+b)
+    
+runAverage :: Fractional a => Average a -> a
+runAverage (Average n a) = a / fromIntegral n
+
 main = do
-    let fname = "/home/ben/lori/data/rna/solution-fret/2013-01-21/2013-01-21-run_004.timetag"
+    let opts = info (helper <*> alexAnalysis)
+                    ( fullDesc
+                   <> progDesc "ALEX FRET analysis"
+                    )
+    p <- execParser opts
+    forM_ (input p) $ goFile p
+
+goFile :: AlexAnalysis -> FilePath -> IO ()
+goFile p fname = do
     recs <- withFile fname ReadMode $ \fIn->
         runToVectorD $ runProxy $   raiseK (PBS.fromHandleS fIn)
                                 >-> decodeRecordsP
@@ -48,21 +89,47 @@ main = do
                                     }
     let clk = clockFromFreq $ round (128e6::Double)
     let times = alexTimes 0 alexChannels recs
-        thresh = Alex { alexAexcAem = 5, alexAexcDem = 0
-                      , alexDexcAem = 5, alexDexcDem = 0 }
-        bins = fmap (fmap realToFrac)
+        thresh = Alex { alexAexcAem = burst_size p, alexAexcDem = 0
+                      , alexDexcAem = burst_size p, alexDexcDem = 0 }
+        bins = fmap (fmap fromIntegral)
                $ filter (\alex->getAll $ F.fold
                                 $ pure (\a b->All $ a > b) <*> alex <*> thresh)
                $ alexBin (realTimeToTime clk 10e-3) times
+             :: [Alex Double]
 
-    writeFile "test" $ unlines $ map (F.foldMap (\a->show a++"\t")) bins
+    let counts = pure (runAverage . mconcat) <*> T.sequenceA (map (pure (Average 1) <*>) bins)
+    putStrLn $ "Counts = "++show counts
+
+    writeFile (fname++"-bins") $ unlines $ map (F.foldMap (\a->show a++"\t")) bins
     let s = fmap stoiciometry bins
         e = fmap proxRatio bins
-
-    let chart = layout1_plots ^= [Left $ toPlot pts]
-                $ defaultLayout1
+    writeFile (fname++"-se") $ unlines $ zipWith (\s e->show s++"\t"++show e) s e
+    
+    let chart = layout1_plots ^= [Left $ toPlot pts] $ defaultLayout1
         pts = plot_points_values ^= zip e s
               $ plot_points_style ^= filledCircles 2 (opaque blue)
               $ defaultPlotPoints
-    renderableToPDFFile (toRenderable chart) 640 480 "test.pdf"
+    renderableToPDFFile (toRenderable chart) 640 480 (fname++"-se.pdf")
+
+    renderableToPDFFile 
+        (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA bins)
+        500 500 (fname++"-bins.pdf")
+
+layoutThese :: (F.Foldable f, Applicative f, PlotValue x, PlotValue y)
+            => (a -> Plot x y) -> f String -> f a -> Renderable ()
+layoutThese f titles xs =
+    renderLayout1sStacked $ F.toList
+    $ pure makeLayout <*> titles <*> xs
+    where --makeLayout :: String -> Plot x y -> Layout1 x y
+          makeLayout title x = withAnyOrdinate
+                               $ layout1_title ^= title
+                               $ layout1_plots ^= [Left $ f x]
+                               $ defaultLayout1
+
+plotBinTimeseries :: [a] -> Plot Int a
+plotBinTimeseries counts =
+    toPlot
+    $ plot_points_values ^= zip [0..] counts
+    $ plot_points_style ^= filledCircles 0.5 (opaque blue)
+    $ defaultPlotPoints
     
