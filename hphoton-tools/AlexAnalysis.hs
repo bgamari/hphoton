@@ -35,6 +35,7 @@ type Rate = Double
 data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , input :: [FilePath]
                                  , burst_size :: Int
+                                 , nbins :: Int
                                  }
                     deriving (Show, Eq)
 
@@ -50,6 +51,11 @@ alexAnalysis = AlexAnalysis
               <> value 2
               <> metavar "N"
               <> help "Minimum burst size in photons"
+               )
+    <*> option ( long "nbins" <> short 'n'
+              <> value 50
+              <> metavar "N"
+              <> help "Number of bins in the FRET efficiency histogram"
                )
 
 poissonP :: Rate -> Int -> Double
@@ -90,11 +96,12 @@ goFile p fname = do
                                     }
     let clk = clockFromFreq $ round (128e6::Double)
     let times = alexTimes 0 alexChannels recs
-        thresh = Alex { alexAexcAem = burst_size p, alexAexcDem = 0
-                      , alexDexcAem = burst_size p, alexDexcDem = 0 }
+        thresh = Alex { alexAexcAem = 0           , alexAexcDem = 0
+                      , alexDexcAem = burst_size p, alexDexcDem = burst_size p }
         bins = fmap (fmap fromIntegral)
                $ filter (\alex->getAll $ F.fold
                                 $ pure (\a b->All $ a > b) <*> alex <*> thresh)
+               -- $ filter (\alex->getSum (F.foldMap Sum alex) > burst_size p)
                $ alexBin (realTimeToTime clk 10e-3) times
              :: [Alex Double]
 
@@ -105,7 +112,7 @@ goFile p fname = do
     let s = fmap stoiciometry bins
         e = fmap proxRatio bins
     writeFile (fname++"-se") $ unlines $ zipWith (\s e->show s++"\t"++show e) s e
-    renderableToPDFFile (layoutSE s e) 640 480 (fname++"-se.pdf")
+    renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (fname++"-se.pdf")
     
     renderableToPDFFile 
         (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA bins)
@@ -129,14 +136,14 @@ plotBinTimeseries counts =
     $ plot_points_style ^= filledCircles 0.5 (opaque blue)
     $ defaultPlotPoints
     
-layoutSE :: [Double] -> [Double] -> Renderable ()
-layoutSE s e =
+layoutSE :: Int -> [Double] -> [Double] -> Renderable ()
+layoutSE eBins s e =
     let pts = toPlot
               $ plot_points_values ^= zip e s
               $ plot_points_style ^= filledCircles 2 (opaque blue)
               $ defaultPlotPoints
         e_hist = histToPlot
-                 $ plot_hist_bins ^= 50
+                 $ plot_hist_bins ^= eBins
                  $ plot_hist_values ^= e
                  $ plot_hist_range ^= Just (0,1)
                  $ defaultPlotHist
