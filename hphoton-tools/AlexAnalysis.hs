@@ -151,12 +151,13 @@ layoutSE eBins s e =
        [ withAnyOrdinate
          $ layout1_plots ^= [Left pts]
          $ layout1_bottom_axis .> laxis_override ^= (axis_viewport ^= vmap (0,1))
+         $ layout1_left_axis   .> laxis_override ^= (axis_viewport ^= vmap (0,1))
          $ layout1_left_axis   .> laxis_title ^= "Stoiciometry"
          $ defaultLayout1
        , withAnyOrdinate
          $ layout1_plots ^= [Left e_hist]
          $ layout1_bottom_axis .> laxis_title ^= "Proximity Ratio"
          $ layout1_bottom_axis .> laxis_override ^= (axis_viewport ^= vmap (0,1))
-         $ layout1_left_axis   .> laxis_title ^= "Stoiciometry"
+         $ layout1_left_axis   .> laxis_title ^= "Occurrences"
          $ defaultLayout1
        ]
