@@ -4,6 +4,7 @@ module HPhoton.Fret.Alex ( Alex(..)
                          , proxRatio
                          , fretEff
                          , stoiciometry
+                         , stoiciometry'
                          ) where
 
 import           Control.Applicative
@@ -42,8 +43,14 @@ fretEff gamma alex = iA / (iA + gamma*iD)
         
 proxRatio = fretEff 1
 
+-- | Stoiciometry
 stoiciometry :: Alex Double -> Double 
-stoiciometry alex = (iDexcDem + iDexcAem) / (iDexcDem + iDexcAem + iAexcDem + iAexcAem)
+stoiciometry = stoiciometry' 1
+
+-- | Stoiciometry with Gamma
+stoiciometry' :: Double -> Alex Double -> Double 
+stoiciometry' gamma alex =
+    (gamma*iDexcDem + iDexcAem) / (gamma*iDexcDem + iDexcAem + iAexcDem + iAexcAem)
   where Alex { alexAexcAem = iAexcAem
              , alexAexcDem = iAexcDem
              , alexDexcDem = iDexcDem
