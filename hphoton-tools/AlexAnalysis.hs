@@ -132,8 +132,8 @@ goFile p fname = do
                       , alexDexcAem = a, alexDexcDem = a }
         bgRates = Alex { alexAexcAem = 40, alexAexcDem = 50
                        , alexDexcAem = 40, alexDexcDem = 40 }
-        fgRates = Alex { alexAexcAem = 2000, alexAexcDem = 50
-                       , alexDexcAem = 2000, alexDexcDem = 2000 }
+        fgRates = Alex { alexAexcAem = 5000, alexAexcDem = 50
+                       , alexDexcAem = 5000, alexDexcDem = 5000 }
         bins = --  filter (\alex->getAll $ F.fold
                --                 $ pure (\a b->All $ a >= b) <*> alex <*> thresh)
                -- $ filter (\alex->getSum (F.foldMap Sum alex) > burst_size p)
