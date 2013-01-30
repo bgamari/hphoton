@@ -26,7 +26,8 @@ import           Graphics.Rendering.Chart.Plot.Histogram
 import           Data.Colour
 import           Data.Colour.Names
 
-import           Numeric.SpecFunctions (factorial)
+import           Numeric.SpecFunctions (logFactorial)
+import           Data.Number.LogFloat hiding (realToFrac)
                  
 import           Options.Applicative
 
@@ -70,10 +71,12 @@ alexAnalysis = AlexAnalysis
               <> help "Initial time of bin to drop"
                )
 
-poissonP :: Rate -> Int -> Double
-poissonP l k = l^k / factorial k * exp (-l)
+poissonP :: Rate -> Int -> LogFloat
+poissonP l k = l'^k / factorial' k * realToFrac (exp (-l))
+    where l' = realToFrac l
+          factorial' = logToLogFloat . logFactorial
 
-bgOdds :: Rate -> Rate -> Int -> Double
+bgOdds :: Rate -> Rate -> Int -> LogFloat
 bgOdds bg fg k = poissonP fg k / poissonP bg k
 
 data Average a = Average !Int !a deriving (Read, Show)
@@ -111,10 +114,19 @@ goFile p fname = do
         a = fromIntegral (burst_size p) * bin_width p
         thresh = Alex { alexAexcAem = a, alexAexcDem = 0
                       , alexDexcAem = a, alexDexcDem = a }
-        bins =   filter (\alex->getAll $ F.fold
-                                $ pure (\a b->All $ a >= b) <*> alex <*> thresh)
+        bgRates = Alex { alexAexcAem = 40, alexAexcDem = 50
+                       , alexDexcAem = 40, alexDexcDem = 40 }
+        fgRates = Alex { alexAexcAem = 2000, alexAexcDem = 50
+                       , alexDexcAem = 2000, alexDexcDem = 2000 }
+        bins = --  filter (\alex->getAll $ F.fold
+               --                 $ pure (\a b->All $ a >= b) <*> alex <*> thresh)
                -- $ filter (\alex->getSum (F.foldMap Sum alex) > burst_size p)
-               $ fmap (fmap fromIntegral)
+                 fmap (fmap fromIntegral)
+               $ filter (\alex->F.product ( pure bgOdds
+                                        <*> fmap (* bin_width p) bgRates
+                                        <*> fmap (* bin_width p) fgRates
+                                        <*> alex
+                                          ) > 2)
                $ alexBin (realTimeToTime clk (bin_width p)) times
              :: [Alex Double]
 
