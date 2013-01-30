@@ -41,6 +41,7 @@ data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , nbins :: Int
                                  , initial_time :: Double
                                  , use_cache :: Bool
+                                 , gamma :: Double
                                  }
                     deriving (Show, Eq)
 
@@ -74,6 +75,11 @@ alexAnalysis = AlexAnalysis
                )
     <*> switch ( long "use-cache" <> short 'C'
               <> help "Use trimmed delta cache"
+               )
+    <*> option ( long "gamma" <> short 'g'
+              <> value 1
+              <> metavar "N"
+              <> help "Plot assuming given gamma"
                )
 
 poissonP :: Rate -> Int -> LogFloat
@@ -143,8 +149,8 @@ goFile p fname = do
     let counts = pure (runAverage . mconcat) <*> T.sequenceA (map (pure (Average 1) <*>) bins)
     putStrLn $ "Counts = "++show counts
 
-    let s = fmap stoiciometry bins
-        e = fmap proxRatio bins
+    let s = fmap (stoiciometry' (gamma p)) bins
+        e = fmap (fretEff (gamma p)) bins
     writeFile (fname++"-se") $ unlines
         $ zipWith3 (\s e alex->show s++"\t"++show e++F.foldMap (\a->"\t"++show a) alex) s e bins
     renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (fname++"-se.pdf")
