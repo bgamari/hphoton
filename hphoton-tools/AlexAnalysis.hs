@@ -34,8 +34,10 @@ type Rate = Double
 
 data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , input :: [FilePath]
+                                 , bin_width :: Double
                                  , burst_size :: Int
                                  , nbins :: Int
+                                 , initial_time :: Double
                                  }
                     deriving (Show, Eq)
 
@@ -47,15 +49,25 @@ alexAnalysis = AlexAnalysis
               <> help "Timetagger clockrate (Hz)"
                )
     <*> arguments1 Just ( help "Input files" <> action "file" )
+    <*> option ( long "bin-width" <> short 'w'
+              <> value 1e-3
+              <> metavar "TIME"
+              <> help "Width of temporal bins"
+               )
     <*> option ( long "burst-size" <> short 's'
-              <> value 2
+              <> value 500
               <> metavar "N"
-              <> help "Minimum burst size in photons"
+              <> help "Minimum burst rate in Hz"
                )
     <*> option ( long "nbins" <> short 'n'
               <> value 50
               <> metavar "N"
               <> help "Number of bins in the FRET efficiency histogram"
+               )
+    <*> option ( long "initial-time" <> short 'i'
+              <> value 10e-6
+              <> metavar "TIME"
+              <> help "Initial time of bin to drop"
                )
 
 poissonP :: Rate -> Int -> Double
@@ -95,14 +107,15 @@ goFile p fname = do
                                     , alexEm  = Fret Ch1 Ch0
                                     }
     let clk = clockFromFreq $ round (128e6::Double)
-    let times = alexTimes 0 alexChannels recs
-        thresh = Alex { alexAexcAem = 0           , alexAexcDem = 0
-                      , alexDexcAem = burst_size p, alexDexcDem = burst_size p }
-        bins = fmap (fmap fromIntegral)
-               $ filter (\alex->getAll $ F.fold
-                                $ pure (\a b->All $ a > b) <*> alex <*> thresh)
+    let times = alexTimes (realTimeToTime clk (initial_time p)) alexChannels recs
+        a = fromIntegral (burst_size p) * bin_width p
+        thresh = Alex { alexAexcAem = a, alexAexcDem = 0
+                      , alexDexcAem = a, alexDexcDem = a }
+        bins =   filter (\alex->getAll $ F.fold
+                                $ pure (\a b->All $ a >= b) <*> alex <*> thresh)
                -- $ filter (\alex->getSum (F.foldMap Sum alex) > burst_size p)
-               $ alexBin (realTimeToTime clk 10e-3) times
+               $ fmap (fmap fromIntegral)
+               $ alexBin (realTimeToTime clk (bin_width p)) times
              :: [Alex Double]
 
     let counts = pure (runAverage . mconcat) <*> T.sequenceA (map (pure (Average 1) <*>) bins)
