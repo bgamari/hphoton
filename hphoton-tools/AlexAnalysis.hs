@@ -6,8 +6,9 @@ import           Data.Monoid
 import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Primitive
-import           System.IO
 
+import           System.IO
+import           System.Directory (doesFileExist)
 import           Control.Proxy as P
 import qualified Control.Proxy.ByteString as PBS
 import           Control.Proxy.Vector
@@ -39,6 +40,7 @@ data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , burst_size :: Int
                                  , nbins :: Int
                                  , initial_time :: Double
+                                 , use_cache :: Bool
                                  }
                     deriving (Show, Eq)
 
@@ -70,6 +72,9 @@ alexAnalysis = AlexAnalysis
               <> metavar "TIME"
               <> help "Initial time of bin to drop"
                )
+    <*> switch ( long "use-cache" <> short 'C'
+              <> help "Use trimmed delta cache"
+               )
 
 poissonP :: Rate -> Int -> LogFloat
 poissonP l k = l'^k / factorial' k * realToFrac (exp (-l))
@@ -98,14 +103,19 @@ main = do
 
 goFile :: AlexAnalysis -> FilePath -> IO ()
 goFile p fname = do
-    recs <- withFile fname ReadMode $ \fIn->
+    let trimFName = "."++fname++".trimmed"
+    cacheExists <- doesFileExist trimFName
+    let fname' = if cacheExists && use_cache p then trimFName else fname
+    recs <- withFile fname' ReadMode $ \fIn->
         runToVectorD $ runProxy $   raiseK (PBS.fromHandleS fIn)
                                 >-> decodeRecordsP
                                 >-> dropD 1024
                                 >-> filterDeltasP
-                                -- >-> takeB 100000
                                 >-> toVectorD
     
+    when (use_cache p && not cacheExists) $ withFile trimFName WriteMode $ \fOut->
+        runProxy $ fromListS (V.toList recs) >-> encodeRecordsP >-> PBS.toHandleD fOut
+
     let alexChannels = AlexChannels { alexExc = Fret Ch1 Ch0
                                     , alexEm  = Fret Ch1 Ch0
                                     }
