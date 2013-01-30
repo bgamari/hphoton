@@ -163,11 +163,22 @@ goFile p fname = do
         e = fmap (fretEff (gamma p)) bins
     writeFile (fname++"-se") $ unlines
         $ zipWith3 (\s e alex->show s++"\t"++show e++F.foldMap (\a->"\t"++show a) alex) s e bins
+          
+    let g = estimateGamma $ V.fromList $ filter (\(s,e) -> s < 0.9) $ zip s e
+    putStrLn $ "Gamma = "++show g
+
     renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (fname++"-se.pdf")
     
     renderableToPDFFile 
         (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA bins)
         500 500 (fname++"-bins.pdf")
+
+estimateGamma :: VU.Vector (Double, Double) -> (Double, Double)
+estimateGamma xs =
+    let (omega,sigma) = linearRegression (V.map (\(e,s)->1/s) xs) (V.map (\(e,s)->e) xs)
+        beta = omega + sigma - 1
+        gamma = (omega - 1) / (omega + sigma - 1)
+    in (beta, gamma)
 
 layoutThese :: (F.Foldable f, Applicative f, PlotValue x, PlotValue y)
             => (a -> Plot x y) -> f String -> f a -> Renderable ()

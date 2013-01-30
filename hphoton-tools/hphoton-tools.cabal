@@ -151,6 +151,7 @@ Executable learn-intensity
                      cereal,
                      vector-mmap,
                      statistics,
+                     statistics-linreg,
                      data-accessor,
                      Chart,
                      chart-histogram,
