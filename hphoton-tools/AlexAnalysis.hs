@@ -29,6 +29,8 @@ import           Data.Colour.Names
 
 import           Numeric.SpecFunctions (logFactorial)
 import           Data.Number.LogFloat hiding (realToFrac)
+import           Statistics.Sample
+import           Statistics.LinearRegression
                  
 import           Options.Applicative
 
@@ -148,6 +150,14 @@ goFile p fname = do
 
     let counts = pure (runAverage . mconcat) <*> T.sequenceA (map (pure (Average 1) <*>) bins)
     putStrLn $ "Counts = "++show counts
+             
+    let crosstalk_alpha = if crosstalk p
+                              then mean $ VU.fromList
+                                   $ map snd
+                                   $ filter (\(s,e) -> s > 0.9)
+                                   $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
+                              else 1
+    putStrLn $ "Crosstalk = "++show crosstalk_alpha 
 
     let s = fmap (stoiciometry' (gamma p)) bins
         e = fmap (fretEff (gamma p)) bins
