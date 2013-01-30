@@ -154,7 +154,7 @@ decodeRecord bs
 -- | Encode a single record to a bytestring
 encodeRecord :: Record -> BS.ByteString
 encodeRecord (Record r) =
-    BS.pack [ fromIntegral (r `shiftR` 8*i) | i <- [0..5] ]
+    BS.pack [ fromIntegral (r `shiftR` (8*i)) | i <- [5,4..0] ]
     
 -- | Fix timing wraparounds
 unwrapTimes :: Time -> Vector Time -> Vector Time
