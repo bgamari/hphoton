@@ -133,10 +133,10 @@ goFile p fname = do
     let counts = pure (runAverage . mconcat) <*> T.sequenceA (map (pure (Average 1) <*>) bins)
     putStrLn $ "Counts = "++show counts
 
-    writeFile (fname++"-bins") $ unlines $ map (F.foldMap (\a->show a++"\t")) bins
     let s = fmap stoiciometry bins
         e = fmap proxRatio bins
-    writeFile (fname++"-se") $ unlines $ zipWith (\s e->show s++"\t"++show e) s e
+    writeFile (fname++"-se") $ unlines
+        $ zipWith3 (\s e alex->show s++"\t"++show e++F.foldMap (\a->"\t"++show a) alex) s e bins
     renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (fname++"-se.pdf")
     
     renderableToPDFFile 
