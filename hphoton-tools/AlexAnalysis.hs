@@ -226,11 +226,11 @@ layoutSE eBins s e =
               $ plot_points_values ^= zip e s
               $ plot_points_style ^= filledCircles 2 (opaque blue)
               $ defaultPlotPoints
-        e_hist = histToPlot
-                 $ plot_hist_bins ^= eBins
-                 $ plot_hist_values ^= e
-                 $ plot_hist_range ^= Just (0,1)
-                 $ defaultPlotHist
+        eHist = histToPlot
+                $ plot_hist_bins ^= eBins
+                $ plot_hist_values ^= e
+                $ plot_hist_range ^= Just (0,1)
+                $ defaultPlotHist
     in renderLayout1sStacked
        [ withAnyOrdinate
          $ layout1_plots ^= [Left pts]
@@ -239,7 +239,7 @@ layoutSE eBins s e =
          $ layout1_left_axis   .> laxis_title ^= "Stoiciometry"
          $ defaultLayout1
        , withAnyOrdinate
-         $ layout1_plots ^= [Left e_hist]
+         $ layout1_plots ^= [Left eHist]
          $ layout1_bottom_axis .> laxis_title ^= "Proximity Ratio"
          $ layout1_bottom_axis .> laxis_override ^= (axis_viewport ^= vmap (0,1))
          $ layout1_left_axis   .> laxis_title ^= "Occurrences"
