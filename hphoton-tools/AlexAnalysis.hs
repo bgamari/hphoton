@@ -167,14 +167,16 @@ goFile p fname = do
                                    $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
                               else 1
     putStrLn $ "Crosstalk = "++show crosstalk_alpha 
+          
+    let g = estimateGamma $ V.fromList
+            $ filter (\(s,e) -> s < dOnlyThresh p)
+            $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
+    putStrLn $ "Gamma = "++show g
 
     let s = fmap (stoiciometry' (gamma p)) bins
         e = fmap (fretEff (gamma p)) bins
     writeFile (fname++"-se") $ unlines
         $ zipWith3 (\s e alex->show s++"\t"++show e++F.foldMap (\a->"\t"++show a) alex) s e bins
-          
-    let g = estimateGamma $ V.fromList $ filter (\(s,e) -> s < dOnlyThresh p) $ zip s e
-    putStrLn $ "Gamma = "++show g
 
     renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (fname++"-se.pdf")
     
