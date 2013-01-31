@@ -28,7 +28,7 @@ import           Data.Colour
 import           Data.Colour.Names
 
 import           Numeric.SpecFunctions (logFactorial)
-import           Data.Number.LogFloat hiding (realToFrac)
+import           Data.Number.LogFloat hiding (realToFrac, isNaN)
 import           Statistics.Sample
 import           Statistics.LinearRegression
                  
@@ -152,7 +152,8 @@ goFile p fname = do
         bins = --  filter (\alex->getAll $ F.fold
                --                 $ pure (\a b->All $ a >= b) <*> alex <*> thresh)
                -- $ filter (\alex->getSum (F.foldMap Sum alex) > burstSize p)
-                 fmap (fmap fromIntegral)
+                 filter (not . isNaN . proxRatio)
+               $ fmap (fmap fromIntegral)
                $ filter (\alex->F.product ( pure bgOdds
                                         <*> fmap (* binWidth p) bgRates
                                         <*> fmap (* binWidth p) fgRates
