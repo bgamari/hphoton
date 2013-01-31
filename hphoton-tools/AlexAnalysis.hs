@@ -43,7 +43,7 @@ data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , nbins :: Int
                                  , initialTime :: Double
                                  , useCache :: Bool
-                                 , gamma :: Double
+                                 , gamma :: Maybe Double
                                  , crosstalk :: Bool
                                  , dOnlyThresh :: Double
                                  }
@@ -80,11 +80,15 @@ alexAnalysis = AlexAnalysis
     <*> switch ( long "use-cache" <> short 'C'
               <> help "Use trimmed delta cache"
                )
-    <*> option ( long "gamma" <> short 'g'
-              <> value 1
-              <> metavar "N"
-              <> help "Plot assuming given gamma"
-               )
+    <*> nullOption ( long "gamma" <> short 'g'
+                  <> value (Just 1)
+                  <> reader (\s->if s == "auto"
+                                 then pure $ Nothing
+                                 else fmap Just $ auto s
+                            )
+                  <> metavar "[N]"
+                  <> help "Gamma correct resulting histogram. If 'auto' is given, gamma will be estimated from the slope of the Donor-Acceptor population."
+                   )
     <*> switch ( long "crosstalk" <> short 't'
               <> help "Use crosstalk correction"
                )
@@ -171,10 +175,11 @@ goFile p fname = do
     let g = estimateGamma $ V.fromList
             $ filter (\(s,e) -> s < dOnlyThresh p)
             $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
+        gamma' = maybe (snd g) id $ gamma p
     putStrLn $ "Gamma = "++show g
 
-    let s = fmap (stoiciometry' (gamma p)) bins
-        e = fmap (fretEff (gamma p)) bins
+    let s = fmap (stoiciometry' gamma') bins
+        e = fmap (fretEff gamma') bins
     writeFile (fname++"-se") $ unlines
         $ zipWith3 (\s e alex->show s++"\t"++show e++F.foldMap (\a->"\t"++show a) alex) s e bins
 
