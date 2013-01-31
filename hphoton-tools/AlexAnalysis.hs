@@ -167,20 +167,25 @@ goFile p fname = do
              
     let crosstalkAlpha = if crosstalk p
                               then mean $ VU.fromList
-                                   $ map snd
-                                   $ filter (\(s,e) -> s > dOnlyThresh p)
-                                   $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
-                              else 1
+                                   $ map (\alex->alexDexcAem alex / alexDexcDem alex)
+                                   $ filter (\alex->stoiciometry alex > dOnlyThresh p)
+                                   $ bins
+                              else 0
+        ctBins = fmap (\alex->let lk = crosstalkAlpha * alexDexcDem alex
+                              in alex { alexDexcAem = alexDexcAem alex - lk
+                                      , alexDexcDem = alexDexcDem alex + lk
+                                      }
+                      ) bins 
     putStrLn $ "Crosstalk = "++show crosstalkAlpha 
           
     let g = estimateGamma $ V.fromList
             $ filter (\(s,e) -> s < dOnlyThresh p)
-            $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
+            $ zip (fmap stoiciometry ctBins) (fmap proxRatio ctBins)
         gamma' = maybe (snd g) id $ gamma p
     putStrLn $ "Gamma = "++show g
 
-    let s = fmap (stoiciometry' gamma') bins
-        e = fmap (fretEff gamma') bins
+    let s = fmap (stoiciometry' gamma') ctBins
+        e = fmap (fretEff gamma') ctBins
     writeFile (fname++"-se") $ unlines
         $ zipWith3 (\s e alex->show s++"\t"++show e++F.foldMap (\a->"\t"++show a) alex) s e bins
 
