@@ -38,11 +38,11 @@ type Rate = Double
 
 data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , input :: [FilePath]
-                                 , bin_width :: Double
-                                 , burst_size :: Int
+                                 , binWidth :: Double
+                                 , burstSize :: Int
                                  , nbins :: Int
-                                 , initial_time :: Double
-                                 , use_cache :: Bool
+                                 , initialTime :: Double
+                                 , useCache :: Bool
                                  , gamma :: Double
                                  , crosstalk :: Bool
                                  , dOnlyThresh :: Double
@@ -122,7 +122,7 @@ goFile :: AlexAnalysis -> FilePath -> IO ()
 goFile p fname = do
     let trimFName = "."++fname++".trimmed"
     cacheExists <- doesFileExist trimFName
-    let fname' = if cacheExists && use_cache p then trimFName else fname
+    let fname' = if cacheExists && useCache p then trimFName else fname
     recs <- withFile fname' ReadMode $ \fIn->
         runToVectorD $ runProxy $   raiseK (PBS.fromHandleS fIn)
                                 >-> decodeRecordsP
@@ -130,15 +130,15 @@ goFile p fname = do
                                 >-> filterDeltasP
                                 >-> toVectorD
     
-    when (use_cache p && not cacheExists) $ withFile trimFName WriteMode $ \fOut->
+    when (useCache p && not cacheExists) $ withFile trimFName WriteMode $ \fOut->
         runProxy $ fromListS (V.toList recs) >-> encodeRecordsP >-> PBS.toHandleD fOut
 
     let alexChannels = AlexChannels { alexExc = Fret Ch1 Ch0
                                     , alexEm  = Fret Ch1 Ch0
                                     }
     let clk = clockFromFreq $ round (128e6::Double)
-    let times = alexTimes (realTimeToTime clk (initial_time p)) alexChannels recs
-        a = fromIntegral (burst_size p) * bin_width p
+    let times = alexTimes (realTimeToTime clk (initialTime p)) alexChannels recs
+        a = fromIntegral (burstSize p) * binWidth p
         thresh = Alex { alexAexcAem = a, alexAexcDem = 0
                       , alexDexcAem = a, alexDexcDem = a }
         bgRates = Alex { alexAexcAem = 40, alexAexcDem = 50
@@ -147,26 +147,26 @@ goFile p fname = do
                        , alexDexcAem = 5000, alexDexcDem = 5000 }
         bins = --  filter (\alex->getAll $ F.fold
                --                 $ pure (\a b->All $ a >= b) <*> alex <*> thresh)
-               -- $ filter (\alex->getSum (F.foldMap Sum alex) > burst_size p)
+               -- $ filter (\alex->getSum (F.foldMap Sum alex) > burstSize p)
                  fmap (fmap fromIntegral)
                $ filter (\alex->F.product ( pure bgOdds
-                                        <*> fmap (* bin_width p) bgRates
-                                        <*> fmap (* bin_width p) fgRates
+                                        <*> fmap (* binWidth p) bgRates
+                                        <*> fmap (* binWidth p) fgRates
                                         <*> alex
                                           ) > 2)
-               $ alexBin (realTimeToTime clk (bin_width p)) times
+               $ alexBin (realTimeToTime clk (binWidth p)) times
              :: [Alex Double]
 
     let counts = pure (runAverage . mconcat) <*> T.sequenceA (map (pure (Average 1) <*>) bins)
     putStrLn $ "Counts = "++show counts
              
-    let crosstalk_alpha = if crosstalk p
+    let crosstalkAlpha = if crosstalk p
                               then mean $ VU.fromList
                                    $ map snd
                                    $ filter (\(s,e) -> s > dOnlyThresh p)
                                    $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
                               else 1
-    putStrLn $ "Crosstalk = "++show crosstalk_alpha 
+    putStrLn $ "Crosstalk = "++show crosstalkAlpha 
           
     let g = estimateGamma $ V.fromList
             $ filter (\(s,e) -> s < dOnlyThresh p)
