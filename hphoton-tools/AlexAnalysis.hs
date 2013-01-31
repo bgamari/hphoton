@@ -44,6 +44,8 @@ data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , initial_time :: Double
                                  , use_cache :: Bool
                                  , gamma :: Double
+                                 , crosstalk :: Bool
+                                 , dOnlyThresh :: Double
                                  }
                     deriving (Show, Eq)
 
@@ -82,6 +84,13 @@ alexAnalysis = AlexAnalysis
               <> value 1
               <> metavar "N"
               <> help "Plot assuming given gamma"
+               )
+    <*> switch ( long "crosstalk" <> short 't'
+              <> help "Use crosstalk correction"
+               )
+    <*> option ( long "d-only-thresh" <> short 'D'
+              <> value 0.85 <> metavar "S"
+              <> help "Stoiciometry threshold for identification of donor-only population"
                )
 
 poissonP :: Rate -> Int -> LogFloat
@@ -154,7 +163,7 @@ goFile p fname = do
     let crosstalk_alpha = if crosstalk p
                               then mean $ VU.fromList
                                    $ map snd
-                                   $ filter (\(s,e) -> s > 0.9)
+                                   $ filter (\(s,e) -> s > dOnlyThresh p)
                                    $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
                               else 1
     putStrLn $ "Crosstalk = "++show crosstalk_alpha 
@@ -164,7 +173,7 @@ goFile p fname = do
     writeFile (fname++"-se") $ unlines
         $ zipWith3 (\s e alex->show s++"\t"++show e++F.foldMap (\a->"\t"++show a) alex) s e bins
           
-    let g = estimateGamma $ V.fromList $ filter (\(s,e) -> s < 0.9) $ zip s e
+    let g = estimateGamma $ V.fromList $ filter (\(s,e) -> s < dOnlyThresh p) $ zip s e
     putStrLn $ "Gamma = "++show g
 
     renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (fname++"-se.pdf")
