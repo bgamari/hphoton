@@ -164,6 +164,10 @@ goFile p fname = do
 
     let counts = pure (runAverage . mconcat) <*> T.sequenceA (map (pure (Average 1) <*>) bins)
     putStrLn $ "Counts = "++show counts
+
+    renderableToPDFFile
+        (layoutSE (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins))
+        640 480 (fname++"-uncorrected.pdf")
              
     let crosstalkAlpha = if crosstalk p
                               then mean $ VU.fromList
