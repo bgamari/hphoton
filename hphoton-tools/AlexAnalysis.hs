@@ -176,7 +176,7 @@ goFile p fname = do
                               else 0
         ctBins = fmap (\alex->let lk = crosstalkAlpha * alexDexcDem alex
                               in alex { alexDexcAem = alexDexcAem alex - lk
-                                      , alexDexcDem = alexDexcDem alex + lk
+                                      -- , alexDexcDem = alexDexcDem alex + lk -- TODO: Revisit this
                                       }
                       ) bins 
     putStrLn $ "Crosstalk = "++show crosstalkAlpha 
