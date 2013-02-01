@@ -143,22 +143,21 @@ goFile p fname = do
     let clk = clockFromFreq $ round (128e6::Double)
     let times = alexTimes (realTimeToTime clk (initialTime p)) alexChannels recs
         a = fromIntegral (burstSize p) * binWidth p
-        thresh = Alex { alexAexcAem = a, alexAexcDem = 0
-                      , alexDexcAem = a, alexDexcDem = a }
-        bgRates = Alex { alexAexcAem = 40, alexAexcDem = 50
-                       , alexDexcAem = 40, alexDexcDem = 40 }
-        fgRates = Alex { alexAexcAem = 5000, alexAexcDem = 50
-                       , alexDexcAem = 5000, alexDexcDem = 5000 }
-        bins = --  filter (\alex->getAll $ F.fold
-               --                 $ pure (\a b->All $ a >= b) <*> alex <*> thresh)
-               -- $ filter (\alex->getSum (F.foldMap Sum alex) > burstSize p)
-                 filter (not . isNaN . proxRatio)
-               $ fmap (fmap fromIntegral)
-               $ filter (\alex->F.product ( pure bgOdds
-                                        <*> fmap (* binWidth p) bgRates
-                                        <*> fmap (* binWidth p) fgRates
-                                        <*> alex
-                                          ) > 2)
+        thresh = Alex { alexAexcAem = 5, alexAexcDem = 0
+                      , alexDexcAem = 5, alexDexcDem = 5 }
+        bgRates = Alex { alexAexcAem = 50, alexAexcDem = 50
+                       , alexDexcAem = 50, alexDexcDem = 50 }
+        fgRates = Alex { alexAexcAem = 10000, alexAexcDem = 50
+                       , alexDexcAem = 10000, alexDexcDem = 10000 }
+        bins = -- $ filter (\alex->getSum (F.foldMap Sum alex) > burstSize p)
+                 fmap (fmap fromIntegral)
+               $ filter (\alex->getAll $ F.fold
+                              $ pure (\a b->All $ a >= b) <*> alex <*> thresh)
+               -- $ filter (\alex->F.product ( pure bgOdds
+               --                          <*> fmap (* binWidth p) bgRates
+               --                          <*> fmap (* binWidth p) fgRates
+               --                          <*> alex
+               --                            ) > 2)
                $ alexBin (realTimeToTime clk (binWidth p)) times
              :: [Alex Double]
 
