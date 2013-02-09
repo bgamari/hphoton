@@ -143,16 +143,16 @@ goFile p fname = do
     let clk = clockFromFreq $ round (128e6::Double)
     let times = alexTimes (realTimeToTime clk (initialTime p)) alexChannels recs
         a = fromIntegral (burstSize p) * binWidth p
-        thresh = Alex { alexAexcAem = 5, alexAexcDem = 0
-                      , alexDexcAem = 5, alexDexcDem = 5 }
+        thresh = Alex { alexAexcAem = 200, alexAexcDem = 0
+                      , alexDexcAem = 200, alexDexcDem = 200 }
         bgRates = Alex { alexAexcAem = 50, alexAexcDem = 50
                        , alexDexcAem = 50, alexDexcDem = 50 }
         fgRates = Alex { alexAexcAem = 10000, alexAexcDem = 50
                        , alexDexcAem = 10000, alexDexcDem = 10000 }
-        bins = -- $ filter (\alex->getSum (F.foldMap Sum alex) > burstSize p)
+        bins = --  filter (\alex->getAll $ F.fold
+               --               $ pure (\a b->All $ a >= b) <*> alex <*> fmap (*binWidth p) thresh)
                  fmap (fmap fromIntegral)
-               $ filter (\alex->getAll $ F.fold
-                              $ pure (\a b->All $ a >= b) <*> alex <*> thresh)
+               $ filter (\alex->getSum (F.foldMap Sum alex) > burstSize p)
                -- $ filter (\alex->F.product ( pure bgOdds
                --                          <*> fmap (* binWidth p) bgRates
                --                          <*> fmap (* binWidth p) fgRates
@@ -161,6 +161,7 @@ goFile p fname = do
                $ alexBin (realTimeToTime clk (binWidth p)) times
              :: [Alex Double]
 
+    putStrLn $ "Bins = "++show (length bins)
     let counts = pure (runAverage . mconcat) <*> T.sequenceA (map (pure (Average 1) <*>) bins)
     putStrLn $ "Counts = "++show counts
 
