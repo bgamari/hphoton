@@ -169,6 +169,12 @@ goFile p fname = do
         (layoutSE (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins))
         640 480 (fname++"-uncorrected.pdf")
              
+    let aOnlyThresh = 0.2
+        d = map directAExc
+            $ filter (\alex->stoiciometry alex < aOnlyThresh)
+            $ bins
+    putStrLn $ "Dir = "++show (meanVariance $ VU.fromList d)
+
     let crosstalkAlpha = if crosstalk p
                               then mean $ VU.fromList
                                    $ map (\alex->alexDexcAem alex / alexDexcDem alex)
