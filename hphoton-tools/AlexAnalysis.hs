@@ -173,7 +173,8 @@ goFile p fname = do
         d = map directAExc
             $ filter (\alex->stoiciometry alex < aOnlyThresh)
             $ bins
-    putStrLn $ "Dir = "++show (meanVariance $ VU.fromList d)
+        (dirD, dirDVar) = meanVariance $ VU.fromList d
+    putStrLn $ "Dir = "++show (dirD, dirDVar)
 
     let crosstalkAlpha = if crosstalk p
                               then mean $ VU.fromList
@@ -182,12 +183,13 @@ goFile p fname = do
                                    $ bins
                               else 0
         ctBins = fmap (\alex->let lk = crosstalkAlpha * alexDexcDem alex
-                              in alex { alexDexcAem = alexDexcAem alex - lk
+                                  dir = dirD * alexAexcAem alex
+                              in alex { alexDexcAem = alexDexcAem alex - lk - dir
                                       -- , alexDexcDem = alexDexcDem alex + lk -- TODO: Revisit this
                                       }
                       ) bins 
     putStrLn $ "Crosstalk = "++show crosstalkAlpha 
-          
+    
     let g = estimateGamma $ V.fromList
             $ filter (\(s,e) -> s < dOnlyThresh p)
             $ zip (fmap stoiciometry ctBins) (fmap proxRatio ctBins)
