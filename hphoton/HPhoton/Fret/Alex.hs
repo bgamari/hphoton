@@ -5,6 +5,7 @@ module HPhoton.Fret.Alex ( Alex(..)
                          , fretEff
                          , stoiciometry
                          , stoiciometry'
+                         , directAExc
                          ) where
 
 import           Control.Applicative
@@ -56,3 +57,7 @@ stoiciometry' gamma alex =
              , alexDexcDem = iDexcDem
              , alexDexcAem = iDexcAem
              } = alex
+
+-- | Lee's 'Dir' acceptor direct excitation factor
+directAExc :: Alex Double -> Double
+directAExc a = alexDexcAem a / alexAexcAem a
