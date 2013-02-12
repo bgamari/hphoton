@@ -161,7 +161,8 @@ goFile p fname = do
                $ alexBin (realTimeToTime clk (binWidth p)) times
              :: [Alex Double]
 
-    putStrLn $ "Bins = "++show (length bins)
+    putStrLn $ "\n    "++fname
+    putStrLn $ "Bin count = "++show (length bins)
     let counts = pure (runAverage . mconcat) <*> T.sequenceA (map (pure (Average 1) <*>) bins)
     putStrLn $ "Counts = "++show counts
 
