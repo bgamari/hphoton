@@ -201,6 +201,12 @@ goFile p fname = do
     writeFile (fname++"-se") $ unlines
         $ zipWith3 (\s e alex->show s++"\t"++show e++F.foldMap (\a->"\t"++show a) alex) s e bins
 
+    putStrLn $ let (mu,sig) = meanVariance $ VU.fromList
+                              $ map snd
+                              $ filter (\(s,e)->s < dOnlyThresh p)
+                              $ zip s e
+               in "<E>="++show mu++"  <(E - <E>)^2>="++show sig
+
     renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (fname++"-se.pdf")
     
     renderableToPDFFile 
