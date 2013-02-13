@@ -122,6 +122,14 @@ main = do
     p <- execParser opts
     forM_ (input p) $ goFile p
 
+filterBinsBayes :: RealTime -> Alex Rate -> Alex Rate -> Alex Int -> Bool
+filterBinsBayes binWidth bgRate fgRate alex =
+    F.product ( pure bgOdds
+               <*> fmap (* binWidth) bgRate
+               <*> fmap (* binWidth) fgRate
+               <*> alex
+               ) > 2
+    
 goFile :: AlexAnalysis -> FilePath -> IO ()
 goFile p fname = do
     let trimFName = "."++fname++".trimmed"
@@ -153,11 +161,7 @@ goFile p fname = do
                --               $ pure (\a b->All $ a >= b) <*> alex <*> fmap (*binWidth p) thresh)
                  fmap (fmap fromIntegral)
                $ filter (\alex->getSum (F.foldMap Sum alex) > burstSize p)
-               -- $ filter (\alex->F.product ( pure bgOdds
-               --                          <*> fmap (* binWidth p) bgRates
-               --                          <*> fmap (* binWidth p) fgRates
-               --                          <*> alex
-               --                            ) > 2)
+               -- $ filter (filterBinsBayes (binWidth p) bgRates fgRates)
                $ alexBin (realTimeToTime clk (binWidth p)) times
              :: [Alex Double]
 
