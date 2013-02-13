@@ -10,3 +10,6 @@
 [submodule "pipes-bytestring"]
 	path = pipes-bytestring
 	url = git://github.com/Gabriel439/Haskell-Pipes-ByteString-Library.git
+[submodule "pipes-vector"]
+	path = pipes-vector
+	url = git@github.com:bgamari/pipes-vector.git
