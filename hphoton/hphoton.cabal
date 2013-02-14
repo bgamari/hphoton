@@ -17,6 +17,7 @@ Library
                      HPhoton.Fret,
                      HPhoton.Fret.Types,
                      HPhoton.Fret.Alex,
+                     HPhoton.Fret.Generate,
                      HPhoton.BurstIdent.Bayes,
                      HPhoton.BurstIdent.BinThreshold
                      HPhoton.Types,
