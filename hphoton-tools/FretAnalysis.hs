@@ -7,6 +7,7 @@ import           Control.Arrow (second)
 import           Control.Monad (guard, liftM, when)
 import           Data.Foldable
 import           Data.List (genericLength, stripPrefix, partition)
+import           System.FilePath
 import           Text.Printf
 
 import           Data.Maybe
@@ -72,6 +73,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , gamma :: Bool
 
                                  , fit_ncomps :: Int
+                                 , outputDir :: FilePath
                                  }
                     deriving (Show, Eq)
 
@@ -140,6 +142,10 @@ fretAnalysis = FretAnalysis
     <*> option ( long "fit" <> value 2
               <> metavar "N"
               <> help "Number of Beta components to fit histogram against"
+               )
+    <*> option ( long "output" <> short 'o'
+              <> value "." <> metavar "DIR"
+              <> help "Directory in which to place output files"
                )
 
 fretChs = Fret { fretA = Ch1, fretD = Ch0 }
@@ -256,6 +262,7 @@ poissonLikelihood lambda k =
 analyzeData :: String -> Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO ()
 analyzeData rootName clk p fret = do
     let range = (V.head $ fretA fret, V.last $ fretA fret)
+    let outputRoot = replaceDirectory fname (outputDir p)
     summarizeTimestamps clk p "A" $ fretA fret
     summarizeTimestamps clk p "D" $ fretD fret
 
@@ -267,7 +274,7 @@ analyzeData rootName clk p fret = do
                        $ fmap (spansPhotons burstSpans)
                        $ fret
 
-    writeFile (rootName++"-burst-length.txt")
+    writeFile (outputRoot++"-burst-length.txt")
         $ unlines $ map (show . realSpanDuration clk) burstSpans
 
     let bgRate = backgroundRate clk burstSpans <$> fret :: Fret Rate
@@ -300,10 +307,10 @@ analyzeData rootName clk p fret = do
     printf "Found %d bursts (%1.1f per second)\n"
       (length burstRates)
       (genericLength burstRates / duration)
-    writeFile (rootName++"-fret_eff.txt")
+    writeFile (outputRoot++"-fret_eff.txt")
       $ unlines $ map show fretEffs
 
-    plotFretAnalysis rootName clk p fret (zip burstSpans burstRates)
+    plotFretAnalysis outputRoot clk p fret (zip burstSpans burstRates)
 
     let fitFailed :: SomeException -> IO (Maybe ComponentParams)
         fitFailed _ = putStrLn "Fit Failed" >> return Nothing
@@ -312,7 +319,7 @@ analyzeData rootName clk p fret = do
                                                   in printf "%1.3e\t%1.3e\t%1.3e" w mu sigma
                                header = "# weight\tmu\tsigma"
                            in unlines $ header:(map formatComp $ V.toList params)
-    writeFile (rootName++"-fit.txt") $ maybe "" formatFit fitParams
+    writeFile (outputRoot++"-fit.txt") $ maybe "" formatFit fitParams
 
 
     let scale = realToFrac (length fretEffs) / realToFrac (n_bins p)
@@ -320,7 +327,7 @@ analyzeData rootName clk p fret = do
                                   ++ maybe [] (map Left . plotFit scale) fitParams
                  $ layout1_title ^= rootName
                  $ defaultLayout1
-    renderableToSVGFile (toRenderable layout) 640 480 (rootName++"-fret_eff.svg")
+    renderableToSVGFile (toRenderable layout) 640 480 (outputRoot++"-fret_eff.svg")
 
     return ()
 
