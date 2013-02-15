@@ -262,7 +262,7 @@ poissonLikelihood lambda k =
 analyzeData :: String -> Clock -> FretAnalysis -> Fret (V.Vector Time) -> IO ()
 analyzeData rootName clk p fret = do
     let range = (V.head $ fretA fret, V.last $ fretA fret)
-    let outputRoot = replaceDirectory fname (outputDir p)
+    let outputRoot = replaceDirectory rootName (outputDir p)
     summarizeTimestamps clk p "A" $ fretA fret
     summarizeTimestamps clk p "D" $ fretD fret
 
