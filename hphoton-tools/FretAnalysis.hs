@@ -266,6 +266,7 @@ analyzeData rootName clk p fret = do
     summarizeTimestamps clk p "A" $ fretA fret
     summarizeTimestamps clk p "D" $ fretD fret
 
+    print $ burst_mode p
     let duration = realDuration clk $ toList fret
         burstSpans = filter (\span->realSpanDuration clk span > 1e-4)
                      $ fretBursts clk (burst_mode p) fret
