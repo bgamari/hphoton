@@ -22,3 +22,8 @@ addBg :: Fret Double -> Fret Int -> RVar (Fret Int)
 addBg rates n = do
     nBg <- T.mapM integralPoisson rates
     return $ (+) <$> nBg <*> n
+
+addCrosstalk :: Double -> Fret Int -> RVar (Fret Int)
+addCrosstalk alpha (Fret nA nD) = do
+    nCt <- integralBinomial (nA+nD) alpha
+    return $ Fret (nA+nCt) nD
