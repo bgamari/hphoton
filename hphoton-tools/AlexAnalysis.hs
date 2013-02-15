@@ -9,6 +9,7 @@ import           Control.Monad.Primitive
 
 import           System.IO
 import           System.Directory (doesFileExist)
+import           System.FilePath
 import           Control.Proxy as P
 import qualified Control.Proxy.ByteString as PBS
 import           Control.Proxy.Vector
@@ -46,6 +47,7 @@ data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , gamma :: Maybe Double
                                  , crosstalk :: Bool
                                  , dOnlyThresh :: Double
+                                 , outputDir :: FilePath
                                  }
                     deriving (Show, Eq)
 
@@ -96,6 +98,10 @@ alexAnalysis = AlexAnalysis
               <> value 0.85 <> metavar "S"
               <> help "Stoiciometry threshold for identification of donor-only population"
                )
+    <*> option ( long "output" <> short 'o'
+              <> value "." <> metavar "DIR"
+              <> help "Directory in which to place output files"
+               )
 
 poissonP :: Rate -> Int -> LogFloat
 poissonP l k = l'^k / factorial' k * realToFrac (exp (-l))
@@ -133,6 +139,7 @@ filterBinsBayes binWidth bgRate fgRate alex =
 goFile :: AlexAnalysis -> FilePath -> IO ()
 goFile p fname = do
     let trimFName = "."++fname++".trimmed"
+    let outputRoot = replaceDirectory fname (outputDir p)
     cacheExists <- doesFileExist trimFName
     let fname' = if cacheExists && useCache p then trimFName else fname
     recs <- withFile fname' ReadMode $ \fIn->
@@ -203,7 +210,7 @@ goFile p fname = do
 
     let s = fmap (stoiciometry' gamma') ctBins
         e = fmap (fretEff gamma') ctBins
-    writeFile (fname++"-se") $ unlines
+    writeFile (outputRoot++"-se") $ unlines
         $ zipWith3 (\s e alex->show s++"\t"++show e++F.foldMap (\a->"\t"++show a) alex) s e bins
 
     putStrLn $ let (mu,sig) = meanVariance $ VU.fromList
@@ -212,11 +219,11 @@ goFile p fname = do
                               $ zip s e
                in "<E>="++show mu++"  <(E - <E>)^2>="++show sig
 
-    renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (fname++"-se.pdf")
+    renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (outputRoot++"-se.pdf")
     
     renderableToPDFFile 
         (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA bins)
-        500 500 (fname++"-bins.pdf")
+        500 500 (outputRoot++"-bins.pdf")
 
 estimateGamma :: VU.Vector (Double, Double) -> (Double, Double)
 estimateGamma xs =
