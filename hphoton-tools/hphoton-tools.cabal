@@ -162,6 +162,7 @@ Executable learn-intensity
 
 Executable analyze-many
   Main-is:           AnalyzeMany.hs
+  Other-Modules:     DataSet
   Ghc-options:       -rtsopts -threaded
   Build-depends:     base,
                      directory,
