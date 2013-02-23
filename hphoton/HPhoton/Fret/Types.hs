@@ -17,7 +17,7 @@ type Gamma = Double
 
 data FretChannel = Donor | Acceptor deriving (Show, Eq)
 
-data Fret a = Fret { fretA, fretD :: a } deriving (Show, Eq)
+data Fret a = Fret { fretA, fretD :: !a } deriving (Show, Eq)
                                                   
 instance Functor Fret where
   fmap f (Fret x y) = Fret (f x) (f y)
@@ -31,6 +31,10 @@ instance Applicative Fret where
   
 instance Traversable Fret where
   traverse f (Fret x y) = Fret <$> f x <*> f y
+
+instance Monoid a => Monoid (Fret a) where
+  mempty = pure mempty
+  a `mappend` b = mappend <$> a <*> b
 
 getFretChannel :: Fret a -> FretChannel -> a
 getFretChannel f Donor    = fretD f
