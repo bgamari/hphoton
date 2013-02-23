@@ -15,10 +15,10 @@ import           Data.Foldable
 import           Data.Monoid
 import           GHC.Generics (Generic)
 
-data Alex a = Alex { alexAexcAem :: a
-                   , alexAexcDem :: a
-                   , alexDexcAem :: a
-                   , alexDexcDem :: a
+data Alex a = Alex { alexAexcAem :: !a
+                   , alexAexcDem :: !a
+                   , alexDexcAem :: !a
+                   , alexDexcDem :: !a
                    }
             deriving (Show, Eq, Generic)
                      
@@ -36,6 +36,10 @@ instance Foldable Alex where
 
 instance Traversable Alex where
   traverse f (Alex a b c d) = Alex <$> f a <*> f b <*> f c <*> f d
+
+instance Monoid a => Monoid (Alex a) where
+  mempty = pure mempty
+  a `mappend` b = mappend <$> a <*> b
 
 fretEff :: Double -> Alex Double -> Double
 fretEff gamma alex = iA / (iA + gamma*iD)
