@@ -2,6 +2,7 @@ import           Control.Lens hiding ((^=), (.>))
 import           Data.Accessor
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
+import           Data.List (partition)
 import           Data.Monoid
 import           Control.Applicative
 import           Control.Monad
@@ -136,6 +137,10 @@ filterBinsBayes binWidth bgRate fgRate alex =
                <*> alex
                ) > 2
     
+-- | Strict foldMap
+foldMap' :: (F.Foldable f, Monoid m) => (a -> m) -> f a -> m
+foldMap' f = F.foldl' (\m a->mappend m $! f a) mempty
+
 goFile :: AlexAnalysis -> FilePath -> IO ()
 goFile p fname = do
     let trimFName = "."++fname++".trimmed"
@@ -164,18 +169,21 @@ goFile p fname = do
                        , alexDexcAem = 50, alexDexcDem = 50 }
         fgRates = Alex { alexAexcAem = 10000, alexAexcDem = 50
                        , alexDexcAem = 10000, alexDexcDem = 10000 }
-        bins = --  filter (\alex->getAll $ F.fold
-               --               $ pure (\a b->All $ a >= b) <*> alex <*> fmap (*binWidth p) thresh)
-                 fmap (fmap fromIntegral)
-               $ filter (\alex->getSum (F.foldMap Sum alex) > burstSize p)
-               -- $ filter (filterBinsBayes (binWidth p) bgRates fgRates)
-               $ alexBin (realTimeToTime clk (binWidth p)) times
-             :: [Alex Double]
+        (bins,bgBins) =
+            --  filter (\alex->getAll $ F.fold
+            --               $ pure (\a b->All $ a >= b) <*> alex <*> fmap (*binWidth p) thresh)
+              partition (\alex->F.sum alex > realToFrac (burstSize p))
+            $ fmap (fmap fromIntegral)
+            -- $ filter (filterBinsBayes (binWidth p) bgRates fgRates)
+            $ alexBin (realTimeToTime clk (binWidth p)) times
+            :: ([Alex Double], [Alex Double])
 
     putStrLn $ "\n    "++fname
     putStrLn $ "Bin count = "++show (length bins)
     let counts = pure (runAverage . mconcat) <*> T.sequenceA (map (pure (Average 1) <*>) bins)
-    putStrLn $ "Counts = "++show counts
+        bgCounts = fmap runAverage $ foldMap' (fmap (Average 1)) bgBins
+    putStrLn $ "counts = "++show counts
+    putStrLn $ "background counts = "++show bgCounts
 
     renderableToPDFFile
         (layoutSE (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins))
@@ -188,25 +196,28 @@ goFile p fname = do
         (dirD, dirDVar) = meanVariance $ VU.fromList d
     putStrLn $ "Dir = "++show (dirD, dirDVar)
 
-    let crosstalkAlpha = if crosstalk p
+
+    let bgBins = map (\bin->(-) <$> bin <*> bgCounts) bins
+        crosstalkAlpha = if crosstalk p
                               then mean $ VU.fromList
                                    $ map (\alex->alexDexcAem alex / alexDexcDem alex)
                                    $ filter (\alex->stoiciometry alex > dOnlyThresh p)
-                                   $ bins
+                                   $ bgBins
                               else 0
         ctBins = fmap (\alex->let lk = crosstalkAlpha * alexDexcDem alex
                                   dir = dirD * alexAexcAem alex
                               in alex { alexDexcAem = alexDexcAem alex - lk - dir
                                       -- , alexDexcDem = alexDexcDem alex + lk -- TODO: Revisit this
                                       }
-                      ) bins 
+                      ) bgBins
     putStrLn $ "Crosstalk = "++show crosstalkAlpha 
     
     let g = estimateGamma $ V.fromList
             $ filter (\(s,e) -> s < dOnlyThresh p)
             $ zip (fmap stoiciometry ctBins) (fmap proxRatio ctBins)
         gamma' = maybe (snd g) id $ gamma p
-    putStrLn $ "Gamma = "++show g
+    putStrLn $ "Estimated gamma = "++show g
+    putStrLn $ "gamma = "++show gamma'
 
     let s = fmap (stoiciometry' gamma') ctBins
         e = fmap (fretEff gamma') ctBins
@@ -225,6 +236,7 @@ goFile p fname = do
         (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA bins)
         500 500 (outputRoot++"-bins.pdf")
 
+-- | Estimate gamma from slope in E-S plane
 estimateGamma :: VU.Vector (Double, Double) -> (Double, Double)
 estimateGamma xs =
     let (omega,sigma) = linearRegression (V.map (\(e,s)->1/s) xs) (V.map (\(e,s)->e) xs)
@@ -232,7 +244,12 @@ estimateGamma xs =
         gamma = (omega - 1) / (omega + sigma - 1)
     in (beta, gamma)
 
-layoutThese :: (F.Foldable f, Applicative f, PlotValue x, PlotValue y)
+-- | Estimate gamma from donor-only population
+estimateGammaDonor :: VU.Vector (Alex Rate) -> VU.Vector (Alex Rate) -> Double
+estimateGammaDonor donorOnly donorAcceptor = undefined
+    
+
+layoutThese :: (F.Foldable f, Applicative f, PlotValue x, PlotValue y, Num y)
             => (a -> Plot x y) -> f String -> f a -> Renderable ()
 layoutThese f titles xs =
     renderLayout1sStacked $ F.toList
