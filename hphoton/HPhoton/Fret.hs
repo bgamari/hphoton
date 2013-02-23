@@ -31,3 +31,7 @@ flipFrets (Fret a b) = getZipList $ traverse ZipList $ Fret a b
 -- | Turn a list of 'Fret's into a 'Fret' of lists
 unflipFrets :: [Fret a] -> Fret [a]
 unflipFrets xs = Fret (map fretA xs) (map fretD xs)
+
+-- | The variance of a shot-noise limited FRET peak
+shotNoiseEVar :: Int -> FretEff -> Double
+shotNoiseEVar nTotal e = e * (1-e) / realToFrac nTotal
