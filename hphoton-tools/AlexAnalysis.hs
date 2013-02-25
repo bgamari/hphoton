@@ -23,6 +23,7 @@ import           HPhoton.FpgaTimetagger.Pipe
 import           HPhoton.FpgaTimetagger.Alex
 import           HPhoton.Bin.Alex
 import           HPhoton.Fret.Alex
+import           HPhoton.Fret (shotNoiseEVar)
 
 import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Plot.Histogram
@@ -46,7 +47,7 @@ data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , initialTime :: Double
                                  , useCache :: Bool
                                  , gamma :: Maybe Double
-                                 , crosstalk :: Bool
+                                 , crosstalk :: Maybe Double
                                  , dOnlyThresh :: Double
                                  , outputDir :: FilePath
                                  }
@@ -92,7 +93,13 @@ alexAnalysis = AlexAnalysis
                   <> metavar "[N]"
                   <> help "Gamma correct resulting histogram. If 'auto' is given, gamma will be estimated from the slope of the Donor-Acceptor population."
                    )
-    <*> switch ( long "crosstalk" <> short 't'
+    <*> option ( long "crosstalk" <> short 't'
+              <> value (Just 0)
+              <> reader (\s->if s == "auto"
+                             then pure Nothing
+                             else Just <$> auto s
+                        )
+              <> metavar "[E]"
               <> help "Use crosstalk correction"
                )
     <*> option ( long "d-only-thresh" <> short 'D'
@@ -180,14 +187,19 @@ goFile p fname = do
 
     putStrLn $ "\n    "++fname
     putStrLn $ "Bin count = "++show (length bins)
-    let counts = pure (runAverage . mconcat) <*> T.sequenceA (map (pure (Average 1) <*>) bins)
-        bgCounts = fmap runAverage $ foldMap' (fmap (Average 1)) bgBins
+    let counts = runAverage <$> foldMap' (fmap (Average 1)) bins
+        bgCounts = runAverage <$> foldMap' (fmap (Average 1)) bgBins
     putStrLn $ "counts = "++show counts
     putStrLn $ "background counts = "++show bgCounts
 
     renderableToPDFFile
         (layoutSE (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins))
         640 480 (fname++"-uncorrected.pdf")
+    putStrLn $ let (mu,sig) = meanVariance $ VU.fromList
+                              $ map snd
+                              $ filter (\(s,e)->s < dOnlyThresh p)
+                              $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
+               in "uncorrected <E>="++show mu++"  <(E - <E>)^2>="++show sig
              
     let aOnlyThresh = 0.2
         d = map directAExc
@@ -198,12 +210,11 @@ goFile p fname = do
 
 
     let bgBins = map (\bin->(-) <$> bin <*> bgCounts) bins
-        crosstalkAlpha = if crosstalk p
-                              then mean $ VU.fromList
-                                   $ map (\alex->alexDexcAem alex / alexDexcDem alex)
-                                   $ filter (\alex->stoiciometry alex > dOnlyThresh p)
-                                   $ bgBins
-                              else 0
+        (dOnlyBins, fretBins) = partition (\alex->stoiciometry alex > dOnlyThresh p) bgBins
+        a = mean $ VU.fromList
+            $ map (\alex->alexDexcAem alex / alexDexcDem alex)
+            $ dOnlyBins
+        crosstalkAlpha = maybe a id $ crosstalk p
         ctBins = fmap (\alex->let lk = crosstalkAlpha * alexDexcDem alex
                                   dir = dirD * alexAexcAem alex
                               in alex { alexDexcAem = alexDexcAem alex - lk - dir
@@ -212,11 +223,15 @@ goFile p fname = do
                       ) bgBins
     putStrLn $ "Crosstalk = "++show crosstalkAlpha 
     
-    let g = estimateGamma $ V.fromList
+    let (beta,g) = estimateGamma $ V.fromList
             $ filter (\(s,e) -> s < dOnlyThresh p)
             $ zip (fmap stoiciometry ctBins) (fmap proxRatio ctBins)
-        gamma' = maybe (snd g) id $ gamma p
+        dSd = mean (VU.fromList $ map alexDexcDem fretBins) - mean (VU.fromList $ map alexDexcDem dOnlyBins)
+        dSa = mean (VU.fromList $ map alexDexcAem fretBins) - mean (VU.fromList $ map alexDexcAem dOnlyBins)
+        g2 = crosstalkAlpha - dSa / dSd
+        gamma' = maybe (g) id $ gamma p
     putStrLn $ "Estimated gamma = "++show g
+    putStrLn $ "Estimated gamma = "++show g2
     putStrLn $ "gamma = "++show gamma'
 
     let s = fmap (stoiciometry' gamma') ctBins
@@ -228,7 +243,13 @@ goFile p fname = do
                               $ map snd
                               $ filter (\(s,e)->s < dOnlyThresh p)
                               $ zip s e
-               in "<E>="++show mu++"  <(E - <E>)^2>="++show sig
+                   nInv = mean $ VU.fromList
+                          $ filter (/= 0)
+                          $ map (\alex->alexDexcAem alex + alexDexcDem alex)
+                          $ filter (\alex->stoiciometry alex < dOnlyThresh p)
+                          $ ctBins
+                   shotSig = shotNoiseEVar (1/nInv) mu
+               in "<E>="++show mu++"  <(E - <E>)^2>="++show sig++"  shot-noise variance="++show nInv
 
     renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (outputRoot++"-se.pdf")
     
