@@ -18,12 +18,13 @@ import           Control.Proxy.Vector
 import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Unboxed as VU
 
-import           HPhoton.Types
-import           HPhoton.FpgaTimetagger.Pipe
-import           HPhoton.FpgaTimetagger.Alex
 import           HPhoton.Bin.Alex
-import           HPhoton.Fret.Alex
+import           HPhoton.FpgaTimetagger.Alex
+import           HPhoton.FpgaTimetagger.Pipe
 import           HPhoton.Fret (shotNoiseEVar)
+import           HPhoton.Fret.Alex
+import           HPhoton.Types
+import           Numeric.MixtureModel.Beta
 
 import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Plot.Histogram
@@ -199,7 +200,7 @@ goFile p fname = do
     putStrLn $ "background counts = "++show bgCounts
 
     renderableToPDFFile
-        (layoutSE (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins) (fmap proxRatio bins))
+        (layoutSE (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins) (fmap proxRatio bins) Nothing)
         640 480 (fname++"-uncorrected.pdf")
     putStrLn $ let (mu,sig) = meanVariance $ VU.fromList
                               $ map snd
@@ -210,7 +211,7 @@ goFile p fname = do
     let aOnlyThresh = 0.2
         d = map directAExc
             $ filter (\alex->stoiciometry alex < aOnlyThresh)
-            $ filter (\alex->alexDexcDem alex + alexDexcAem alex > fretThresh p)
+            $ filter (\alex->alexDexcDem alex + alexDexcAem alex > realToFrac (fretThresh p))
             $ bins
         (dirD, dirDVar) = meanVariance $ VU.fromList d
     putStrLn $ "Dir = "++show (dirD, dirDVar)
@@ -251,16 +252,16 @@ goFile p fname = do
     let fretBins = filter (\a->let s = stoiciometry' gamma' a
                                in s < dOnlyThresh p && s > aOnlyThresh
                           ) ctBins
-    putStrLn $ let (mu,sig) = meanVariance $ VU.fromList
-                              $ map (fretEff gamma') fretBins
-                   nInv = mean $ VU.fromList
-                          $ map (\alex->alexDexcAem alex + alexDexcDem alex)
-                          $ fretBins
-                   shotSig = shotNoiseEVar nInv mu
-               in "<E>="++show mu++"  <(E - <E>)^2>="++show sig++"  <1/N>="++show nInv++"  shot-noise variance="++show shotSig
+    let (mu,sigma2) = meanVariance $ VU.fromList
+                      $ map (fretEff gamma') fretBins
+        nInv = mean $ VU.fromList
+               $ map (\alex->1 / realToFrac (alexDexcAem alex + alexDexcDem alex))
+               $ fretBins
+        shotSigma2 = shotNoiseEVar (1/nInv) mu
+    putStrLn $ "<E>="++show mu++"  <(E - <E>)^2>="++show sigma2++"  <1/N>="++show nInv++"  shot-noise variance="++show shotSigma2
 
     renderableToPDFFile
-        (layoutSE (nbins p) s e (map (fretEff gamma') fretBins))
+        (layoutSE (nbins p) s e (map (fretEff gamma') fretBins) (Just $ paramFromMoments (mu,shotSigma2)))
         640 480 (outputRoot++"-se.pdf")
     
     renderableToPDFFile 
@@ -288,6 +289,7 @@ layoutThese f titles xs =
     where --makeLayout :: String -> Plot x y -> Layout1 x y
           makeLayout title x = withAnyOrdinate
                                $ layout1_title ^= title
+                               $ layout1_left_axis .> laxis_override ^= (axis_viewport ^= vmap (0,150))
                                $ layout1_plots ^= [Left $ f x]
                                $ defaultLayout1
 
@@ -297,18 +299,24 @@ plotBinTimeseries counts =
     $ plot_points_values ^= zip [0..] counts
     $ plot_points_style ^= filledCircles 0.5 (opaque blue)
     $ defaultPlotPoints
-    
-layoutSE :: Int -> [Double] -> [Double] -> [Double] -> Renderable ()
-layoutSE eBins s e fretEs =
+
+layoutSE :: Int -> [Double] -> [Double] -> [Double] -> Maybe BetaParam -> Renderable ()
+layoutSE eBins s e fretEs betaParam =
     let pts = toPlot
               $ plot_points_values ^= zip e s
               $ plot_points_style ^= filledCircles 2 (opaque blue)
               $ defaultPlotPoints
+        xs = [0.01,0.02..0.99]
+        norm = realToFrac (length fretEs) / realToFrac eBins
+        fit :: BetaParam -> Plot Double Double
+        fit param = toPlot
+              $ plot_lines_values ^= [map (\x->(x, realToFrac (betaProb param x) * norm)) xs]
+              $ defaultPlotLines
         eHist = histToPlot
                 $ plot_hist_bins ^= eBins
                 $ plot_hist_values ^= fretEs
                 $ plot_hist_range ^= Just (0,1)
-                $ defaultPlotHist
+                $ defaultFloatPlotHist
     in renderLayout1sStacked
        [ withAnyOrdinate
          $ layout1_plots ^= [Left pts]
@@ -317,7 +325,7 @@ layoutSE eBins s e fretEs =
          $ layout1_left_axis   .> laxis_title ^= "Stoiciometry"
          $ defaultLayout1
        , withAnyOrdinate
-         $ layout1_plots ^= [Left eHist]
+         $ layout1_plots ^= ([Left eHist]++maybe [] (\x->[Left $ fit x]) betaParam)
          $ layout1_bottom_axis .> laxis_title ^= "Proximity Ratio"
          $ layout1_bottom_axis .> laxis_override ^= (axis_viewport ^= vmap (0,1))
          $ layout1_left_axis   .> laxis_title ^= "Occurrences"
