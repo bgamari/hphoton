@@ -244,9 +244,10 @@ goFile p fname = do
                    nInv = mean $ VU.fromList
                           $ filter (/= 0)
                           $ map (\alex->alexDexcAem alex + alexDexcDem alex)
+                          $ filter (\alex->stoiciometry alex > aOnlyThresh)
                           $ filter (\alex->stoiciometry alex < dOnlyThresh p)
                           $ ctBins
-                   shotSig = shotNoiseEVar (1/nInv) mu
+                   shotSig = shotNoiseEVar nInv mu
                in "<E>="++show mu++"  <(E - <E>)^2>="++show sig++"  <1/N>="++show nInv++"  shot-noise variance="++show shotSig
 
     renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (outputRoot++"-se.pdf")
