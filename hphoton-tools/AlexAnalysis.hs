@@ -2,7 +2,7 @@ import           Control.Lens hiding ((^=), (.>))
 import           Data.Accessor
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
-import           Data.List (partition)
+import           Data.List (partition, intercalate, zipWith4)
 import           Data.Monoid
 import           Control.Applicative
 import           Control.Monad
@@ -235,7 +235,11 @@ goFile p fname = do
     let s = fmap (stoiciometry' gamma') ctBins
         e = fmap (fretEff gamma') ctBins
     writeFile (outputRoot++"-se") $ unlines
-        $ zipWith3 (\s e alex->show s++"\t"++show e++F.foldMap (\a->"\t"++show a) alex) s e bins
+        $ zipWith4 (\s e alex alexUncorr->intercalate "\t" $
+                       [show s, show e, "\t"]
+                       ++map show (F.toList alex)++["\t"]
+                       ++map show (F.toList alexUncorr)
+                   ) s e ctBins bins
 
     putStrLn $ let (mu,sig) = meanVariance $ VU.fromList
                               $ map snd
