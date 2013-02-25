@@ -2,6 +2,7 @@ module HPhoton.Fret ( fretEfficiency
                     , proximityRatio
                     , gammaFromFret
                     , flipFrets, unflipFrets
+                    , shotNoiseEVar
                     , module HPhoton.Fret.Types
                     ) where
 
@@ -33,5 +34,5 @@ unflipFrets :: [Fret a] -> Fret [a]
 unflipFrets xs = Fret (map fretA xs) (map fretD xs)
 
 -- | The variance of a shot-noise limited FRET peak
-shotNoiseEVar :: Int -> FretEff -> Double
-shotNoiseEVar nTotal e = e * (1-e) / realToFrac nTotal
+shotNoiseEVar :: Double -> FretEff -> Double
+shotNoiseEVar nTotal e = e * (1-e) / nTotal
