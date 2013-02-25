@@ -37,6 +37,8 @@ import           Data.Colour.Names
 import           Numeric.SpecFunctions (logFactorial)
 import           Data.Number.LogFloat hiding (realToFrac, isNaN)
 import           Statistics.Sample
+import           Statistics.Resampling
+import           Statistics.Resampling.Bootstrap
 import           Statistics.LinearRegression
                  
 import           Options.Applicative
@@ -262,6 +264,11 @@ goFile p fname = do
                $ fretBins
         shotSigma2 = shotNoiseEVar (1/nInv) mu
     putStrLn $ "<E>="++show mu++"  <(E - <E>)^2>="++show sigma2++"  <1/N>="++show nInv++"  shot-noise variance="++show shotSigma2
+    putStrLn $ "<E>="++show mu++"  <(E - <E>)^2>="++show sigma2++"  <1/N>="++show nInv++"  shot-noise variance="++show shotSigma2
+    putStrLn $ let e = VU.fromList $ map (fretEff gamma') fretBins
+                   bootstrap = bootstrapBCA 0.9 e [varianceUnbiased] [Resample resamp]
+                   resamp = jackknife varianceUnbiased e
+               in "Bootstrap variance="++show bootstrap
 
     renderableToSVGFile
         (layoutSE (nbins p) s e (map (fretEff gamma') fretBins)
