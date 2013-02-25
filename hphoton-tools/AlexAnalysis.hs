@@ -99,7 +99,7 @@ alexAnalysis = AlexAnalysis
               <> value 0.85 <> metavar "S"
               <> help "Stoiciometry threshold for identification of donor-only population"
                )
-    <*> option ( long "output" <> short 'o'
+    <*> strOption ( long "output" <> short 'o'
               <> value "." <> metavar "DIR"
               <> help "Directory in which to place output files"
                )
