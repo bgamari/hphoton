@@ -247,7 +247,7 @@ goFile p fname = do
                           $ filter (\alex->stoiciometry alex < dOnlyThresh p)
                           $ ctBins
                    shotSig = shotNoiseEVar (1/nInv) mu
-               in "<E>="++show mu++"  <(E - <E>)^2>="++show sig++"  shot-noise variance="++show nInv
+               in "<E>="++show mu++"  <(E - <E>)^2>="++show sig++"  <1/N>="++show nInv++"  shot-noise variance="++show shotSig
 
     renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (outputRoot++"-se.pdf")
     
