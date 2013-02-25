@@ -43,6 +43,7 @@ data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , input :: [FilePath]
                                  , binWidth :: Double
                                  , burstSize :: Int
+                                 , fretThresh :: Int
                                  , nbins :: Int
                                  , initialTime :: Double
                                  , useCache :: Bool
@@ -70,6 +71,11 @@ alexAnalysis = AlexAnalysis
               <> value 500
               <> metavar "N"
               <> help "Minimum burst rate in Hz"
+               )
+    <*> option ( long "fret-thresh" <> short 'f'
+              <> value 10
+              <> metavar "N"
+              <> help "Minimum number of photons in Dexc channels to include bin in FRET histogram"
                )
     <*> option ( long "nbins" <> short 'n'
               <> value 50
@@ -193,7 +199,7 @@ goFile p fname = do
     putStrLn $ "background counts = "++show bgCounts
 
     renderableToPDFFile
-        (layoutSE (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins))
+        (layoutSE (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins) (fmap proxRatio bins))
         640 480 (fname++"-uncorrected.pdf")
     putStrLn $ let (mu,sig) = meanVariance $ VU.fromList
                               $ map snd
@@ -204,6 +210,7 @@ goFile p fname = do
     let aOnlyThresh = 0.2
         d = map directAExc
             $ filter (\alex->stoiciometry alex < aOnlyThresh)
+            $ filter (\alex->alexDexcDem alex + alexDexcAem alex > fretThresh p)
             $ bins
         (dirD, dirDVar) = meanVariance $ VU.fromList d
     putStrLn $ "Dir = "++show (dirD, dirDVar)
@@ -241,20 +248,20 @@ goFile p fname = do
                        ++map show (F.toList alexUncorr)
                    ) s e ctBins bins
 
+    let fretBins = filter (\a->let s = stoiciometry' gamma' a
+                               in s < dOnlyThresh p && s > aOnlyThresh
+                          ) ctBins
     putStrLn $ let (mu,sig) = meanVariance $ VU.fromList
-                              $ map snd
-                              $ filter (\(s,e)->s < dOnlyThresh p)
-                              $ zip s e
+                              $ map (fretEff gamma') fretBins
                    nInv = mean $ VU.fromList
-                          $ filter (/= 0)
                           $ map (\alex->alexDexcAem alex + alexDexcDem alex)
-                          $ filter (\alex->stoiciometry alex > aOnlyThresh)
-                          $ filter (\alex->stoiciometry alex < dOnlyThresh p)
-                          $ ctBins
+                          $ fretBins
                    shotSig = shotNoiseEVar nInv mu
                in "<E>="++show mu++"  <(E - <E>)^2>="++show sig++"  <1/N>="++show nInv++"  shot-noise variance="++show shotSig
 
-    renderableToPDFFile (layoutSE (nbins p) s e) 640 480 (outputRoot++"-se.pdf")
+    renderableToPDFFile
+        (layoutSE (nbins p) s e (map (fretEff gamma') fretBins))
+        640 480 (outputRoot++"-se.pdf")
     
     renderableToPDFFile 
         (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA bins)
@@ -291,15 +298,15 @@ plotBinTimeseries counts =
     $ plot_points_style ^= filledCircles 0.5 (opaque blue)
     $ defaultPlotPoints
     
-layoutSE :: Int -> [Double] -> [Double] -> Renderable ()
-layoutSE eBins s e =
+layoutSE :: Int -> [Double] -> [Double] -> [Double] -> Renderable ()
+layoutSE eBins s e fretEs =
     let pts = toPlot
               $ plot_points_values ^= zip e s
               $ plot_points_style ^= filledCircles 2 (opaque blue)
               $ defaultPlotPoints
         eHist = histToPlot
                 $ plot_hist_bins ^= eBins
-                $ plot_hist_values ^= e
+                $ plot_hist_values ^= fretEs
                 $ plot_hist_range ^= Just (0,1)
                 $ defaultPlotHist
     in renderLayout1sStacked
