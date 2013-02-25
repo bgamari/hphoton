@@ -217,9 +217,7 @@ goFile p fname = do
         crosstalkAlpha = maybe a id $ crosstalk p
         ctBins = fmap (\alex->let lk = crosstalkAlpha * alexDexcDem alex
                                   dir = dirD * alexAexcAem alex
-                              in alex { alexDexcAem = alexDexcAem alex - lk - dir
-                                      -- , alexDexcDem = alexDexcDem alex + lk -- TODO: Revisit this
-                                      }
+                              in alex { alexDexcAem = alexDexcAem alex - lk - dir }
                       ) bgBins
     putStrLn $ "Crosstalk = "++show crosstalkAlpha 
     
