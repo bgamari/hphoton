@@ -341,7 +341,7 @@ fitFretHist ncomps fretEffs = do
                          ) mwc
     putStrLn $ unlines
              $ map (\(w,p)->let (mu,sigma) = paramToMoments p
-                            in printf "weight=%1.2f, mu=%1.2f, sigma^2=%1.2f" w mu sigma
+                            in printf "weight=%1.2f, mu=%1.2f, sigma=%1.2f" w mu (sqrt sigma)
                    ) $ V.toList fitParams
     return fitParams
 
