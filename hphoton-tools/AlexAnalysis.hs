@@ -29,6 +29,9 @@ import           Numeric.MixtureModel.Beta
 import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Plot.Histogram
 import           Data.Colour
+import           Data.Colour.SRGB (sRGB)
+import           Data.Colour.RGBSpace (uncurryRGB)
+import           Data.Colour.RGBSpace.HSV (hsv)
 import           Data.Colour.Names
 
 import           Numeric.SpecFunctions (logFactorial)
@@ -199,9 +202,9 @@ goFile p fname = do
     putStrLn $ "counts = "++show counts
     putStrLn $ "background counts = "++show bgCounts
 
-    renderableToPDFFile
-        (layoutSE (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins) (fmap proxRatio bins) Nothing)
-        640 480 (fname++"-uncorrected.pdf")
+    renderableToSVGFile
+        (layoutSE (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins) (fmap proxRatio bins) [])
+        640 480 (fname++"-uncorrected.svg")
     putStrLn $ let (mu,sig) = meanVariance $ VU.fromList
                               $ map snd
                               $ filter (\(s,e)->s < dOnlyThresh p)
@@ -260,13 +263,19 @@ goFile p fname = do
         shotSigma2 = shotNoiseEVar (1/nInv) mu
     putStrLn $ "<E>="++show mu++"  <(E - <E>)^2>="++show sigma2++"  <1/N>="++show nInv++"  shot-noise variance="++show shotSigma2
 
-    renderableToPDFFile
-        (layoutSE (nbins p) s e (map (fretEff gamma') fretBins) (Just $ paramFromMoments (mu,shotSigma2)))
-        640 480 (outputRoot++"-se.pdf")
+    renderableToSVGFile
+        (layoutSE (nbins p) s e (map (fretEff gamma') fretBins)
+                  [ --("shot-limited", Beta $ paramFromMoments (mu,shotSigma2))
+                  --, ("fit", Beta $ paramFromMoments (mu, sigma2))
+                    ("fit", Gaussian (mu, sigma2))
+                  , ("shot-limited", Gaussian (mu, shotSigma2))
+                  ]
+        )
+        640 480 (outputRoot++"-se.svg")
     
-    renderableToPDFFile 
+    renderableToSVGFile 
         (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA bins)
-        500 500 (outputRoot++"-bins.pdf")
+        500 500 (outputRoot++"-bins.svg")
 
 -- | Estimate gamma from slope in E-S plane
 estimateGamma :: VU.Vector (Double, Double) -> (Double, Double)
@@ -300,18 +309,30 @@ plotBinTimeseries counts =
     $ plot_points_style ^= filledCircles 0.5 (opaque blue)
     $ defaultPlotPoints
 
-layoutSE :: Int -> [Double] -> [Double] -> [Double] -> Maybe BetaParam -> Renderable ()
-layoutSE eBins s e fretEs betaParam =
+data Fit = Gaussian (Double, Double) -- ^ (Mean, Variance)
+         | Beta BetaParam
+         deriving (Show)
+
+gaussianProb :: (Double,Double) -> Double -> Double
+gaussianProb (mu,sigma2) x = exp (-(x-mu)^2 / 2 / sigma2) / sqrt (2*pi*sigma2)
+
+layoutSE :: Int -> [Double] -> [Double] -> [Double] -> [(String, Fit)] -> Renderable ()
+layoutSE eBins s e fretEs betas =
     let pts = toPlot
               $ plot_points_values ^= zip e s
               $ plot_points_style ^= filledCircles 2 (opaque blue)
               $ defaultPlotPoints
         xs = [0.01,0.02..0.99]
         norm = realToFrac (length fretEs) / realToFrac eBins
-        fit :: BetaParam -> Plot Double Double
-        fit param = toPlot
-              $ plot_lines_values ^= [map (\x->(x, realToFrac (betaProb param x) * norm)) xs]
-              $ defaultPlotLines
+        fit :: (String, Fit) -> AlphaColour Double -> Plot Double Double
+        fit (title,param) color =
+              let f = case param of Gaussian p -> gaussianProb p
+                                    Beta p     -> realToFrac . betaProb p
+              in toPlot
+                 $ plot_lines_values ^= [map (\x->(x, f x * norm)) xs]
+                 $ plot_lines_title  ^= title
+                 $ plot_lines_style  .> line_color ^= color
+                 $ defaultPlotLines
         eHist = histToPlot
                 $ plot_hist_bins ^= eBins
                 $ plot_hist_values ^= fretEs
@@ -325,9 +346,14 @@ layoutSE eBins s e fretEs betaParam =
          $ layout1_left_axis   .> laxis_title ^= "Stoiciometry"
          $ defaultLayout1
        , withAnyOrdinate
-         $ layout1_plots ^= ([Left eHist]++maybe [] (\x->[Left $ fit x]) betaParam)
+         $ layout1_plots ^= ([Left eHist]++zipWith (\p color->Left $ fit p color)
+                                                       betas (colors $ length betas))
          $ layout1_bottom_axis .> laxis_title ^= "Proximity Ratio"
          $ layout1_bottom_axis .> laxis_override ^= (axis_viewport ^= vmap (0,1))
          $ layout1_left_axis   .> laxis_title ^= "Occurrences"
          $ defaultLayout1
        ]
+
+colors :: Int -> [AlphaColour Double]
+colors n = map (\hue->opaque $ uncurryRGB sRGB $ hsv hue 0.8 0.8)
+           [0,360 / realToFrac n..360]
