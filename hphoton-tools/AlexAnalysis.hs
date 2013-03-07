@@ -191,7 +191,7 @@ goFile p fname = do
         (bins,bgBins) =
             --  filter (\alex->getAll $ F.fold
             --               $ pure (\a b->All $ a >= b) <*> alex <*> fmap (*binWidth p) thresh)
-              partition (\alex->F.sum alex > realToFrac (burstSize p))
+              partition (\a->alexAexcAem a+alexDexcAem a+alexDexcDem a > realToFrac (burstSize p))
             $ fmap (fmap fromIntegral)
             -- $ filter (filterBinsBayes (binWidth p) bgRates fgRates)
             $ alexBin (realTimeToTime clk (binWidth p)) times
