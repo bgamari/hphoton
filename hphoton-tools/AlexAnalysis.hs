@@ -40,7 +40,7 @@ import           Statistics.Sample
 import           Statistics.Resampling
 import           Statistics.Resampling.Bootstrap
 import           Statistics.LinearRegression
-                 
+
 import           Options.Applicative
 
 type Rate = Double
@@ -132,11 +132,11 @@ bgOdds :: Rate -> Rate -> Int -> LogFloat
 bgOdds bg fg k = poissonP fg k / poissonP bg k
 
 data Average a = Average !Int !a deriving (Read, Show)
-    
+
 instance Num a => Monoid (Average a) where
     mempty = Average 0 0
     Average n a `mappend` Average m b = Average (n+m) (a+b)
-    
+
 runAverage :: Fractional a => Average a -> a
 runAverage (Average n a) = a / fromIntegral n
 
@@ -155,7 +155,7 @@ filterBinsBayes binWidth bgRate fgRate alex =
                <*> fmap (* binWidth) fgRate
                <*> alex
                ) > 2
-    
+
 -- | Strict foldMap
 foldMap' :: (F.Foldable f, Monoid m) => (a -> m) -> f a -> m
 foldMap' f = F.foldl' (\m a->mappend m $! f a) mempty
@@ -172,7 +172,7 @@ goFile p fname = do
                                 >-> dropD 1024
                                 >-> filterDeltasP
                                 >-> toVectorD
-    
+
     when (useCache p && not cacheExists) $ withFile trimFName WriteMode $ \fOut->
         runProxy $ fromListS (V.toList recs) >-> encodeRecordsP >-> PBS.toHandleD fOut
 
@@ -212,7 +212,7 @@ goFile p fname = do
                               $ filter (\(s,e)->s < dOnlyThresh p)
                               $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
                in "uncorrected <E>="++show mu++"  <(E - <E>)^2>="++show sig
-             
+
     let aOnlyThresh = 0.2
         d = map directAExc
             $ filter (\alex->stoiciometry alex < aOnlyThresh)
@@ -232,8 +232,8 @@ goFile p fname = do
                                   dir = dirD * alexAexcAem alex
                               in alex { alexDexcAem = alexDexcAem alex - lk - dir }
                       ) bgBins
-    putStrLn $ "Crosstalk = "++show crosstalkAlpha 
-    
+    putStrLn $ "Crosstalk = "++show crosstalkAlpha
+
     let (beta,g) = estimateGamma $ V.fromList
             $ filter (\(s,e) -> s < dOnlyThresh p)
             $ zip (fmap stoiciometry ctBins) (fmap proxRatio ctBins)
@@ -295,7 +295,7 @@ estimateGamma xs =
 -- | Estimate gamma from donor-only population
 estimateGammaDonor :: VU.Vector (Alex Rate) -> VU.Vector (Alex Rate) -> Double
 estimateGammaDonor donorOnly donorAcceptor = undefined
-    
+
 
 layoutThese :: (F.Foldable f, Applicative f, PlotValue x, PlotValue y, Num y)
             => (a -> Plot x y) -> f String -> f a -> Renderable ()
