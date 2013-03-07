@@ -205,7 +205,7 @@ goFile p fname = do
     putStrLn $ "background counts = "++show bgCounts
 
     renderableToSVGFile
-        (layoutSE (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins) (fmap proxRatio bins) [])
+        (layoutSE fname (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins) (fmap proxRatio bins) [])
         640 480 (fname++"-uncorrected.svg")
     putStrLn $ let (mu,sig) = meanVariance $ VU.fromList
                               $ map snd
@@ -271,7 +271,7 @@ goFile p fname = do
                in "Bootstrap variance="++show bootstrap
 
     renderableToSVGFile
-        (layoutSE (nbins p) s e (map (fretEff gamma') fretBins)
+        (layoutSE fname (nbins p) s e (map (fretEff gamma') fretBins)
                   [ ("shot-limited", Beta $ paramFromMoments (mu,shotSigma2))
                   , ("fit", Beta $ paramFromMoments (mu, sigma2))
                   --  ("fit", Gaussian (mu, sigma2))
@@ -323,8 +323,9 @@ data Fit = Gaussian (Double, Double) -- ^ (Mean, Variance)
 gaussianProb :: (Double,Double) -> Double -> Double
 gaussianProb (mu,sigma2) x = exp (-(x-mu)^2 / 2 / sigma2) / sqrt (2*pi*sigma2)
 
-layoutSE :: Int -> [Double] -> [Double] -> [Double] -> [(String, Fit)] -> Renderable ()
-layoutSE eBins s e fretEs betas =
+layoutSE :: String -> Int -> [Double] -> [Double] -> [Double]
+         -> [(String, Fit)] -> Renderable ()
+layoutSE title eBins s e fretEs betas =
     let pts = toPlot
               $ plot_points_values ^= zip e s
               $ plot_points_style ^= filledCircles 2 (opaque blue)
@@ -347,6 +348,7 @@ layoutSE eBins s e fretEs betas =
                 $ defaultFloatPlotHist
     in renderLayout1sStacked
        [ withAnyOrdinate
+         $ layout1_title ^= title
          $ layout1_plots ^= [Left pts]
          $ layout1_bottom_axis .> laxis_override ^= (axis_viewport ^= vmap (0,1))
          $ layout1_left_axis   .> laxis_override ^= (axis_viewport ^= vmap (0,1))
