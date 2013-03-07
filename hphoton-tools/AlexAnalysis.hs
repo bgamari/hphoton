@@ -346,19 +346,20 @@ layoutSE title eBins s e fretEs betas =
                 $ plot_hist_values ^= fretEs
                 $ plot_hist_range ^= Just (0,1)
                 $ defaultFloatPlotHist
+        unitAxis = scaledAxis defaultLinearAxis (0,1)
     in renderLayout1sStacked
        [ withAnyOrdinate
          $ layout1_title ^= title
          $ layout1_plots ^= [Left pts]
-         $ layout1_bottom_axis .> laxis_override ^= (axis_viewport ^= vmap (0,1))
-         $ layout1_left_axis   .> laxis_override ^= (axis_viewport ^= vmap (0,1))
+         $ layout1_bottom_axis .> laxis_generate ^= unitAxis
+         $ layout1_left_axis   .> laxis_generate ^= unitAxis
          $ layout1_left_axis   .> laxis_title ^= "Stoiciometry"
          $ defaultLayout1
        , withAnyOrdinate
          $ layout1_plots ^= ([Left eHist]++zipWith (\p color->Left $ fit p color)
                                                        betas (colors $ length betas))
          $ layout1_bottom_axis .> laxis_title ^= "Proximity Ratio"
-         $ layout1_bottom_axis .> laxis_override ^= (axis_viewport ^= vmap (0,1))
+         $ layout1_bottom_axis .> laxis_generate ^= unitAxis
          $ layout1_left_axis   .> laxis_title ^= "Occurrences"
          $ defaultLayout1
        ]
