@@ -272,15 +272,15 @@ goFile p fname = do
 
     renderableToSVGFile
         (layoutSE (nbins p) s e (map (fretEff gamma') fretBins)
-                  [ --("shot-limited", Beta $ paramFromMoments (mu,shotSigma2))
-                  --, ("fit", Beta $ paramFromMoments (mu, sigma2))
-                    ("fit", Gaussian (mu, sigma2))
-                  , ("shot-limited", Gaussian (mu, shotSigma2))
+                  [ ("shot-limited", Beta $ paramFromMoments (mu,shotSigma2))
+                  , ("fit", Beta $ paramFromMoments (mu, sigma2))
+                  --  ("fit", Gaussian (mu, sigma2))
+                  --, ("shot-limited", Gaussian (mu, shotSigma2))
                   ]
         )
         640 480 (outputRoot++"-se.svg")
-    
-    renderableToSVGFile 
+
+    renderableToSVGFile
         (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA bins)
         500 500 (outputRoot++"-bins.svg")
 
