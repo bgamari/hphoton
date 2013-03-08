@@ -380,7 +380,7 @@ gaussianProb (mu,sigma2) x = exp (-(x-mu)^2 / 2 / sigma2) / sqrt (2*pi*sigma2)
 
 layoutSE :: String -> Int -> [Double] -> [Double] -> [Double]
          -> [(String, Fit)] -> Renderable ()
-layoutSE title eBins s e fretEs betas =
+layoutSE title eBins s e fretEs fits =
     let pts = toPlot
               $ plot_points_values ^= zip e s
               $ plot_points_style ^= filledCircles 2 (opaque blue)
@@ -412,7 +412,7 @@ layoutSE title eBins s e fretEs betas =
          $ defaultLayout1
        , withAnyOrdinate
          $ layout1_plots ^= ([Left eHist]++zipWith (\p color->Left $ fit p color)
-                                                       betas (colors $ length betas))
+                                                       fits (colors $ length fits))
          $ layout1_bottom_axis .> laxis_title ^= "Proximity Ratio"
          $ layout1_bottom_axis .> laxis_generate ^= unitAxis
          $ layout1_left_axis   .> laxis_title ^= "Occurrences"
