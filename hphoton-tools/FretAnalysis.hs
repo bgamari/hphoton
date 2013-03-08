@@ -299,7 +299,7 @@ analyzeData rootName clk p fret = do
                            $ burstRates
         daRate = fmap (max 0 . mean . V.fromList) $ unflipFrets daRates
         dRate = fmap (max 0 . mean . V.fromList) $ unflipFrets dRates
-        _gamma = case gamma p of 
+        _gamma = case gamma p of
                      True  -> gammaFromDelta (crosstalk p) dRate daRate
                      False -> 1
     printf "Gamma=%f\n" _gamma
@@ -372,7 +372,7 @@ plotFit scale fitParams =
     where dist x = sum $ map (\(w,p)->w * realToFrac (betaProb p x)) $ V.toList fitParams
           label = unlines
                   $ map (\(w,p)->let (mu,sigma) = paramToMoments p
-                                 in printf "weight=%1.2f, mu=%1.2f, sigma^2=%1.2f" w mu sigma
+                                 in printf "weight=%1.3f, mu=%1.3f, sigma^2=%1.3f" w mu sigma
                         ) $ V.toList fitParams
 
 functionPlot :: (RealFrac x, Enum x) => Int -> (x, x) -> (x -> y) -> Plot x y
@@ -415,7 +415,7 @@ plotFretAnalysis rootName clk p times bursts = do
                $ (layout1_bottom_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (30,60)
                $ (layout1_left_axis .> laxis_generate) ^= scaledIntAxis defaultIntAxis (0,75)
                $ defaultLayout1
-  
+
         c = plot_points_values ^= map (\((s,e), f)->(timeToRealTime clk s, proximityRatio f)) bursts
             $ plot_points_style ^= plusses 2 0.1 (opaque orange)
             $ plot_points_title ^= "Burst FRET efficiency"
@@ -427,7 +427,7 @@ plotFretAnalysis rootName clk p times bursts = do
            $ (layout1_left_axis .> laxis_generate) ^= scaledAxis defaultLinearAxis (0,1)
            $ layout1_title ^= rootName
            $ defaultLayout1
-  
+
     renderableToPDFFile (renderLayout1sStacked [ withAnyOrdinate layout
                                                , withAnyOrdinate l2]
                         )
@@ -439,7 +439,7 @@ burstCounts = map (fmap V.length)
 
 main = do
     let opts = info (helper <*> fretAnalysis)
-                    ( fullDesc 
+                    ( fullDesc
                    <> progDesc "FRET analysis"
                    <> header "fret-analysis - A simple FRET analysis" )
     p <- execParser opts
@@ -454,4 +454,3 @@ fileMain p input = do
     let fret = fmap (strobeTimes recs) fretChs
         rootName = stripSuffix ".timetag" input
     analyzeData rootName (clockFromFreq $ clockrate p) p fret
-  
