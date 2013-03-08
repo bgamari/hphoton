@@ -169,16 +169,11 @@ filterBinsBayes binWidth bgRate fgRate alex =
 foldMap' :: (F.Foldable f, Monoid m) => (a -> m) -> f a -> m
 foldMap' f = F.foldl' (\m a->mappend m $! f a) mempty
 
-goFile :: AlexAnalysis -> FilePath -> IO ()
-goFile p fname = writeHtmlLogT (fname++".html") $ do
-    liftIO $ putStrLn fname
-    tellLog 0 $ H.h1 $ H.toHtml fname
-    tellLog 100 $ H.section $ do H.h2 "Analysis parameters"
-                                 H.code $ H.toHtml $ show p
+readAlexData :: Bool -> FilePath -> IO (VU.Vector Record)
+readAlexData useCache fname = do
     let trimFName = "."++fname++".trimmed"
-    let outputRoot = replaceDirectory fname (outputDir p)
     cacheExists <- liftIO $ doesFileExist trimFName
-    let fname' = if cacheExists && useCache p then trimFName else fname
+    let fname' = if cacheExists && useCache then trimFName else fname
     recs <- liftIO $ withFile fname' ReadMode $ \fIn->
         runToVectorD $ runProxy $   raiseK (PBS.fromHandleS fIn)
                                 >-> decodeRecordsP
@@ -186,9 +181,21 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                                 >-> filterDeltasP
                                 >-> toVectorD
 
-    when (useCache p && not cacheExists)
+    when (useCache && not cacheExists)
         $ liftIO $ withFile trimFName WriteMode $ \fOut->
         runProxy $ fromListS (V.toList recs) >-> encodeRecordsP >-> PBS.toHandleD fOut
+
+    return recs
+
+goFile :: AlexAnalysis -> FilePath -> IO ()
+goFile p fname = writeHtmlLogT (fname++".html") $ do
+    liftIO $ putStrLn fname
+    tellLog 0 $ H.h1 $ H.toHtml fname
+    tellLog 100 $ H.section $ do H.h2 "Analysis parameters"
+                                 H.code $ H.toHtml $ show p
+
+    let outputRoot = replaceDirectory fname (outputDir p)
+    recs <- liftIO $ readAlexData (useCache p) fname
 
     let alexChannels = AlexChannels { alexExc = Fret Ch1 Ch0
                                     , alexEm  = Fret Ch1 Ch0
