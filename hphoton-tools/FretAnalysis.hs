@@ -234,7 +234,7 @@ correctFretBackground rate dur counts =
 crosstalkParam :: Clock -> Fret (V.Vector Time) -> [Span] -> CrosstalkParam
 crosstalkParam clk v dOnlySpans =
     mean $ V.fromList
-    $ map (proximityRatio . fmap realToFrac)
+    $ map (\f->let Fret a d = fmap realToFrac f in a / d)
     $ filter (\f->fretA f + fretD f > 10)
     $ burstCounts
     $ flipFrets
@@ -242,8 +242,8 @@ crosstalkParam clk v dOnlySpans =
 
 correctCrosstalk :: CrosstalkParam -> Fret Double -> Fret Double
 correctCrosstalk alpha counts =
-    let n = alpha * (fretA counts + fretD counts)
-    in Fret {fretA=subtract n, fretD=(+n)} <*> counts
+    let n = alpha * fretD counts
+    in Fret {fretA=subtract n, fretD=id} <*> counts
 
 -- | Compute gamma from change in intensity between donor-only and donor-acceptor
 gammaFromDelta :: CrosstalkParam -> Fret Rate -> Fret Rate -> Gamma
