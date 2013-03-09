@@ -6,8 +6,11 @@ import           Control.Monad.Writer
 import           Data.Function
 import           Data.List
 
+import qualified Clay
 import qualified Data.ByteString.Lazy as BS
+import           LogStyle
 import           Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as HA
 import           Text.Blaze.Renderer.Utf8
 
 type LogPosn = Int
@@ -24,13 +27,11 @@ runHtmlLogT (HtmlLogT action) = do
     let log = renderMarkup $ do
                   docTypeHtml $ do
                       H.head $ do
-                          style styleSheet
+                          style $ preEscapedToHtml $ Clay.render styleSheet
                           title "Log"
-                      body $ do
+                      body $ H.div H.! HA.class_ "container" $ do
                           mapM_ snd $ sortBy (compare `on` fst) logEntries
     return (a, log)
-
-styleSheet = "section {background-color: #eef; border-radius: 0.5em; };"
 
 writeHtmlLogT :: MonadIO m => FilePath -> HtmlLogT m a -> m a
 writeHtmlLogT fname action = do

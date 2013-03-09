@@ -1,7 +1,7 @@
 Name:                hphoton-tools
 Version:             0.1
 Synopsis:            Utilities for working with single-molecule photon trajectories
--- Description:         
+-- Description:
 License:             BSD3
 License-file:        LICENSE
 Author:              Ben Gamari
@@ -74,6 +74,7 @@ Executable alex-analysis
                      pipes-bytestring,
                      blaze-html,
                      blaze-markup,
+                     clay,
                      optparse-applicative,
                      transformers,
                      mtl,
@@ -183,4 +184,3 @@ Executable correlate
                      hphoton,
                      vector-algorithms,
                      optparse-applicative
-                     
