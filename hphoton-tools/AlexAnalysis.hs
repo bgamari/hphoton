@@ -21,7 +21,7 @@ import           Control.Proxy.Vector
 import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Unboxed as VU
 
-import           HPhoton.Bin.Alex
+import           HPhoton.Bin
 import           HPhoton.FpgaTimetagger.Alex
 import           HPhoton.FpgaTimetagger.Pipe
 import           HPhoton.Fret (shotNoiseEVar)
@@ -215,7 +215,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
               partition (\a->alexAexcAem a+alexDexcAem a+alexDexcDem a > realToFrac (burstSize p))
             $ fmap (fmap fromIntegral)
             -- $ filter (filterBinsBayes (binWidth p) bgRates fgRates)
-            $ alexBin (realTimeToTime clk (binWidth p)) times
+            $ binMany (realTimeToTime clk (binWidth p)) times
             :: ([Alex Double], [Alex Double])
 
     let counts = runAverage <$> foldMap' (fmap (Average 1)) bins

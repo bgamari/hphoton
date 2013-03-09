@@ -1,7 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 
 module HPhoton.Bin ( -- * Temporal photon binning
-                     bin
+                     binMany
+                   , bin
                    , binL
                    , binWithBounds
                    , binWithBoundsL
@@ -16,6 +17,10 @@ module HPhoton.Bin ( -- * Temporal photon binning
 import HPhoton.Types
 import qualified Data.Vector.Unboxed as V
 
+import           Control.Applicative
+import           Data.Foldable as F
+import           Data.Traversable as T
+
 -- | 'bin width times' is a list of binned counts of bin width 'width'
 bin :: Time -> V.Vector Time -> V.Vector Int
 bin width ts = V.fromList $ binL width ts
@@ -23,7 +28,7 @@ bin width ts = V.fromList $ binL width ts
 binL :: Time -> V.Vector Time -> [Int]
 binL width ts =
     bin' width (V.toList ts) Nothing (fromIntegral $ V.head ts `quot` width) 0
-                
+
 -- | 'binWithBounds width times' is a list of bin counts and start
 -- times of bin width 'width'
 binWithBounds :: Time -> V.Vector Time -> V.Vector (Time, Int)
@@ -61,7 +66,7 @@ bin' width (t:ts) end_t !bin_n !count
     | t < fromIntegral bin_n*width       = bin' width ts end_t bin_n count
      -- Make sure the current time isn't past end of the current bin
     | t >= fromIntegral (bin_n+1)*width  =
-        let rest = bin' width (t:ts) end_t (bin_n+1) 0 
+        let rest = bin' width (t:ts) end_t (bin_n+1) 0
         in count : rest
      -- The photon is in our bin, increment count
     | otherwise                          = bin' width ts end_t bin_n (count+1)
@@ -76,3 +81,8 @@ bin' width [] (Just end_t) !bin_n !count
 
 bin' _ [] Nothing _ _                    = []
 
+binMany :: (Traversable f, Applicative f) => Time -> f (V.Vector Time) -> [f Int]
+binMany binWidth times =
+    getZipList $ T.sequenceA $ pure (ZipList . binRangeL binWidth (start,end)) <*> times
+    where start = F.maximum $ fmap V.head times
+          end   = F.minimum $ fmap V.last times
