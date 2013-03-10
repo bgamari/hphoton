@@ -244,14 +244,17 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         (layoutSE fname (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins) (fmap proxRatio bins) [])
         640 480 (fname++"-uncorrected.svg")
     tellLog 20
-        $ let (mu,sig) = meanVariance $ VU.fromList
-                         $ map snd
+        $ let ((muS,sigS), (muE,sigE)) =
+                           (\(s,e)->let f = meanVariance . VU.fromList in (f s, f e))
+                         $ unzip
                          $ filter (\(s,e)->s < dOnlyThresh p)
                          $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
           in H.section $ do
                  H.h2 "Uncorrected FRET"
-                 H.ul $ do H.li $ H.toHtml $ "<E> = "++show mu
-                           H.li $ H.toHtml $ "  <(E - <E>)^2> = "++show sig
+                 H.ul $ do H.li $ H.preEscapedToHtml $ meanHtml "E"++" = "++show muE
+                           H.li $ H.preEscapedToHtml $ varHtml  "E"++" = "++show sigE
+                           H.li $ H.preEscapedToHtml $ meanHtml "S"++" = "++show muS
+                           H.li $ H.preEscapedToHtml $ varHtml  "S"++" = "++show sigS
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
                        H.! HA.width "30%" H.! HA.style "float: right;"
 
