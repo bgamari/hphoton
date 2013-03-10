@@ -16,3 +16,4 @@ styleSheet = do
         marginRight (em 1)
     div # ".container" ? do
         marginLeft (px 100)
+        backgroundColor white
