@@ -67,6 +67,7 @@ data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , gamma :: Maybe Double
                                  , crosstalk :: Maybe Double
                                  , dOnlyThresh :: Double
+                                 , aOnlyThresh :: Double
                                  , outputDir :: FilePath
                                  }
                     deriving (Show, Eq)
@@ -122,12 +123,16 @@ alexAnalysis = AlexAnalysis
                              then pure Nothing
                              else Just <$> auto s
                         )
-              <> metavar "[E]"
+              <> metavar "[N]"
               <> help "Use crosstalk correction"
                )
     <*> option ( long "d-only-thresh" <> short 'D'
               <> value 0.85 <> metavar "S"
               <> help "Stoiciometry threshold for identification of donor-only population"
+               )
+    <*> option ( long "a-only-thresh" <> short 'A'
+              <> value 0.20 <> metavar "S"
+              <> help "Stoiciometry threshold for identification of acceptor-only population"
                )
     <*> strOption ( long "output" <> short 'o'
               <> value "." <> metavar "DIR"
@@ -258,9 +263,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
                        H.! HA.width "30%" H.! HA.style "float: right;"
 
-    let aOnlyThresh = 0.2
-        d = map directAExc
-            $ filter (\alex->stoiciometry alex < aOnlyThresh)
+    let d = map directAExc
+            $ filter (\alex->stoiciometry alex < aOnlyThresh p)
             $ filter (\alex->alexDexcDem alex + alexDexcAem alex > realToFrac (fretThresh p))
             $ bins
         (dirD, dirDVar) = meanVariance $ VU.fromList d
@@ -304,7 +308,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                    ) s e ctBins bins
 
     let fretBins = filter (\a->let s = stoiciometry' gamma' a
-                               in s < dOnlyThresh p && s > aOnlyThresh
+                               in s < dOnlyThresh p && s > aOnlyThresh p
                           ) ctBins
     let (mu,sigma2) = meanVariance $ VU.fromList
                       $ map (fretEff gamma') fretBins
