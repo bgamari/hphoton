@@ -53,6 +53,8 @@ import           Statistics.LinearRegression
 import           Options.Applicative
 
 type Rate = Double
+type Gamma = Double
+type CrosstalkParam = Double
 
 data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , input :: [FilePath]
@@ -348,9 +350,11 @@ estimateGamma xs =
     in (beta, gamma)
 
 -- | Estimate gamma from donor-only population
-estimateGammaDonor :: VU.Vector (Alex Rate) -> VU.Vector (Alex Rate) -> Double
-estimateGammaDonor donorOnly donorAcceptor = undefined
-
+estimateGammaDonor :: CrosstalkParam
+                   -> Fret Double -> Fret Double -> Gamma
+estimateGammaDonor crosstalk donorOnly donorAcceptor =
+    crosstalk - fretA deltaI / fretD deltaI
+  where deltaI = (-) <$> donorAcceptor <*> donorOnly
 
 layoutThese :: (F.Foldable f, Applicative f, PlotValue x, PlotValue y, Num y)
             => (a -> Plot x y) -> f String -> f a -> Renderable ()
