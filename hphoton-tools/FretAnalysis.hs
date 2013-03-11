@@ -62,6 +62,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , gamma :: Maybe Double
                                  , crosstalk :: Maybe Double
                                  , outputDir :: FilePath
+                                 , fitComps :: Int
                                  }
                     deriving (Show, Eq)
 
@@ -109,6 +110,10 @@ fretAnalysis = FretAnalysis
     <*> strOption ( long "output" <> short 'o'
               <> value "." <> metavar "DIR"
               <> help "Directory in which to place output files"
+               )
+    <*> option ( long "fit-comps" <> short 'f'
+              <> value 1 <> metavar "N"
+              <> help "Number of Beta fit components"
                )
 
 data Average a = Average !Int !a deriving (Read, Show)
@@ -223,7 +228,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         shotSigma2 = shotNoiseEVar (1/nInv) mu
         fretEffs = map (fretEfficiency gamma') fretBins
 
-    fitParams <- liftIO $ fitFret 200 2 fretEffs
+    fitParams <- liftIO $ fitFret 200 (fitComps p) fretEffs
     tellLog 10 $ H.section $ do
         H.h2 "Fit"
         case fitParams of
