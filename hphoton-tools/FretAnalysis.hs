@@ -187,8 +187,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         $ let (mu,sig) = meanVariance $ VU.fromList $ fmap proximityRatio bins
           in H.section $ do
                  H.h2 "Uncorrected FRET"
-                 H.ul $ do H.li $ H.toHtml $ "<E> = "++show mu
-                           H.li $ H.toHtml $ "  <(E - <E>)^2> = "++show sig
+                 H.ul $ do H.li $ H.preEscapedToHtml $ meanHtml "E"++" = "++show mu
+                           H.li $ H.preEscapedToHtml $ varHtml "E"++" = "++show sig
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
                        H.! HA.width "30%" H.! HA.style "float: right;"
 
