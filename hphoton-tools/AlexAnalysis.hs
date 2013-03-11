@@ -229,8 +229,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         bgCounts = runAverage <$> foldMap' (fmap (Average 1)) bgBins
     tellLog 10 $ H.section $ do
         H.h2 "Count statistics"
-        let total = getSum <$> foldMap' (fmap Sum) bins
-            rows = mapM_ (\(a,b)->H.tr $ H.td a >> H.td (H.toHtml b))
+        let rows = mapM_ (\(a,b)->H.tr $ H.td a >> H.td (H.toHtml b))
             alexRows alex = rows [ ("A excitation, A emission", alexAexcAem alex)
                                  , ("A excitation, D emission", alexAexcDem alex)
                                  , ("D excitation, A emission", alexDexcAem alex)
@@ -238,12 +237,15 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                                  ]
         H.table $ do
             H.tr $ H.th "Total counts"
-            alexRows $ fmap (\x->showFFloat (Just 1) x "") total
+            alexRows $ fmap (\x->showFFloat (Just 1) x "") $ fmap getSum
+                     $ foldMap' (fmap Sum) bins <> foldMap' (fmap Sum) bgBins
             H.tr $ H.th "Mean foreground counts"
             alexRows $ fmap (\x->showFFloat (Just 2) x "") counts
             rows [ ("Number of foreground bins", show $ length bins) ]
             H.tr $ H.th "Mean background counts"
             alexRows $ fmap (\x->showFFloat (Just 2) x "") bgCounts
+            H.tr $ H.td "Bins" >> H.td (H.toHtml $ show $ length bgBins)
+            rows [ ("Number of background bins", show $ length bgBins) ]
 
     liftIO $ renderableToSVGFile
         (layoutSE fname (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins) (fmap proxRatio bins) [])
