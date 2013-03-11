@@ -78,7 +78,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                     deriving (Show, Eq)
 
 burstMode :: Parser BurstMode
-burstMode = bayes <|> binThresh
+burstMode = binThresh <|> bayes
   where bayes = Bayes
                 <$> option ( long "bayes-window" <> value 10
                           <> help "Window size" )
@@ -104,9 +104,9 @@ burstMode = bayes <|> binThresh
                     )
                 <*  switch ( long "bayes" <> help "Use Bayesian burst detection" )
         binThresh = BinThresh
-                    <$> option ( long "bin-width" <> value 10
+                    <$> option ( long "bin-width" <> value 10e-3
                               <> help "Binning bin width in milliseconds" )
-                    <*> nullOption ( long "burst-thresh" <> reader (pure . MultMeanThresh . read)
+                    <*> nullOption ( long "burst-thresh" <> reader (pure . AbsThresh . read)
                                   <> value (MultMeanThresh 2)
                                   <> help "Burst count threshold" )
                     <*  switch ( long "bin-thresh"
@@ -126,7 +126,7 @@ fretAnalysis = FretAnalysis
                )
     <*> arguments1 Just ( help "Input files" <> action "file" )
     <*> option ( long "burst-size" <> short 's'
-              <> value 10
+              <> value 0
               <> metavar "N"
               <> help "Minimum burst size in photons"
                )
@@ -194,7 +194,7 @@ fretBursts clk b@(Bayes {}) d =
 
 fretBursts clk (BinThresh binWidth thresh) d =
     let combined = combineChannels $ toList d
-        binWidthTicks = round $ 1e-3*binWidth / jiffy clk
+        binWidthTicks = realTimeToTime clk binWidth
         len = realToFrac $ V.length combined :: Double
     in V.toList $ findBursts binWidthTicks thresh combined
 
@@ -268,7 +268,7 @@ analyzeData rootName clk p fret = do
 
     print $ burst_mode p
     let duration = realDuration clk $ toList fret
-        burstSpans = filter (\span->realSpanDuration clk span > 1e-4)
+        burstSpans = filter (\span->realSpanDuration clk span > 1e-5)
                      $ fretBursts clk (burst_mode p) fret
         burstPhotons = filter (not . all V.null . toList)
                        $ flipFrets
@@ -279,7 +279,9 @@ analyzeData rootName clk p fret = do
         $ unlines $ map (show . realSpanDuration clk) burstSpans
 
     let bgRate = backgroundRate clk burstSpans <$> fret :: Fret Rate
+        --fgRate = mean $ V.fromList $ map sum burstPhotons
     printf "Background rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD bgRate) (fretA bgRate)
+    --printf "Foreground rate: Donor=%1.1f, Acceptor=%1.1f\n" (fretD fgRate) (fretA fgRate)
     let (mu,sigma) = meanVariance $ V.fromList $ map (realSpanDuration clk) burstSpans
     printf "Burst lengths: mu=%1.2e seconds, sigma=%1.2e seconds\n" mu sigma
     printf "Crosstalk: %1.2f\n" (crosstalk p)
@@ -290,7 +292,8 @@ analyzeData rootName clk p fret = do
                        (flipFrets $ spansCounts burstSpans <$> fret)
         burstRates :: [Fret Rate]
         burstRates = map (correctCrosstalk $ crosstalk p)
-                   $ map (\(dur,counts)->(/timeToRealTime clk dur) <$> counts)
+                   -- $ map (\(dur,counts)->(/timeToRealTime clk dur) <$> counts)
+                   $ map (\(dur,counts)->counts)
                    $ map (\(dur,counts)->(dur, correctFretBackground bgRate (timeToRealTime clk dur) counts))
                    $ map (second (fmap realToFrac))
                    $ bursts
@@ -310,6 +313,12 @@ analyzeData rootName clk p fret = do
       (genericLength burstRates / duration)
     writeFile (outputRoot++"-fret_eff.txt")
       $ unlines $ map show fretEffs
+
+    let (mu,var) = meanVariance $ V.fromList
+                   $ map (proximityRatio . fmap realToFrac . snd) bursts
+        nInv = mean $ V.fromList $ map (recip . realToFrac . sum . snd) bursts
+    printf "<E> = %1.3f  <(E-<E>)^2> = %1.3f  shot-noise var = %1.3f\n"
+           mu var (shotNoiseEVar (1/nInv) mu)
 
     plotFretAnalysis outputRoot clk p fret (zip burstSpans burstRates)
 
