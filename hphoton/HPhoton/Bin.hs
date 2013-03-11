@@ -81,6 +81,8 @@ bin' width [] (Just end_t) !bin_n !count
 
 bin' _ [] Nothing _ _                    = []
 
+-- | Bin simultaneous photon streams. Here we take the bin range to be
+-- the intersection of all of the streams.
 binMany :: (Traversable f, Applicative f) => Time -> f (V.Vector Time) -> [f Int]
 binMany binWidth times =
     getZipList $ T.sequenceA $ pure (ZipList . binRangeL binWidth (start,end)) <*> times
