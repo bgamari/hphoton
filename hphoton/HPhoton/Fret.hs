@@ -5,6 +5,7 @@ module HPhoton.Fret ( fretEfficiency
                     , gammaFromFret
                     , gammaFromRates
                     , correctCrosstalk
+                    , correctGamma
                       -- * Utilities
                     , flipFrets, unflipFrets
                     , module HPhoton.Fret.Types
@@ -23,6 +24,10 @@ fretEfficiency gamma x = fretA x / (fretA x + fretD x)
 -- intensities `fret`
 proximityRatio :: Fret Double -> ProxRatio
 proximityRatio = fretEfficiency 1
+
+-- | Correct a proximity ratio with the given gamma
+correctGamma :: Gamma -> ProxRatio -> FretEff
+correctGamma gamma e = gamma / (gamma + 1/e - 1)
 
 -- | `gammaFromFret proxRatio fretEff` is the gamma such that
 -- `proxRatio` is shifted to `fretEff`
