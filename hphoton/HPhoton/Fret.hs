@@ -1,12 +1,13 @@
 module HPhoton.Fret ( fretEfficiency
                     , proximityRatio
                     , gammaFromFret
+                    , gammaFromRates
                     , flipFrets, unflipFrets
                     , shotNoiseEVar
                     , module HPhoton.Fret.Types
                     ) where
 
-import           Control.Applicative (ZipList (..))
+import           Control.Applicative
 import           Data.Traversable    (traverse)
 import           HPhoton.Fret.Types
 
@@ -24,6 +25,13 @@ proximityRatio = fretEfficiency 1
 -- `proxRatio` is shifted to `fretEff`
 gammaFromFret :: ProxRatio -> FretEff -> Gamma
 gammaFromFret proxRatio fretEff = (1/fretEff - 1) / (1/proxRatio - 1)
+
+-- | 'gammaFromRates crosstalk donorOnly donorAcceptor' is an estimate
+-- of gamma from count rates of donor-only and donor-acceptor populations
+gammaFromRates :: Crosstalk -> Fret Double -> Fret Double -> Gamma
+gammaFromRates crosstalk donorOnly donorAcceptor =
+    crosstalk - fretA deltaI / fretD deltaI
+  where deltaI = (-) <$> donorAcceptor <*> donorOnly
 
 -- | Turn a 'Fret' of lists into a list of 'Fret's
 flipFrets :: Fret [a] -> [Fret a]

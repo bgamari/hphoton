@@ -207,9 +207,9 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                :: [Fret Double]
 
     let a = unflipFrets dOnlyBins :: Fret [Double]
-        g = estimateGammaDonor crosstalkAlpha
-                               (fmap (mean . VU.fromList) $ unflipFrets dOnlyBins)
-                               (fmap (mean . VU.fromList) $ unflipFrets fretBins)
+        g = gammaFromRates crosstalkAlpha
+                           (fmap (mean . VU.fromList) $ unflipFrets dOnlyBins)
+                           (fmap (mean . VU.fromList) $ unflipFrets fretBins)
         gamma' = maybe (g) id $ gamma p
 
     tellLog 5 $ H.section $ do
@@ -278,14 +278,6 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
 
 meanHtml x = "&#x2329;"++x++"&#x232a;"
 varHtml x = meanHtml $ x++"&#x00b2; - "++meanHtml x++"&#x00b2;"
-
-
--- | Estimate gamma from donor-only population
-estimateGammaDonor :: CrosstalkParam
-                   -> Fret Double -> Fret Double -> Gamma
-estimateGammaDonor crosstalk donorOnly donorAcceptor =
-    crosstalk - fretA deltaI / fretD deltaI
-  where deltaI = (-) <$> donorAcceptor <*> donorOnly
 
 layoutThese :: (F.Foldable f, Applicative f, PlotValue x, PlotValue y, Num y)
             => (a -> Plot x y) -> f String -> f a -> Renderable ()
