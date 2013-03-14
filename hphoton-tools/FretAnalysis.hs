@@ -26,6 +26,7 @@ import           HPhoton.FpgaTimetagger
 import           HPhoton.FpgaTimetagger.Pipe
 import           HPhoton.Fret
 import           HPhoton.Types
+import qualified Moments as M
 
 import           Numeric
 import           HtmlLog
@@ -116,25 +117,6 @@ fretAnalysis = FretAnalysis
               <> help "Number of Beta fit components"
                )
 
-data Moments a = Moments { _rawCount     :: !Int
-                         , _rawMean      :: !a
-                         , _rawVariance  :: !a
-                         } deriving (Read, Show)
-
--- Online moment calculation due to Chan 1979
-instance (Num a, Fractional a) => Monoid (Moments a) where
-    mempty = Moments 0 0 0
-    Moments na ma va `mappend` Moments nb mb vb = Moments
-        (na + nb)                           -- count
-        ((na'*ma + nb'*mb) / (na' + nb'))   -- mean
-        (va + vb + a * d^2)                 -- variance
-      where d = mb - ma
-            na' = fromIntegral na
-            nb' = fromIntegral nb
-            a = (na' * nb') / (na' + nb')
-
-sample :: Num a => a -> Moments a
-sample x = Moments 1 x 0
 
 main = do
     let opts = info (helper <*> fretAnalysis)
@@ -171,8 +153,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
              $ binMany (realTimeToTime clk (binWidth p)) times
              :: ([Fret Double], [Fret Double])
 
-    let fgCountMoments = foldMap' (fmap sample) bins
-        bgCountMoments = foldMap' (fmap sample) bgBins
+    let fgCountMoments = foldMap' (fmap M.sample) bins
+        bgCountMoments = foldMap' (fmap M.sample) bgBins
     tellLog 10 $ H.section $ do
         H.h2 "Count statistics"
         let total = getSum <$> foldMap' (fmap Sum) bins
@@ -188,15 +170,15 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
 
             H.tr $ H.th "Foreground counts"
             H.tr $ mapM_ H.th ["", "mean", "variance"]
-            fretRows $ fmap (\m->[ showFFloat (Just 2) (_rawMean m) ""
-                                 , showFFloat (Just 2) (_rawVariance m) ""
+            fretRows $ fmap (\m->[ showFFloat (Just 2) (M.mean m) ""
+                                 , showFFloat (Just 2) (M.variance m) ""
                                  ]) fgCountMoments
             rows [ ["Number of foreground bins", show $ length bins] ]
 
             H.tr $ H.th "Background counts"
             H.tr $ mapM_ H.th ["", "mean", "variance"]
-            fretRows $ fmap (\m->[ showFFloat (Just 2) (_rawMean m) ""
-                                 , showFFloat (Just 2) (_rawVariance m) ""
+            fretRows $ fmap (\m->[ showFFloat (Just 2) (M.mean m) ""
+                                 , showFFloat (Just 2) (M.variance m) ""
                                  ]) bgCountMoments
             rows [ ["Number of foreground bins", show $ length bgBins] ]
 
@@ -214,7 +196,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
                        H.! HA.width "30%" H.! HA.style "float: right;"
 
-    let bgRate = fmap _rawMean bgCountMoments
+    let bgRate = fmap M.mean bgCountMoments
         bgBins = map (\bin->(-) <$> bin <*> bgRate) bins
         (fretBins, dOnlyBins) = partition (\b->proximityRatio b > 0.2) bins
         c = (mean $ VU.fromList $ map fretA dOnlyBins) / (mean $ VU.fromList $ map fretD fretBins)
