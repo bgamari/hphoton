@@ -198,7 +198,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     let bgRate = fmap M.mean bgCountMoments
         bgBins = map (\bin->(-) <$> bin <*> bgRate) bins
         (fretBins, dOnlyBins) = partition (\b->proximityRatio b > 0.2) bins
-        c = (mean $ VU.fromList $ map fretA dOnlyBins) / (mean $ VU.fromList $ map fretD fretBins)
+        c = mean $ VU.fromList $ map crosstalkFactor dOnlyBins
         crosstalkAlpha = maybe c id $ crosstalk p -- TODO
         ctBins = fmap (correctCrosstalk crosstalkAlpha) bgBins
                :: [Fret Double]
