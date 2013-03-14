@@ -116,14 +116,25 @@ fretAnalysis = FretAnalysis
               <> help "Number of Beta fit components"
                )
 
-data Average a = Average !Int !a deriving (Read, Show)
+data Moments a = Moments { _rawCount     :: !Int
+                         , _rawMean      :: !a
+                         , _rawVariance  :: !a
+                         } deriving (Read, Show)
 
-instance Num a => Monoid (Average a) where
-    mempty = Average 0 0
-    Average n a `mappend` Average m b = Average (n+m) (a+b)
+-- Online moment calculation due to Chan 1979
+instance (Num a, Fractional a) => Monoid (Moments a) where
+    mempty = Moments 0 0 0
+    Moments na ma va `mappend` Moments nb mb vb = Moments
+        (na + nb)                           -- count
+        ((na'*ma + nb'*mb) / (na' + nb'))   -- mean
+        (va + vb + a * d^2)                 -- variance
+      where d = mb - ma
+            na' = fromIntegral na
+            nb' = fromIntegral nb
+            a = (na' * nb') / (na' + nb')
 
-runAverage :: Fractional a => Average a -> a
-runAverage (Average n a) = a / fromIntegral n
+sample :: Num a => a -> Moments a
+sample x = Moments 1 x 0
 
 main = do
     let opts = info (helper <*> fretAnalysis)
@@ -160,23 +171,34 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
              $ binMany (realTimeToTime clk (binWidth p)) times
              :: ([Fret Double], [Fret Double])
 
-    let counts = runAverage <$> foldMap' (fmap (Average 1)) bins
-        bgCounts = runAverage <$> foldMap' (fmap (Average 1)) bgBins
+    let fgCountMoments = foldMap' (fmap sample) bins
+        bgCountMoments = foldMap' (fmap sample) bgBins
     tellLog 10 $ H.section $ do
         H.h2 "Count statistics"
         let total = getSum <$> foldMap' (fmap Sum) bins
-            rows = mapM_ (\(a,b)->H.tr $ H.td a >> H.td (H.toHtml b))
-            fretRows fret = rows [ ("Acceptor", fretA fret)
-                                 , ("Donor"   , fretD fret)
+            rows :: H.ToMarkup a => [[a]] -> H.Html
+            rows = mapM_ (H.tr . mapM_ (H.td . H.toHtml))
+            fretRows :: Fret [String] -> H.Html
+            fretRows fret = rows [ ["Acceptor"] ++ fretA fret
+                                 , ["Donor"] ++ fretD fret
                                  ]
         H.table $ do
             H.tr $ H.th "Total counts"
-            fretRows $ fmap (\x->showFFloat (Just 1) x "") total
-            H.tr $ H.th "Mean foreground counts"
-            fretRows $ fmap (\x->showFFloat (Just 2) x "") counts
-            rows [ ("Number of foreground bins", show $ length bins) ]
-            H.tr $ H.th "Mean background counts"
-            fretRows $ fmap (\x->showFFloat (Just 2) x "") bgCounts
+            fretRows $ fmap (\x->[showFFloat (Just 2) x ""]) total
+
+            H.tr $ H.th "Foreground counts"
+            H.tr $ mapM_ H.th ["", "mean", "variance"]
+            fretRows $ fmap (\m->[ showFFloat (Just 2) (_rawMean m) ""
+                                 , showFFloat (Just 2) (_rawVariance m) ""
+                                 ]) fgCountMoments
+            rows [ ["Number of foreground bins", show $ length bins] ]
+
+            H.tr $ H.th "Background counts"
+            H.tr $ mapM_ H.th ["", "mean", "variance"]
+            fretRows $ fmap (\m->[ showFFloat (Just 2) (_rawMean m) ""
+                                 , showFFloat (Just 2) (_rawVariance m) ""
+                                 ]) bgCountMoments
+            rows [ ["Number of foreground bins", show $ length bgBins] ]
 
     liftIO $ let e = fmap proximityRatio bins
              in renderableToSVGFile
@@ -192,7 +214,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
                        H.! HA.width "30%" H.! HA.style "float: right;"
 
-    let bgBins = map (\bin->(-) <$> bin <*> bgCounts) bins
+    let bgRate = fmap _rawMean bgCountMoments
+        bgBins = map (\bin->(-) <$> bin <*> bgRate) bins
         (fretBins, dOnlyBins) = partition (\b->proximityRatio b > 0.2) bins
         c = (mean $ VU.fromList $ map fretA dOnlyBins) / (mean $ VU.fromList $ map fretD fretBins)
         crosstalkAlpha = maybe c id $ crosstalk p -- TODO
