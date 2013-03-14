@@ -55,7 +55,6 @@ import           Options.Applicative
 
 type Rate = Double
 type Gamma = Double
-type CrosstalkParam = Double
 
 data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , input :: [FilePath]
@@ -66,7 +65,7 @@ data AlexAnalysis = AlexAnalysis { clockrate :: Freq
                                  , initialTime :: Double
                                  , useCache :: Bool
                                  , gamma :: Maybe Double
-                                 , crosstalk :: Maybe Double
+                                 , crosstalk :: Maybe Crosstalk
                                  , dOnlyThresh :: Double
                                  , aOnlyThresh :: Double
                                  , outputDir :: FilePath
@@ -357,13 +356,6 @@ estimateGamma xs =
         beta = omega + sigma - 1
         gamma = (omega - 1) / (omega + sigma - 1)
     in (beta, gamma)
-
--- | Estimate gamma from donor-only population
-estimateGammaDonor :: CrosstalkParam
-                   -> Fret Double -> Fret Double -> Gamma
-estimateGammaDonor crosstalk donorOnly donorAcceptor =
-    crosstalk - fretA deltaI / fretD deltaI
-  where deltaI = (-) <$> donorAcceptor <*> donorOnly
 
 layoutThese :: (F.Foldable f, Applicative f, PlotValue x, PlotValue y, Num y)
             => (a -> Plot x y) -> f String -> f a -> Renderable ()
