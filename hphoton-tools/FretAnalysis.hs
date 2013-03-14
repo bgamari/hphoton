@@ -239,7 +239,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
             H.ul $ forM_ (V.toList params) $ \(w,(a,b))->
               let (mu,sigma2) = paramToMoments (a,b)
                   s :: String
-                  s = printf "weight=%1.3f, μ=%1.3f, σ²=%1.3f, mode=%1.3f, α=%1.3f, β=%1.3f" w mu sigma2 ((a-1)/(a+b-2)) a b
+                  s = printf "weight=%1.3f, μ=%1.4f, σ²=%1.4f, mode=%1.4f, α=%1.3f, β=%1.3f" w mu sigma2 ((a-1)/(a+b-2)) a b
               in H.li $ H.toHtml s
 
     let fits = case fitParams of
