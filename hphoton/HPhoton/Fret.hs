@@ -1,9 +1,11 @@
 module HPhoton.Fret ( fretEfficiency
                     , proximityRatio
+                    , shotNoiseEVar
+                      -- * Corrections
                     , gammaFromFret
                     , gammaFromRates
+                      -- * Utilities
                     , flipFrets, unflipFrets
-                    , shotNoiseEVar
                     , module HPhoton.Fret.Types
                     ) where
 
