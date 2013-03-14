@@ -200,9 +200,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         (fretBins, dOnlyBins) = partition (\b->proximityRatio b > 0.2) bins
         c = (mean $ VU.fromList $ map fretA dOnlyBins) / (mean $ VU.fromList $ map fretD fretBins)
         crosstalkAlpha = maybe c id $ crosstalk p -- TODO
-        ctBins = fmap (\fret->let lk = crosstalkAlpha * fretD fret
-                              in fret { fretA=fretA fret - lk }
-                      ) bgBins
+        ctBins = fmap (correctCrosstalk crosstalkAlpha) bgBins
                :: [Fret Double]
 
     let a = unflipFrets dOnlyBins :: Fret [Double]

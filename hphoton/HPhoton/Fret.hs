@@ -4,6 +4,7 @@ module HPhoton.Fret ( fretEfficiency
                       -- * Corrections
                     , gammaFromFret
                     , gammaFromRates
+                    , correctCrosstalk
                       -- * Utilities
                     , flipFrets, unflipFrets
                     , module HPhoton.Fret.Types
@@ -34,6 +35,12 @@ gammaFromRates :: Crosstalk -> Fret Double -> Fret Double -> Gamma
 gammaFromRates crosstalk donorOnly donorAcceptor =
     crosstalk - fretA deltaI / fretD deltaI
   where deltaI = (-) <$> donorAcceptor <*> donorOnly
+
+-- | Correct rates for crosstalk
+correctCrosstalk :: Crosstalk -> Fret Double -> Fret Double
+correctCrosstalk crosstalk fret =
+    fret { fretA=fretA fret - lk }
+  where lk = crosstalk * fretD fret
 
 -- | Turn a 'Fret' of lists into a list of 'Fret's
 flipFrets :: Fret [a] -> [Fret a]
