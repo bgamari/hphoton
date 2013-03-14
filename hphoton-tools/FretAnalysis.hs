@@ -53,7 +53,6 @@ import           Statistics.Resampling.Bootstrap
 import           Options.Applicative
 
 type Rate = Double
-type CrosstalkParam = Double
 
 data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , input :: [FilePath]
@@ -61,7 +60,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , burstSize :: Int
                                  , nbins :: Int
                                  , gamma :: Maybe Double
-                                 , crosstalk :: Maybe Double
+                                 , crosstalk :: Maybe Crosstalk
                                  , outputDir :: FilePath
                                  , fitComps :: Int
                                  }
