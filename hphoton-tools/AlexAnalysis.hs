@@ -28,6 +28,7 @@ import           HPhoton.Fret (shotNoiseEVar)
 import           HPhoton.Fret.Alex
 import           HPhoton.Types
 import           Numeric.MixtureModel.Beta
+import qualified Moments as M
 
 import           Numeric
 import           HtmlLog
@@ -147,15 +148,6 @@ poissonP l k = l'^k / factorial' k * realToFrac (exp (-l))
 bgOdds :: Rate -> Rate -> Int -> LogFloat
 bgOdds bg fg k = poissonP fg k / poissonP bg k
 
-data Average a = Average !Int !a deriving (Read, Show)
-
-instance Num a => Monoid (Average a) where
-    mempty = Average 0 0
-    Average n a `mappend` Average m b = Average (n+m) (a+b)
-
-runAverage :: Fractional a => Average a -> a
-runAverage (Average n a) = a / fromIntegral n
-
 main = do
     let opts = info (helper <*> alexAnalysis)
                     ( fullDesc
@@ -225,27 +217,34 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
             $ binMany (realTimeToTime clk (binWidth p)) times
             :: ([Alex Double], [Alex Double])
 
-    let counts = runAverage <$> foldMap' (fmap (Average 1)) bins
-        bgCounts = runAverage <$> foldMap' (fmap (Average 1)) bgBins
+    let fgCountMoments = foldMap' (fmap M.sample) bins
+        bgCountMoments = foldMap' (fmap M.sample) bgBins
     tellLog 10 $ H.section $ do
         H.h2 "Count statistics"
-        let rows = mapM_ (\(a,b)->H.tr $ H.td a >> H.td (H.toHtml b))
-            alexRows alex = rows [ ("A excitation, A emission", alexAexcAem alex)
-                                 , ("A excitation, D emission", alexAexcDem alex)
-                                 , ("D excitation, A emission", alexDexcAem alex)
-                                 , ("D excitation, D emission", alexDexcDem alex)
+        let rows :: H.ToMarkup a => [[a]] -> H.Html
+            rows = mapM_ (H.tr . mapM_ (H.td . H.toHtml))
+            alexRows :: Alex [String] -> H.Html
+            alexRows alex = rows [ ["A excitation, A emission"] ++ alexAexcAem alex
+                                 , ["A excitation, D emission"] ++ alexAexcDem alex
+                                 , ["D excitation, A emission"] ++ alexDexcAem alex
+                                 , ["D excitation, D emission"] ++ alexDexcDem alex
                                  ]
         H.table $ do
             H.tr $ H.th "Total counts"
-            alexRows $ fmap (\x->showFFloat (Just 1) x "") $ fmap getSum
+            alexRows $ fmap (\x->[showFFloat (Just 1) x ""]) $ fmap getSum
                      $ foldMap' (fmap Sum) bins <> foldMap' (fmap Sum) bgBins
-            H.tr $ H.th "Mean foreground counts"
-            alexRows $ fmap (\x->showFFloat (Just 2) x "") counts
-            rows [ ("Number of foreground bins", show $ length bins) ]
-            H.tr $ H.th "Mean background counts"
-            alexRows $ fmap (\x->showFFloat (Just 2) x "") bgCounts
-            H.tr $ H.td "Bins" >> H.td (H.toHtml $ show $ length bgBins)
-            rows [ ("Number of background bins", show $ length bgBins) ]
+            H.tr $ H.th "Foreground counts"
+            H.tr $ mapM_ H.th ["", "mean", "variance"]
+            alexRows $ fmap (\m->[ showFFloat (Just 2) (M.mean m) ""
+                                 , showFFloat (Just 2) (M.variance m) ""
+                                 ]) fgCountMoments
+            rows [ ["Number of foreground bins", show $ length bins] ]
+            H.tr $ H.th "Background counts"
+            H.tr $ mapM_ H.th ["", "mean", "variance"]
+            alexRows $ fmap (\m->[ showFFloat (Just 2) (M.mean m) ""
+                                 , showFFloat (Just 2) (M.variance m) ""
+                                 ]) bgCountMoments
+            rows [ ["Number of background bins", show $ length bgBins] ]
 
     liftIO $ renderableToSVGFile
         (layoutSE fname (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins) (fmap proxRatio bins) [])
@@ -271,7 +270,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
             $ bins
         (dirD, dirDVar) = meanVariance $ VU.fromList d
 
-    let bgBins = map (\bin->(-) <$> bin <*> bgCounts) bins
+    let bgRate = fmap M.mean bgCountMoments
+        bgBins = map (\bin->(-) <$> bin <*> bgRate) bins
         (dOnlyBins, fretBins) = partition (\alex->stoiciometry alex > dOnlyThresh p) bgBins
         a = mean $ VU.fromList
             $ map (\alex->alexDexcAem alex / alexDexcDem alex)
