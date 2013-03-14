@@ -272,14 +272,9 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     let bgRate = fmap M.mean bgCountMoments
         bgBins = map (\bin->(-) <$> bin <*> bgRate) bins
         (dOnlyBins, fretBins) = partition (\alex->stoiciometry alex > dOnlyThresh p) bgBins
-        a = mean $ VU.fromList
-            $ map (\alex->alexDexcAem alex / alexDexcDem alex)
-            $ dOnlyBins
+        a = mean $ VU.fromList $ map crosstalkFactor dOnlyBins
         crosstalkAlpha = maybe a id $ crosstalk p
-        ctBins = fmap (\alex->let lk = crosstalkAlpha * alexDexcDem alex
-                                  dir = dirD * alexAexcAem alex
-                              in alex { alexDexcAem = alexDexcAem alex - lk - dir }
-                      ) bgBins
+        ctBins = map (correctDirectAExc dirD . correctCrosstalk crosstalkAlpha) bgBins
 
     let (beta,g) = estimateGamma $ V.fromList
             $ filter (\(s,e) -> s < dOnlyThresh p)
