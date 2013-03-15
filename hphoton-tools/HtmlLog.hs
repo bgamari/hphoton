@@ -27,6 +27,7 @@ runHtmlLogT (HtmlLogT action) = do
     let log = renderMarkup $ do
                   docTypeHtml $ do
                       H.head $ do
+                          meta ! HA.charset "UTF-8"
                           style $ preEscapedToHtml $ Clay.render styleSheet
                           title "Log"
                       body $ H.div H.! HA.class_ "container" $ do
