@@ -256,10 +256,10 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                          $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
           in H.section $ do
                  H.h2 "Uncorrected FRET"
-                 H.ul $ do H.li $ H.preEscapedToHtml $ meanHtml "E"++" = "++show muE
-                           H.li $ H.preEscapedToHtml $ varHtml  "E"++" = "++show sigE
-                           H.li $ H.preEscapedToHtml $ meanHtml "S"++" = "++show muS
-                           H.li $ H.preEscapedToHtml $ varHtml  "S"++" = "++show sigS
+                 H.ul $ do H.li $ H.toHtml $ meanHtml "E"++" = "++show muE
+                           H.li $ H.toHtml $ varHtml  "E"++" = "++show sigE
+                           H.li $ H.toHtml $ meanHtml "S"++" = "++show muS
+                           H.li $ H.toHtml $ varHtml  "S"++" = "++show sigS
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
                        H.! HA.width "30%" H.! HA.style "float: right;"
 
@@ -316,7 +316,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     liftIO $ renderableToSVGFile
         (layoutSE fname (nbins p) s e (map (fretEff gamma') fretBins)
                   [ ("shot-limited", Beta $ paramFromMoments (mu,shotSigma2))
-                  , (printf "fit <E>=%1.2f" mu, Beta $ paramFromMoments (mu, sigma2))
+                  , (printf "fit 〈E〉=%1.2f" mu, Beta $ paramFromMoments (mu, sigma2))
                   --  ("fit", Gaussian (mu, sigma2))
                   --, ("shot-limited", Gaussian (mu, shotSigma2))
                   ]
@@ -328,8 +328,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         H.img H.! HA.src (H.toValue $ outputRoot++"-se.svg")
               H.! HA.width "50%" H.! HA.style "float: right;"
         H.ul $ do
-            H.li $ H.preEscapedToHtml $ meanHtml "E"++" = "++showFFloat (Just 4) mu ""
-            H.li $ H.preEscapedToHtml $ varHtml "E"++" = "++showFFloat (Just 4) sigma2 ""
+            H.li $ H.toHtml $ meanHtml "E"++" = "++showFFloat (Just 4) mu ""
+            H.li $ H.toHtml $ varHtml "E"++" = "++showFFloat (Just 4) sigma2 ""
             H.li $ H.toHtml $ "Shot-noise variance = "++showFFloat (Just 4) shotSigma2 ""
             H.li $ H.toHtml $
               let e = VU.fromList $ map (fretEff gamma') fretBins
@@ -341,8 +341,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA bins)
         500 500 (outputRoot++"-bins.svg")
 
-meanHtml x = "&#x2329;"++x++"&#x232a;"
-varHtml x = meanHtml $ x++"&#x00b2; - "++meanHtml x++"&#x00b2;"
+meanHtml x = "〈"++x++"〉"
+varHtml x = meanHtml $ x++"² − "++meanHtml x++"²"
 
 -- | Estimate gamma from slope in E-S plane
 estimateGamma :: VU.Vector (Double, Double) -> (Double, Double)

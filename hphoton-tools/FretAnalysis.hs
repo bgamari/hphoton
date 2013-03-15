@@ -190,8 +190,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         $ let (mu,sig) = meanVariance $ VU.fromList $ fmap proximityRatio bins
           in H.section $ do
                  H.h2 "Uncorrected FRET"
-                 H.ul $ do H.li $ H.preEscapedToHtml $ meanHtml "E"++" = "++show mu
-                           H.li $ H.preEscapedToHtml $ varHtml "E"++" = "++show sig
+                 H.ul $ do H.li $ H.toHtml $ meanHtml "E"++" = "++show mu
+                           H.li $ H.toHtml $ varHtml "E"++" = "++show sig
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
                        H.! HA.width "30%" H.! HA.style "float: right;"
 
@@ -260,8 +260,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         H.img H.! HA.src (H.toValue $ outputRoot++"-se.svg")
               H.! HA.width "50%" H.! HA.style "float: right;"
         H.ul $ do
-            H.li $ H.preEscapedToHtml $ meanHtml "E"++" = "++showFFloat (Just 4) mu ""
-            H.li $ H.preEscapedToHtml $ varHtml "E"++" = "++showFFloat (Just 4) sigma2 ""
+            H.li $ H.toHtml $ meanHtml "E"++" = "++showFFloat (Just 4) mu ""
+            H.li $ H.toHtml $ varHtml "E"++" = "++showFFloat (Just 4) sigma2 ""
             H.li $ H.toHtml $ "Shot-noise variance = "++showFFloat (Just 4) shotSigma2 ""
             H.li $ H.toHtml $
               let e = VU.fromList $ map (fretEfficiency gamma') fretBins
@@ -273,8 +273,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         (layoutThese plotBinTimeseries (Fret "Acceptor" "Donor") $ T.sequenceA bins)
         500 500 (outputRoot++"-bins.svg")
 
-meanHtml x = "&#x2329;"++x++"&#x232a;"
-varHtml x = meanHtml $ x++"&#x00b2; - "++meanHtml x++"&#x00b2;"
+meanHtml x = "〈"++x++"〉"
+varHtml x = meanHtml $ x++"² − "++meanHtml x++"²"
 
 layoutThese :: (F.Foldable f, Applicative f, PlotValue x, PlotValue y, Num y)
             => (a -> Plot x y) -> f String -> f a -> Renderable ()
