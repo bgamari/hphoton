@@ -203,11 +203,10 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         ctBins = fmap (correctCrosstalk crosstalkAlpha) bgBins
                :: [Fret Double]
 
-    let a = unflipFrets dOnlyBins :: Fret [Double]
-        g = gammaFromRates crosstalkAlpha
+    let g = gammaFromRates crosstalkAlpha
                            (fmap (mean . VU.fromList) $ unflipFrets dOnlyBins)
                            (fmap (mean . VU.fromList) $ unflipFrets fretBins)
-        gamma' = maybe (g) id $ gamma p
+        gamma' = maybe g id $ gamma p
 
     tellLog 5 $ H.section $ do
         H.h2 "Corrections"
