@@ -263,11 +263,10 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
                        H.! HA.width "30%" H.! HA.style "float: right;"
 
-    let d = map directAExc
-            $ filter (\alex->stoiciometry alex < aOnlyThresh p)
-            $ filter (\alex->alexDexcDem alex + alexDexcAem alex > realToFrac (fretThresh p))
-            $ bins
-        (dirD, dirDVar) = meanVariance $ VU.fromList d
+    let aOnlyBins = filter (\alex->stoiciometry alex < aOnlyThresh p)
+                    $ filter (\alex->alexDexcDem alex + alexDexcAem alex > realToFrac (fretThresh p))
+                    $ bins
+        (dirD,dirDVar) = meanVariance $ VU.fromList $ map directAExc aOnlyBins
 
     let bgRate = fmap M.mean bgCountMoments
         bgBins = map (\bin->(-) <$> bin <*> bgRate) bins
