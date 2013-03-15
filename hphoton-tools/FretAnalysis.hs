@@ -63,6 +63,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , crosstalk :: Maybe Crosstalk
                                  , outputDir :: FilePath
                                  , fitComps :: Int
+                                 , dOnlyCriterion :: DOnlyPartitioning
                                  }
                     deriving (Show, Eq)
 
@@ -115,7 +116,20 @@ fretAnalysis = FretAnalysis
               <> value 1 <> metavar "N"
               <> help "Number of Beta fit components"
                )
+    <*> dOnlyPartitioning
 
+dOnlyPartitioning :: Parser DOnlyPartitioning
+dOnlyPartitioning = eThresh <|> fitOdds
+  where eThresh = EThresh
+            <$> option ( long "donly-thresh" <> short 'd'
+                      <> value 0.2 <> metavar "E"
+                      <> help "FRET efficiency cut-off for donor-only population"
+                       )
+        fitOdds = FitOdds
+            <$> option ( long "donly-fit-comps"
+                      <> value 2 <> metavar "O"
+                      <> help "Number of components to fit"
+                       )
 
 main = do
     let opts = info (helper <*> fretAnalysis)
@@ -128,6 +142,23 @@ main = do
 -- | Strict foldMap
 foldMap' :: (F.Foldable f, Monoid m) => (a -> m) -> f a -> m
 foldMap' f = F.foldl' (\m a->mappend m $! f a) mempty
+
+data DOnlyPartitioning = EThresh ProxRatio
+                       | FitOdds Int
+                       deriving (Show, Eq)
+
+partitionDOnly :: DOnlyPartitioning -> [Fret Double] -> IO ([Fret Double], [Fret Double])
+partitionDOnly (EThresh e) bins =
+    return $ partition (\b->proximityRatio b < e) bins
+partitionDOnly (FitOdds nComps) bins = do
+    fitParams <- maybe (error "Failed to fit for D-only paritioning") id
+                 <$> fitFret 200 nComps (map proximityRatio bins)
+    let dOnlyOdds b = let e = proximityRatio b
+                          probComp (w,c) e = realToFrac w * betaProb c e
+                      in probComp (V.head fitParams) e / probComp (V.last fitParams) e
+    return ( filter (\b->dOnlyOdds b > 2) bins
+           , filter (\b->dOnlyOdds b < 1/2) bins
+           )
 
 goFile :: FretAnalysis -> FilePath -> IO ()
 goFile p fname = writeHtmlLogT (fname++".html") $ do
@@ -195,9 +226,9 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
                        H.! HA.width "30%" H.! HA.style "float: right;"
 
+    (dOnlyBins, fretBins) <- liftIO $ partitionDOnly (dOnlyCriterion p) bins
     let bgRate = fmap M.mean bgCountMoments
         bgBins = map (\bin->(-) <$> bin <*> bgRate) bins
-        (fretBins, dOnlyBins) = partition (\b->proximityRatio b > 0.2) bins
         c = mean $ VU.fromList $ map crosstalkFactor dOnlyBins
         crosstalkAlpha = maybe c id $ crosstalk p -- TODO
         ctBins = fmap (correctCrosstalk crosstalkAlpha) bgBins
