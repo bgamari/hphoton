@@ -6,12 +6,14 @@ module HPhoton.Fret.Alex ( DirFactor
                          , fretEff
                          , stoiciometry
                          , stoiciometry'
-                         -- * Corrections
+                           -- * Corrections
                          , directAExc
                          , correctDirectAExc
                          , crosstalkFactor
                          , correctCrosstalk
+                           -- * Reexports
                          , module HPhoton.Fret.Types
+                         , module HPhoton.Fret
                          ) where
 
 import           Control.Applicative
@@ -23,6 +25,7 @@ import qualified Data.Binary as B
 import           GHC.Generics (Generic)
 
 import           HPhoton.Fret.Types (FretEff, ProxRatio, Gamma, Crosstalk)
+import           HPhoton.Fret (correctGamma, shotNoiseEVar)
 
 -- | Direct acceptor excitation factor /d/
 type DirFactor = Double
