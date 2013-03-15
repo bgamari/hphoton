@@ -183,6 +183,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
              $ binMany (realTimeToTime clk (binWidth p)) times
              :: ([Fret Double], [Fret Double])
 
+    -- Count statistics
     let fgCountMoments = foldMap' (fmap M.sample) bins
         bgCountMoments = foldMap' (fmap M.sample) bgBins
     tellLog 10 $ H.section $ do
@@ -226,6 +227,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
                        H.! HA.width "30%" H.! HA.style "float: right;"
 
+    -- Corrections
     (dOnlyBins, fretBins) <- liftIO $ partitionDOnly (dOnlyCriterion p) bins
     let bgRate = fmap M.mean bgCountMoments
         bgBins = map (\bin->(-) <$> bin <*> bgRate) bins
@@ -260,6 +262,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         shotSigma2 = shotNoiseEVar (1/nInv) mu
         fretEffs = map (fretEfficiency gamma') fretBins
 
+    -- Fitting
     fitParams <- liftIO $ fitFret 200 (fitComps p) fretEffs
     tellLog 10 $ H.section $ do
         H.h2 "Fit"
@@ -272,6 +275,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                   s = printf "weight=%1.3f, μ=%1.4f, σ²=%1.4f, mode=%1.4f, α=%1.3f, β=%1.3f" w mu sigma2 ((a-1)/(a+b-2)) a b
               in H.li $ H.toHtml s
 
+    -- Plotting
     let fits = case fitParams of
                    Just ps ->
                        let mkBetas (w,p) =
