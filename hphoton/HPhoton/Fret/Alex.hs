@@ -11,6 +11,7 @@ module HPhoton.Fret.Alex ( DirFactor
                          , correctDirectAExc
                          , crosstalkFactor
                          , correctCrosstalk
+                         , gammaFromRates
                            -- * Reexports
                          , module HPhoton.Fret.Types
                          , module HPhoton.Fret
@@ -96,3 +97,10 @@ correctCrosstalk :: Crosstalk -> Alex Double -> Alex Double
 correctCrosstalk crosstalk alex =
     alex { alexDexcAem = alexDexcAem alex - lk }
   where lk = crosstalk * alexDexcAem alex
+
+-- | @gammaFromRates crosstalk donorOnly donorAcceptor@ is an estimate
+-- of gamma from count rates of donor-only and donor-acceptor populations
+gammaFromRates :: Crosstalk -> Alex Double -> Alex Double -> Gamma
+gammaFromRates crosstalk donorOnly donorAcceptor =
+    crosstalk - alexDexcAem deltaI / alexDexcDem deltaI
+  where deltaI = (-) <$> donorAcceptor <*> donorOnly
