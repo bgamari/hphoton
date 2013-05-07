@@ -9,7 +9,7 @@ styleSheet = do
     body ? do
         backgroundColor "#eee"
     section ? do
-        borderRadius (em 0.5)
+        borderRadius (em 0.5) (em 0.5) (em 0.5) (em 0.5)
         paddingLeft (em 2)
         paddingRight (em 2)
         marginLeft (em 1)

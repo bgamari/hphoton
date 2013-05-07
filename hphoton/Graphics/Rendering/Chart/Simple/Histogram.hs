@@ -2,10 +2,11 @@ module Graphics.Rendering.Chart.Simple.Histogram ( simpleHist
                                                  , generateAxisData
                                                  ) where
 
-import Data.List (foldl1')       
-import Data.Accessor
+import Data.List (foldl1')
+import Control.Lens
 import Graphics.Rendering.Chart
 import Graphics.Rendering.Chart.Plot.Histogram
+import qualified Data.Vector as V
 
 minMax :: Ord a => [a] -> (a,a)
 minMax = foldl1' (\(a,b) (x,y)->(min a x, max b y)) . map (\x->(x,x))
@@ -20,20 +21,19 @@ generateAxisData' nbins (min,max) = makeAxis show (ticks, grids, labels)
               grids = []
               labels = []
 
-chart :: (Ord x, Show x, RealFrac x, PlotValue x) => Int -> [x] -> Layout1 x Int
-chart _ xs | length xs < 2 = error "Can't histogram (nearly) empty list"
+chart :: (Ord x, Show x, RealFrac x, PlotValue x) => Int -> V.Vector x -> Layout1 x Int
+chart _ xs | V.length xs < 2 = error "Can't histogram (nearly) empty list"
 chart nbins xs = layout
-        where (min,max) = minMax xs
-              hist = plot_hist_values  ^= xs
-                     $ plot_hist_range ^= Just (min,max)
-                     $ plot_hist_bins  ^= nbins
+        where (min,max) = minMax $ V.toList xs
+              hist = plot_hist_values  .~ xs
+                     $ plot_hist_range .~ Just (min,max)
+                     $ plot_hist_bins  .~ nbins
                      $ defaultPlotHist
-              layout = layout1_plots ^= [Left $ histToPlot hist]
-                     $ (layout1_bottom_axis .> laxis_generate) ^=
+              layout = layout1_plots .~ [Left $ histToPlot hist]
+                     $ (layout1_bottom_axis .> laxis_generate) .~
                            const (generateAxisData' nbins (min,max))
                      $ defaultLayout1
-              
-simpleHist :: FilePath -> Int -> [Double] -> IO ()
+
+simpleHist :: FilePath -> Int -> V.Vector Double -> IO ()
 simpleHist fname nbins xs =
   renderableToPNGFile (toRenderable $ chart nbins xs) 640 480 fname >> return ()
-                            

@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
 
-import           Control.Monad                 
+import           Control.Monad
 import           Control.Applicative
 import qualified Data.Vector as VB
 import qualified Data.Vector.Unboxed as V
@@ -10,14 +10,14 @@ import           System.Console.CmdArgs
 
 import           Data.Colour
 import           Data.Colour.Names
-import           Data.Accessor
+import           Control.Lens
 import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Plot.Histogram
 import           Data.Number.LogFloat hiding (realToFrac)
 
 import           Numeric.MixtureModel.Exponential
 import           HPhoton.FpgaTimetagger
-import           HPhoton.Bin.Plot                 
+import           HPhoton.Bin.Plot
 import           HPhoton.Utils
 import           HPhoton.Types hiding (Freq)
 
@@ -35,7 +35,7 @@ data PlotArgs = PlotArgs { file             :: FilePath
 argsChannel :: PlotArgs -> Channel
 argsChannel (PlotArgs {channel=ch}) =
     case ch of
-        0         -> Ch0        
+        0         -> Ch0
         1         -> Ch1
         2         -> Ch2
         3         -> Ch3
@@ -59,26 +59,26 @@ longTime = 5e-2
 
 histPlot :: (Double, Double) -> V.Vector Sample -> Plot Sample Double
 histPlot range xs = histToPlot
-              $ plot_hist_bins     ^= 4000
-              $ plot_hist_values   ^= V.toList xs
-              $ plot_hist_range    ^= Just range
-              $ plot_hist_no_zeros ^= True
+              $ plot_hist_bins     .~ 4000
+              $ plot_hist_values   .~ V.convert xs
+              $ plot_hist_range    .~ Just range
+              $ plot_hist_no_zeros .~ True
               $ defaultNormedPlotHist
 
 functionPlot :: (RealFrac x, Enum x) => Int -> (x, x) -> (x -> y) -> Plot x y
 functionPlot n (a,b) f =
   let xs = [a,a+(b-a)/realToFrac n..b]
-  in toPlot $ plot_lines_values ^= [map (\x->(x,f x)) xs]
-            $ plot_lines_style .> line_color ^= opaque red
+  in toPlot $ plot_lines_values .~ [map (\x->(x,f x)) xs]
+            $ plot_lines_style .> line_color .~ opaque red
             $ defaultPlotLines
 
 plotFit :: V.Vector Sample -> (Double,Double) -> [Double->Double] -> Layout1 Double Double
 plotFit samples (a,b) fits =
-    layout1_plots ^= [ Left $ histPlot (a,b) samples ]
+    layout1_plots .~ [ Left $ histPlot (a,b) samples ]
                      ++ map (Left . functionPlot 1000 (a,b)) fits
-    $ (layout1_left_axis .> laxis_generate) ^= autoScaledLogAxis defaultLogAxis
+    $ layout1_left_axis . laxis_generate .~ autoScaledLogAxis defaultLogAxis
     $ defaultLayout1
-    
+
 plotParamSample :: V.Vector Sample -> Maybe ComponentParams -> IO ()
 plotParamSample samples paramSample = do
   let fits = case paramSample of
@@ -106,14 +106,14 @@ main = do
     --renderableToPDFFile (plotRecords times params) 1000 500 "hello.pdf"
 
     plotParamSample samples params
-                 
+
 plotRecords :: V.Vector Time -> ComponentParams -> Renderable ()
 plotRecords times params = renderLayout1sStacked
     [ withAnyOrdinate
-      $ layout1_plots ^= [Left bins]
+      $ layout1_plots .~ [Left bins]
       $ defaultLayout1
     , withAnyOrdinate
-      $ layout1_plots ^= [ Left $ photons (\odds->odds > 0 && odds < 2) green
+      $ layout1_plots .~ [ Left $ photons (\odds->odds > 0 && odds < 2) green
                          , Left $ photons (\odds->odds > 1 && odds < 2) blue
                          , Left $ photons (\odds->odds > 2) red
                          ]
@@ -127,13 +127,13 @@ plotRecords times params = renderLayout1sStacked
           odds dt = (realToFrac flWeight * prob flParams dt)
                   / (realToFrac bgWeight * prob bgParams dt)
           photons cutoff color = toPlot
-                    $ plot_points_values ^= (V.toList
+                    $ plot_points_values .~ (V.toList
                         -- $ V.filter (\(_,odds)->cutoff odds)
                         $ V.map (\(t,odds)->(t, logFromLogFloat odds))
                         $ V.map (\(t,dt)->( timeToRealTime clk t
                                           , odds $ timeToRealTime clk dt))
                         $ V.zip times (timesToInterarrivals times)
                         )
-                    $ plot_points_style ^= plusses 1 0.1 (opaque color)
+                    $ plot_points_style .~ plusses 1 0.1 (opaque color)
                     $ defaultPlotPoints
                     :: Plot RealTime Double

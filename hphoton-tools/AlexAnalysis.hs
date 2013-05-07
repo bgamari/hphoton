@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Control.Lens hiding ((^=), (.>))
-import           Data.Accessor
+import           Control.Lens
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import           Data.List (partition, intercalate, zipWith4)
@@ -358,16 +357,16 @@ layoutThese f titles xs =
     $ pure makeLayout <*> titles <*> xs
     where --makeLayout :: String -> Plot x y -> Layout1 x y
           makeLayout title x = withAnyOrdinate
-                               $ layout1_title ^= title
-                               $ layout1_left_axis .> laxis_override ^= (axis_viewport ^= vmap (0,150))
-                               $ layout1_plots ^= [Left $ f x]
+                               $ layout1_title .~ title
+                               $ layout1_left_axis . laxis_override .~ (axis_viewport .~ vmap (0,150))
+                               $ layout1_plots .~ [Left $ f x]
                                $ defaultLayout1
 
 plotBinTimeseries :: [a] -> Plot Int a
 plotBinTimeseries counts =
     toPlot
-    $ plot_points_values ^= zip [0..] counts
-    $ plot_points_style ^= filledCircles 0.5 (opaque blue)
+    $ plot_points_values .~ zip [0..] counts
+    $ plot_points_style .~ filledCircles 0.5 (opaque blue)
     $ defaultPlotPoints
 
 data Fit = Gaussian (Double, Double) -- ^ (Mean, Variance)
@@ -381,8 +380,8 @@ layoutSE :: String -> Int -> [Double] -> [Double] -> [Double]
          -> [(String, Fit)] -> Renderable ()
 layoutSE title eBins s e fretEs fits =
     let pts = toPlot
-              $ plot_points_values ^= zip e s
-              $ plot_points_style ^= filledCircles 2 (opaque blue)
+              $ plot_points_values .~ zip e s
+              $ plot_points_style .~ filledCircles 2 (opaque blue)
               $ defaultPlotPoints
         xs = [0.01,0.02..0.99]
         norm = realToFrac (length fretEs) / realToFrac eBins
@@ -391,30 +390,30 @@ layoutSE title eBins s e fretEs fits =
               let f = case param of Gaussian p -> gaussianProb p
                                     Beta p     -> realToFrac . betaProb p
               in toPlot
-                 $ plot_lines_values ^= [map (\x->(x, f x * norm)) xs]
-                 $ plot_lines_title  ^= title
-                 $ plot_lines_style  .> line_color ^= color
+                 $ plot_lines_values .~ [map (\x->(x, f x * norm)) xs]
+                 $ plot_lines_title  .~ title
+                 $ plot_lines_style  .  line_color .~ color
                  $ defaultPlotLines
         eHist = histToPlot
-                $ plot_hist_bins ^= eBins
-                $ plot_hist_values ^= fretEs
-                $ plot_hist_range ^= Just (0,1)
+                $ plot_hist_bins .~ eBins
+                $ plot_hist_values .~ V.fromList fretEs
+                $ plot_hist_range .~ Just (0,1)
                 $ defaultFloatPlotHist
         unitAxis = scaledAxis defaultLinearAxis (0,1)
     in renderLayout1sStacked
        [ withAnyOrdinate
-         $ layout1_title ^= title
-         $ layout1_plots ^= [Left pts]
-         $ layout1_bottom_axis .> laxis_generate ^= unitAxis
-         $ layout1_left_axis   .> laxis_generate ^= unitAxis
-         $ layout1_left_axis   .> laxis_title ^= "Stoiciometry"
+         $ layout1_title .~ title
+         $ layout1_plots .~ [Left pts]
+         $ layout1_bottom_axis . laxis_generate .~ unitAxis
+         $ layout1_left_axis   . laxis_generate .~ unitAxis
+         $ layout1_left_axis   . laxis_title .~ "Stoiciometry"
          $ defaultLayout1
        , withAnyOrdinate
-         $ layout1_plots ^= ([Left eHist]++zipWith (\p color->Left $ fit p color)
-                                                       fits (colors $ length fits))
-         $ layout1_bottom_axis .> laxis_title ^= "Proximity Ratio"
-         $ layout1_bottom_axis .> laxis_generate ^= unitAxis
-         $ layout1_left_axis   .> laxis_title ^= "Occurrences"
+         $ layout1_plots .~ ([Left eHist]++zipWith (\p color->Left $ fit p color)
+                                                   fits (colors $ length fits))
+         $ layout1_bottom_axis . laxis_title .~ "Proximity Ratio"
+         $ layout1_bottom_axis . laxis_generate .~ unitAxis
+         $ layout1_left_axis   . laxis_title .~ "Occurrences"
          $ defaultLayout1
        ]
 
