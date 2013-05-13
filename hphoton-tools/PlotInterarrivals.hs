@@ -13,7 +13,7 @@ import           Data.Colour.Names
 import           Control.Lens
 import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Plot.Histogram
-import           Data.Number.LogFloat hiding (realToFrac)
+import           Numeric.Log hiding (sum)
 
 import           Numeric.MixtureModel.Exponential
 import           HPhoton.FpgaTimetagger
@@ -129,7 +129,7 @@ plotRecords times params = renderLayout1sStacked
           photons cutoff color = toPlot
                     $ plot_points_values .~ (V.toList
                         -- $ V.filter (\(_,odds)->cutoff odds)
-                        $ V.map (\(t,odds)->(t, logFromLogFloat odds))
+                        $ V.map (\(t,odds)->(t, ln odds))
                         $ V.map (\(t,dt)->( timeToRealTime clk t
                                           , odds $ timeToRealTime clk dt))
                         $ V.zip times (timesToInterarrivals times)

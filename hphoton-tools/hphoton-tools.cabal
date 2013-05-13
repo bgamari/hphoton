@@ -135,7 +135,7 @@ Executable plot-interarrivals
                      Chart >=1.0,
                      chart-histogram,
                      colour,
-                     logfloat,
+                     log-domain,
                      mixture-model,
                      hphoton,
                      hphoton-fpga-timetagger
