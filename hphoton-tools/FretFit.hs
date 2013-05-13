@@ -1,5 +1,6 @@
 module FretFit ( fitFret ) where
 
+import           Prelude hiding (catch)
 import           Control.Exception (SomeException, catch)
 import           Control.Monad
 
