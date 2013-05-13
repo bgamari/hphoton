@@ -44,7 +44,7 @@ import           Data.Colour.Names
 
 import           Numeric.MixtureModel.Beta as Beta hiding (Prob)
 import           Numeric.SpecFunctions (logFactorial)
-import           Data.Number.LogFloat hiding (realToFrac, isNaN)
+import           Numeric.Log hiding (sum)
 import           Statistics.Sample
 import           Statistics.Resampling
 import           Statistics.Resampling.Bootstrap

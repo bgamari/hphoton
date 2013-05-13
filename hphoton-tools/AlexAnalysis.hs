@@ -44,7 +44,7 @@ import           Data.Colour.RGBSpace.HSV (hsv)
 import           Data.Colour.Names
 
 import           Numeric.SpecFunctions (logFactorial)
-import           Data.Number.LogFloat hiding (realToFrac, isNaN)
+import           Numeric.Log hiding (sum)
 import           Statistics.Sample
 import           Statistics.Resampling
 import           Statistics.Resampling.Bootstrap
@@ -138,12 +138,12 @@ alexAnalysis = AlexAnalysis
               <> help "Directory in which to place output files"
                )
 
-poissonP :: Rate -> Int -> LogFloat
+poissonP :: Rate -> Int -> Log Double
 poissonP l k = l'^k / factorial' k * realToFrac (exp (-l))
     where l' = realToFrac l
-          factorial' = logToLogFloat . logFactorial
+          factorial' = Exp . logFactorial
 
-bgOdds :: Rate -> Rate -> Int -> LogFloat
+bgOdds :: Rate -> Rate -> Int -> Log Double
 bgOdds bg fg k = poissonP fg k / poissonP bg k
 
 main = do
