@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
 
 import           System.IO
-import           Data.Number.LogFloat hiding (realToFrac)
+import           Numeric.Log hiding (sum, Exp)
 import           Data.Random.Lift
 import qualified Data.Vector as VB
 import qualified Data.Vector.Unboxed as V
@@ -177,7 +177,7 @@ showChainStats chain = do
         tell $ "  〈τ²〉:        "++showStats (map tauVariance p)++"\n"
 
 data ChainStatus = Waiting
-                 | Running Int LogFloat
+                 | Running Int (Log Double)
                  | Finished
                  deriving (Show, Eq)
 
@@ -190,7 +190,7 @@ statusWorker chains = do
         case status of
             Running nIter score -> do
                 hPutStr stderr $ printf "%3d: %3d iterations remaining" i nIter
-                --hPutStr stderr $ printf "  score=%8f" (logFromLogFloat score :: Double)
+                --hPutStr stderr $ printf "  score=%8f" (ln score)
                 hPutStr stderr "\n"
             otherwise -> return ()
     hPutStr stderr
@@ -234,8 +234,8 @@ main = do
   
   let paramSample = last $ last chains -- TODO: Correctly average
   let mlScore = maxLikelihoodScore paramSample samples
-  printf "Score: %1.2e\n" (logFromLogFloat mlScore :: Double)
-  printf "Score/sample: %1.2e\n" (logFromLogFloat $ mlScore / realToFrac (V.length samples) :: Double)
+  printf "Score: %1.2e\n" (ln mlScore)
+  printf "Score/sample: %1.2e\n" (ln $ mlScore / realToFrac (V.length samples))
 
   when (length (output fargs) > 0)
       $ withFile (output fargs) WriteMode $ \f->do

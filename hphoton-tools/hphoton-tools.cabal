@@ -107,7 +107,7 @@ Executable fit-interarrivals
                      cereal,
                      vector-mmap,
                      statistics,
-                     logfloat,
+                     log-domain,
                      mixture-model,
                      parallel-io,
                      hphoton,
