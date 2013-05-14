@@ -211,7 +211,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
             fretRows $ fmap (\m->[ showFFloat (Just 2) (M.mean m) ""
                                  , showFFloat (Just 2) (M.variance m) ""
                                  ]) bgCountMoments
-            rows [ ["Number of foreground bins", show $ length bgBins] ]
+            rows [ ["Number of background bins", show $ length bgBins] ]
 
     liftIO $ let e = fmap proximityRatio bins
              in renderableToSVGFile
