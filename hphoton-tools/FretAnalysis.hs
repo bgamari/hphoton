@@ -262,6 +262,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         shotSigma2 = shotNoiseEVar (1/nInv) mu
         fretEffs = map (fretEfficiency gamma') fretBins
 
+    when (null fretBins) $ error "No FRET bins"
+    
     -- Fitting
     fitParams <- liftIO $ fitFret 200 (fitComps p) fretEffs
     tellLog 10 $ H.section $ do
