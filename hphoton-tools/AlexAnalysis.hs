@@ -11,7 +11,7 @@ import           Control.Monad.Primitive
 import           Control.Monad.IO.Class
 
 import           System.IO
-import           System.Directory (doesFileExist)
+import           System.Directory (doesFileExist, createDirectoryIfMissing)
 import           System.FilePath
 import           Control.Proxy as P
 import qualified Control.Proxy.ByteString as PBS
@@ -152,6 +152,7 @@ main = do
                    <> progDesc "ALEX FRET analysis"
                     )
     p <- execParser opts
+    createDirectoryIfMissing True (outputDir p)
     forM_ (input p) $ goFile p
 
 filterBinsBayes :: RealTime -> Alex Rate -> Alex Rate -> Alex Int -> Bool
