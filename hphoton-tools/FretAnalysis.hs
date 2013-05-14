@@ -190,7 +190,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     tellLog 15 $ H.section $ do
         H.h2 "Photon Counting Histogram"
         H.img H.! HA.src (H.toValue $ fname++"-pch.svg")
-              H.! HA.width "30%" H.! HA.style "float: right;"
+              H.! HA.width "30%"
 
     -- Count statistics
     let fgCountMoments = foldMap' (fmap M.sample) bins
@@ -234,7 +234,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                  H.ul $ do H.li $ H.toHtml $ meanHtml "E"++" = "++show mu
                            H.li $ H.toHtml $ varHtml "E"++" = "++show sig
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
-                       H.! HA.width "30%" H.! HA.style "float: right;"
+                       H.! HA.width "30%"
 
     -- Corrections
     (dOnlyBins, fretBins) <- liftIO $ partitionDOnly (dOnlyCriterion p) bins
