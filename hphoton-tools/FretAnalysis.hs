@@ -47,7 +47,6 @@ import           Numeric.SpecFunctions (logFactorial)
 import           Numeric.Log hiding (sum)
 import           Statistics.Sample
 import           Statistics.Resampling
-import           Statistics.Resampling.Bootstrap
 
 import           Options.Applicative
 
@@ -299,11 +298,6 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
             H.li $ H.toHtml $ meanHtml "E"++" = "++showFFloat (Just 4) mu ""
             H.li $ H.toHtml $ varHtml "E"++" = "++showFFloat (Just 4) sigma2 ""
             H.li $ H.toHtml $ "Shot-noise variance = "++showFFloat (Just 4) shotSigma2 ""
-            H.li $ H.toHtml $
-              let e = VU.fromList $ map (fretEfficiency gamma') fretBins
-                  bootstrap = bootstrapBCA 0.9 e [varianceUnbiased] [Resample resamp]
-                  resamp = jackknife varianceUnbiased e
-              in "Bootstrap variance = "++show bootstrap
 
     liftIO $ renderableToSVGFile
         (layoutThese plotBinTimeseries (Fret "Acceptor" "Donor") $ T.sequenceA bins)
