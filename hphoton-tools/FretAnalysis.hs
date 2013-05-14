@@ -19,6 +19,7 @@ import           Control.Proxy.Vector
 
 import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector as VB
 
 import           HPhoton.Bin
 import           HPhoton.FpgaTimetagger
@@ -181,6 +182,15 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
              $ map (fmap fromIntegral)
              $ binMany (realTimeToTime clk (binWidth p)) times
              :: ([Fret Double], [Fret Double])
+
+    liftIO $ let names = Fret "acceptor" "donor"
+                 colours = flip withOpacity 0.5 <$> Fret red green
+                 layout = layoutCountingHist fname 100 names colours (fmap V.fromList $ T.sequenceA bins)
+             in renderableToSVGFile layout 640 480 (outputRoot++"-pch.svg")
+    tellLog 15 $ H.section $ do
+        H.h2 "Photon Counting Histogram"
+        H.img H.! HA.src (H.toValue $ fname++"-pch.svg")
+              H.! HA.width "30%" H.! HA.style "float: right;"
 
     -- Count statistics
     let fgCountMoments = foldMap' (fmap M.sample) bins
@@ -357,3 +367,20 @@ layoutFret title eBins e fretEs fits =
 colors :: Int -> [AlphaColour Double]
 colors n = map (\hue->opaque $ uncurryRGB sRGB $ hsv hue 0.8 0.8)
            [0,360 / realToFrac n..360]
+
+layoutCountingHist :: (F.Foldable f, Applicative f, RealFrac counts, PlotValue counts)
+                   => String -> Int -> f String -> f (AlphaColour Double) -> f (VB.Vector counts) -> Renderable ()
+layoutCountingHist title maxBins names colours bins =
+    let plot name color bins =
+            histToPlot
+            $ plot_hist_title .~ name
+            $ plot_hist_values .~ bins
+            $ plot_hist_fill_style .~ solidFillStyle color
+            $ plot_hist_line_style .~ solidLine 1 color
+            -- $ plot_hist_bins .~ maxBins
+            $ defaultPlotHist                
+    in toRenderable
+       $ layout1_plots .~ map Left (F.toList $ plot <$> names <*> colours <*> bins)
+       $ layout1_bottom_axis . laxis_title .~ "counts"
+       $ layout1_left_axis   . laxis_title .~ "occurrences"
+       $ defaultLayout1
