@@ -6,3 +6,5 @@
 ./logfloat-unboxed
 ./pipes-bytestring
 ./pipes-vector
+./haskell-chart/chart
+./haskell-chart/chart-gtk
