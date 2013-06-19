@@ -19,7 +19,7 @@ import           HPhoton.Fret.Types
 -- | `fretEfficiency gamma fret` is the gamma-corrected FRET efficiency
 -- for acceptor/donor intensities `fret`
 fretEfficiency :: Gamma -> Fret Double -> FretEff
-fretEfficiency gamma x = fretA x / (fretA x + fretD x)
+fretEfficiency gamma x = fretA x / (fretA x + gamma*fretD x)
 
 -- | `proximityRatio fret` is the proximity ratio for acceptor/donor
 -- intensities `fret`
