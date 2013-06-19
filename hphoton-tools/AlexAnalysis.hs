@@ -173,7 +173,7 @@ readAlexData useCache fname = do
     cacheExists <- liftIO $ doesFileExist trimFName
     let fname' = if cacheExists && useCache then trimFName else fname
     recs <- liftIO $ withFile fname' ReadMode $ \fIn->
-        runToVectorD $ runProxy $   raiseK (PBS.fromHandleS fIn)
+        runProxy $ runToVectorK $   PBS.fromHandleS fIn
                                 >-> decodeRecordsP
                                 >-> dropD 1024
                                 >-> filterDeltasP
