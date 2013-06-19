@@ -175,7 +175,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                                 >-> toVectorD
 
     let fretChannels = Fret Ch1 Ch0
-    let clk = clockFromFreq $ round (128e6::Double)
+    let clk = clockFromFreq $ clockrate p
     let times = fmap (strobeTimes recs) fretChannels :: Fret (VU.Vector Time)
         (bins,bgBins) =
                partition (\a->F.sum a > realToFrac (burstSize p))
