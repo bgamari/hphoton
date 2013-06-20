@@ -257,19 +257,17 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
             H.li $ H.toHtml $ "Estimated gamma (donor-only) = "++show g
             H.li $ H.toHtml $ "Effective gamma = "++show gamma'
 
-    let e = fmap (fretEfficiency gamma') ctBins
+    let fretEffs = map (fretEfficiency gamma') ctBins
     liftIO $ writeFile (outputRoot++"-se") $ unlines
         $ zipWith3 (\e fret fretUncorr->intercalate "\t" $
                        [show e, "\t"]
                        ++map show (F.toList fret)++["\t"]
                        ++map show (F.toList fretUncorr)
-                   ) e ctBins bins
+                   ) fretEffs ctBins bins
 
-    let fretBins = ctBins
-    let (mu,sigma2) = meanVariance $ VU.fromList $ map (fretEfficiency gamma') fretBins
-        nInv = mean $ VU.fromList $ map (\fret->1 / realToFrac (F.sum fret)) fretBins
+    let (mu,sigma2) = meanVariance $ VU.fromList $ fretEffs
+        nInv = mean $ VU.fromList $ map (\fret->1 / realToFrac (F.sum fret)) ctBins
         shotSigma2 = shotNoiseEVar (1/nInv) mu
-        fretEffs = map (fretEfficiency gamma') fretBins
 
     when (null fretBins) $ error "No FRET bins"
     
@@ -297,7 +295,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                        in concatMap mkBetas $ VU.toList ps
                    Nothing -> []
 
-    liftIO $ let layout = layoutFret fname (nbins p) e fretEffs fits
+    liftIO $ let layout = layoutFret fname (nbins p) fretEffs fretEffs fits
              in renderableToSVGFile layout 640 480 (outputRoot++"-se.svg")
 
     tellLog 2 $ H.section $ do
