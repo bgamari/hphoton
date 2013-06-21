@@ -6,6 +6,7 @@ import           Data.List
 import           Data.Monoid
 import qualified Data.Vector.Unboxed     as V
 import           Data.Word
+import           Data.Maybe (fromMaybe)
 import           Control.Parallel.Strategies                 
 
 import           HPhoton.Corr.PackedVec  (PackedVec (PVec))
@@ -24,8 +25,8 @@ linspace, logspace :: Int -> (Double, Double) -> [Double]
 linspace n (a,b) = [a + fromIntegral i/fromIntegral n*(b-a) | i <- [1..n]]
 logspace n (a,b) = map (10**) $ linspace n (a,b)
 
-data Args = Args { xfile    :: String
-                 , yfile    :: String
+data Args = Args { xfile    :: FilePath
+                 , yfile    :: Maybe FilePath
                  , jiffy_   :: RealTime
                  , shortlag :: RealTime
                  , longlag  :: RealTime
@@ -36,7 +37,9 @@ opts = Args
     <$> strOption ( help "File containing timestamps"
                  <> short 'x'
                   )
-    <*> strOption ( help "File containing timestamps"
+    <*> option    ( help "File containing timestamps"
+                 <> value Nothing
+                 <> reader (pure . str)
                  <> short 'y'
                   )
     <*> option    ( help "Timestamp timebase period"
@@ -89,7 +92,7 @@ main = do
 
     let f = V.drop 1024 . V.convert -- HACK
     a <- f <$> readStamps (xfile args)
-    b <- f <$> readStamps (yfile args)
+    b <- f <$> readStamps (fromMaybe (xfile args) (yfile args))
     checkMonotonic a
     checkMonotonic b
 
