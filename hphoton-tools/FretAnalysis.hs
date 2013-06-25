@@ -168,7 +168,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                                  H.code $ H.toHtml $ show p
     let outputRoot = replaceDirectory fname (outputDir p)
     recs <- liftIO $ withFile fname ReadMode $ \fIn->
-        runProxy $ runToVectorK $   PBS.fromHandleS fIn
+        runProxy $ runToVectorK $   PBS.readHandleS fIn
                                 >-> decodeRecordsP
                                 >-> dropD 1024
                                 >-> filterDeltasP
