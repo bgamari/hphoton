@@ -160,6 +160,17 @@ partitionDOnly (FitOdds nComps) bins = do
            , filter (\b->dOnlyOdds b < 1/2) bins
            )
 
+readFretBins :: Fret Channel -> Time -> FilePath -> HtmlLogT IO [Fret Double]
+readFretBins fretChannels binTime fname = do
+    recs <- liftIO $ withFile fname ReadMode $ \fIn->
+        runProxy $ runToVectorK $   PBS.readHandleS fIn
+                                >-> decodeRecordsP
+                                >-> dropD 1024
+                                >-> filterDeltasP
+                                >-> toVectorD
+    let times = fmap (strobeTimes recs) fretChannels :: Fret (VU.Vector Time)
+    return $ map (fmap fromIntegral) $ binMany binTime times
+
 goFile :: FretAnalysis -> FilePath -> IO ()
 goFile p fname = writeHtmlLogT (fname++".html") $ do
     liftIO $ putStrLn fname
@@ -167,21 +178,12 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     tellLog 100 $ H.section $ do H.h2 "Analysis parameters"
                                  H.code $ H.toHtml $ show p
     let outputRoot = replaceDirectory fname (outputDir p)
-    recs <- liftIO $ withFile fname ReadMode $ \fIn->
-        runProxy $ runToVectorK $   PBS.readHandleS fIn
-                                >-> decodeRecordsP
-                                >-> dropD 1024
-                                >-> filterDeltasP
-                                >-> toVectorD
 
     let fretChannels = Fret Ch1 Ch0
     let clk = clockFromFreq $ clockrate p
-    let times = fmap (strobeTimes recs) fretChannels :: Fret (VU.Vector Time)
-        (bins,bgBins) =
-               partition (\a->F.sum a > realToFrac (burstSize p))
-             $ map (fmap fromIntegral)
-             $ binMany (realTimeToTime clk (binWidth p)) times
-             :: ([Fret Double], [Fret Double])
+    (bins,bgBins) <- partition (\a->F.sum a > realToFrac (burstSize p))
+                 <$> readFretBins fretChannels (realTimeToTime clk (binWidth p)) fname
+                  :: ([Fret Double], [Fret Double])
 
     liftIO $ let names = Fret "acceptor" "donor"
                  colours = flip withOpacity 0.5 <$> Fret red green
