@@ -5,6 +5,7 @@ module HtmlLog ( LogPosn, HtmlLogT, tellLog, runHtmlLogT, writeHtmlLogT) where
 import           Control.Monad.Writer
 import           Data.Function
 import           Data.List
+import           Control.Applicative
 
 import qualified Clay
 import qualified Data.ByteString.Lazy as BS
@@ -16,7 +17,7 @@ import           Text.Blaze.Renderer.Utf8
 type LogPosn = Int
 
 newtype HtmlLogT m a = HtmlLogT (WriterT [(LogPosn, Html)] m a)
-                     deriving (Monad, MonadTrans, MonadIO)
+                     deriving (Functor, Applicative, Monad, MonadTrans, MonadIO)
 
 tellLog :: Monad m => Int -> Html -> HtmlLogT m ()
 tellLog pos content = HtmlLogT $ tell [(pos, content)]
