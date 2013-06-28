@@ -171,6 +171,37 @@ readFretBins fretChannels binTime fname = do
     let times = fmap (strobeTimes recs) fretChannels :: Fret (VU.Vector Time)
     return $ map (fmap fromIntegral) $ binMany binTime times
 
+summarizeCountStatistics :: [Fret Double] -> [Fret Double] -> HtmlLogT ()
+summarizeCountStatistics bgBins fgBins = do                         
+    let fgCountMoments = foldMap' (fmap M.sample) fgBins
+        bgCountMoments = foldMap' (fmap M.sample) bgBins
+    tellLog 10 $ H.section $ do
+        H.h2 "Count statistics"
+        let total = getSum <$> foldMap' (fmap Sum) fgBins
+            rows :: H.ToMarkup a => [[a]] -> H.Html
+            rows = mapM_ (H.tr . mapM_ (H.td . H.toHtml))
+            fretRows :: Fret [String] -> H.Html
+            fretRows fret = rows [ ["Acceptor"] ++ fretA fret
+                                 , ["Donor"] ++ fretD fret
+                                 ]
+        H.table $ do
+            H.tr $ H.th "Total counts"
+            fretRows $ fmap (\x->[showFFloat (Just 2) x ""]) total
+
+            H.tr $ H.th "Foreground counts"
+            H.tr $ mapM_ H.th ["", "mean", "variance"]
+            fretRows $ fmap (\m->[ showFFloat (Just 2) (M.mean m) ""
+                                 , showFFloat (Just 2) (M.variance m) ""
+                                 ]) fgCountMoments
+            rows [ ["Number of foreground bins", show $ length fgBins] ]
+
+            H.tr $ H.th "Background counts"
+            H.tr $ mapM_ H.th ["", "mean", "variance"]
+            fretRows $ fmap (\m->[ showFFloat (Just 2) (M.mean m) ""
+                                 , showFFloat (Just 2) (M.variance m) ""
+                                 ]) bgCountMoments
+            rows [ ["Number of background bins", show $ length bgBins] ]
+
 goFile :: FretAnalysis -> FilePath -> IO ()
 goFile p fname = writeHtmlLogT (fname++".html") $ do
     liftIO $ putStrLn fname
@@ -194,43 +225,21 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         H.img H.! HA.src (H.toValue $ fname++"-pch.svg")
               H.! HA.width "30%"
 
-    -- Count statistics
-    let fgCountMoments = foldMap' (fmap M.sample) bins
-        bgCountMoments = foldMap' (fmap M.sample) bgBins
-    tellLog 10 $ H.section $ do
-        H.h2 "Count statistics"
-        let total = getSum <$> foldMap' (fmap Sum) bins
-            rows :: H.ToMarkup a => [[a]] -> H.Html
-            rows = mapM_ (H.tr . mapM_ (H.td . H.toHtml))
-            fretRows :: Fret [String] -> H.Html
-            fretRows fret = rows [ ["Acceptor"] ++ fretA fret
-                                 , ["Donor"] ++ fretD fret
-                                 ]
-        H.table $ do
-            H.tr $ H.th "Total counts"
-            fretRows $ fmap (\x->[showFFloat (Just 2) x ""]) total
-
-            H.tr $ H.th "Foreground counts"
-            H.tr $ mapM_ H.th ["", "mean", "variance"]
-            fretRows $ fmap (\m->[ showFFloat (Just 2) (M.mean m) ""
-                                 , showFFloat (Just 2) (M.variance m) ""
-                                 ]) fgCountMoments
-            rows [ ["Number of foreground bins", show $ length bins] ]
-
-            H.tr $ H.th "Background counts"
-            H.tr $ mapM_ H.th ["", "mean", "variance"]
-            fretRows $ fmap (\m->[ showFFloat (Just 2) (M.mean m) ""
-                                 , showFFloat (Just 2) (M.variance m) ""
-                                 ]) bgCountMoments
-            rows [ ["Number of background bins", show $ length bgBins] ]
+    summarizeCountStatistics bgBins bins
 
     liftIO $ let e = fmap proximityRatio bins
              in renderableToSVGFile
                 (layoutFret fname (nbins p) e e [])
                 640 480 (fname++"-uncorrected.svg")
 
+    let bgRate = fmap mean bgBins
+    (dOnlyBins, fretBins) <- liftIO $ partitionDOnly (dOnlyCriterion p) bins
+    analyzeBins bgRate dOnlyBins fretBins
+
+analyzeBins :: Fret Double -> [Fret Double] -> [Fret Double] -> HtmlLogT IO ()
+analyzeBins bgRate dOnlyBins fretBins = do
     tellLog 20
-        $ let (mu,sig) = meanVariance $ VU.fromList $ fmap proximityRatio bins
+        $ let (mu,sig) = meanVariance $ VU.fromList $ fmap proximityRatio fretBins
           in H.section $ do
                  H.h2 "Uncorrected FRET"
                  H.ul $ do H.li $ H.toHtml $ meanHtml "E"++" = "++show mu
@@ -239,9 +248,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                        H.! HA.width "30%"
 
     -- Corrections
-    (dOnlyBins, fretBins) <- liftIO $ partitionDOnly (dOnlyCriterion p) bins
-    let bgRate = fmap M.mean bgCountMoments
-        bgBins = map (\bin->(-) <$> bin <*> bgRate) bins
+    let bgBins = map (\bin->(-) <$> bin <*> bgRate) fretBins
         c = mean $ VU.fromList $ map crosstalkFactor dOnlyBins
         crosstalkAlpha = maybe c id $ crosstalk p -- TODO
         ctBins = fmap (correctCrosstalk crosstalkAlpha) bgBins
