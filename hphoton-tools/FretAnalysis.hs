@@ -57,6 +57,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , input :: [FilePath]
                                  , binWidth :: Double
                                  , burstSize :: Int
+                                 , upperThresh :: Maybe Int
                                  , nbins :: Int
                                  , gamma :: Maybe Double
                                  , crosstalk :: Maybe Crosstalk
@@ -83,6 +84,11 @@ fretAnalysis = FretAnalysis
               <> value 500
               <> metavar "N"
               <> help "Minimum burst rate in Hz"
+               )
+    <*> option ( long "upper-thresh" <> short 'u'
+              <> value Nothing
+              <> metavar "N"
+              <> help "Throw out bins with greater than N photons"
                )
     <*> option ( long "nbins" <> short 'n'
               <> value 50
@@ -160,8 +166,8 @@ partitionDOnly (FitOdds nComps) bins = do
            , filter (\b->dOnlyOdds b < 1/2) bins
            )
 
-readFretBins :: Fret Channel -> Time -> FilePath -> HtmlLogT IO [Fret Double]
-readFretBins fretChannels binTime fname = do
+readFretBins :: FilePath -> Fret Channel -> Time -> FilePath -> HtmlLogT IO [Fret Double]
+readFretBins outputRoot fretChannels binTime fname = do
     recs <- liftIO $ withFile fname ReadMode $ \fIn->
         runProxy $ runToVectorK $   PBS.readHandleS fIn
                                 >-> decodeRecordsP
@@ -169,9 +175,13 @@ readFretBins fretChannels binTime fname = do
                                 >-> filterDeltasP
                                 >-> toVectorD
     let times = fmap (strobeTimes recs) fretChannels :: Fret (VU.Vector Time)
-    return $ map (fmap fromIntegral) $ binMany binTime times
+        bins = map (fmap fromIntegral) $ binMany binTime times
+    liftIO $ renderableToSVGFile
+        (layoutThese plotBinTimeseries (Fret "Acceptor" "Donor") $ T.sequenceA bins)
+        500 500 (outputRoot++"-bins.svg")
+    return bins
 
-summarizeCountStatistics :: [Fret Double] -> [Fret Double] -> HtmlLogT ()
+summarizeCountStatistics :: Monad m => [Fret Double] -> [Fret Double] -> HtmlLogT m ()
 summarizeCountStatistics bgBins fgBins = do                         
     let fgCountMoments = foldMap' (fmap M.sample) fgBins
         bgCountMoments = foldMap' (fmap M.sample) bgBins
@@ -213,8 +223,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     let fretChannels = Fret Ch1 Ch0
     let clk = clockFromFreq $ clockrate p
     (bins,bgBins) <- partition (\a->F.sum a > realToFrac (burstSize p))
-                 <$> readFretBins fretChannels (realTimeToTime clk (binWidth p)) fname
-                  :: ([Fret Double], [Fret Double])
+                 <$> readFretBins outputRoot fretChannels (realTimeToTime clk (binWidth p)) fname
+                  :: HtmlLogT IO ([Fret Double], [Fret Double])
 
     liftIO $ let names = Fret "acceptor" "donor"
                  colours = flip withOpacity 0.5 <$> Fret red green
@@ -230,21 +240,55 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     liftIO $ let e = fmap proximityRatio bins
              in renderableToSVGFile
                 (layoutFret fname (nbins p) e e [])
-                640 480 (fname++"-uncorrected.svg")
+                640 480 (outputRoot++"-uncorrected.svg")
 
-    let bgRate = fmap mean bgBins
+    let bgRate = mean . VU.fromList <$> unflipFrets bgBins
     (dOnlyBins, fretBins) <- liftIO $ partitionDOnly (dOnlyCriterion p) bins
-    analyzeBins bgRate dOnlyBins fretBins
+    analyzeBins p outputRoot fname bgRate dOnlyBins fretBins
 
-analyzeBins :: Fret Double -> [Fret Double] -> [Fret Double] -> HtmlLogT IO ()
-analyzeBins bgRate dOnlyBins fretBins = do
+fitFretHistogram :: FretAnalysis -> FilePath -> String
+                 -> Int -> Gamma -> [Fret Double] -> HtmlLogT IO ()
+fitFretHistogram p outputRoot title nComps gamma bins = do
+    let fretEffs = map (fretEfficiency gamma) bins
+
+    -- Fitting
+    fitParams <- liftIO $ fitFret 200 nComps fretEffs
+    tellLog 10 $ H.section $ do
+        H.h2 "Fit"
+        case fitParams of
+          Nothing -> H.p "Fit failed"
+          Just params ->
+            H.ul $ forM_ (V.toList params) $ \(w,(a,b))->
+              let (mu,sigma2) = paramToMoments (a,b)
+                  s :: String
+                  s = printf "weight=%1.3f, μ=%1.4f, σ²=%1.4f, mode=%1.4f, α=%1.3f, β=%1.3f" w mu sigma2 ((a-1)/(a+b-2)) a b
+              in H.li $ H.toHtml s
+
+    -- Plotting
+    let shotSigma2 = shotNoiseEVarFromBins gamma bins
+        fits = case fitParams of
+                   Just ps ->
+                       let mkBetas (w,p) =
+                               let (mu,sigma2) = paramToMoments p
+                               in [ (printf "fit <E>=%1.2f" mu, \e->w * realToFrac (betaProb p e))
+                                  , ("shot-limited", \e->w * realToFrac (betaProb (paramFromMoments (mu,shotSigma2)) e))
+                                  ]
+                       in concatMap mkBetas $ VU.toList ps
+                   Nothing -> []
+
+    liftIO $ let layout = layoutFret title (nbins p) fretEffs fretEffs fits
+             in renderableToSVGFile layout 640 480 (outputRoot++"-se.svg")
+
+analyzeBins :: FretAnalysis -> FilePath -> String
+            -> Fret Double -> [Fret Double] -> [Fret Double] -> HtmlLogT IO ()
+analyzeBins p outputRoot title bgRate dOnlyBins fretBins = do
     tellLog 20
         $ let (mu,sig) = meanVariance $ VU.fromList $ fmap proximityRatio fretBins
           in H.section $ do
                  H.h2 "Uncorrected FRET"
                  H.ul $ do H.li $ H.toHtml $ meanHtml "E"++" = "++show mu
                            H.li $ H.toHtml $ varHtml "E"++" = "++show sig
-                 H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
+                 H.img H.! HA.src (H.toValue $ outputRoot++"-uncorrected.svg")
                        H.! HA.width "30%"
 
     -- Corrections
@@ -267,46 +311,19 @@ analyzeBins bgRate dOnlyBins fretBins = do
             H.li $ H.toHtml $ "Effective gamma = "++show gamma'
 
     let fretEffs = map (fretEfficiency gamma') ctBins
-    liftIO $ writeFile (outputRoot++"-se") $ unlines
+    liftIO $ writeFile (outputRoot++"-fret-bins.txt") $ unlines
         $ zipWith3 (\e fret fretUncorr->intercalate "\t" $
                        [show e, "\t"]
                        ++map show (F.toList fret)++["\t"]
                        ++map show (F.toList fretUncorr)
-                   ) fretEffs ctBins bins
+                   ) fretEffs ctBins fretBins
 
-    let (mu,sigma2) = meanVariance $ VU.fromList $ fretEffs
-        nInv = mean $ VU.fromList $ map (\fret->1 / realToFrac (F.sum fret)) ctBins
-        shotSigma2 = shotNoiseEVar (1/nInv) mu
 
     when (null fretBins) $ error "No FRET bins"
-    
-    -- Fitting
-    fitParams <- liftIO $ fitFret 200 (fitComps p) fretEffs
-    tellLog 10 $ H.section $ do
-        H.h2 "Fit"
-        case fitParams of
-          Nothing -> H.p "Fit failed"
-          Just params ->
-            H.ul $ forM_ (V.toList params) $ \(w,(a,b))->
-              let (mu,sigma2) = paramToMoments (a,b)
-                  s :: String
-                  s = printf "weight=%1.3f, μ=%1.4f, σ²=%1.4f, mode=%1.4f, α=%1.3f, β=%1.3f" w mu sigma2 ((a-1)/(a+b-2)) a b
-              in H.li $ H.toHtml s
 
-    -- Plotting
-    let fits = case fitParams of
-                   Just ps ->
-                       let mkBetas (w,p) =
-                               let (mu,sigma2) = paramToMoments p
-                               in [ (printf "fit <E>=%1.2f" mu, \e->w * realToFrac (betaProb p e))
-                                  , ("shot-limited", \e->w * realToFrac (betaProb (paramFromMoments (mu,shotSigma2)) e))
-                                  ]
-                       in concatMap mkBetas $ VU.toList ps
-                   Nothing -> []
-
-    liftIO $ let layout = layoutFret fname (nbins p) fretEffs fretEffs fits
-             in renderableToSVGFile layout 640 480 (outputRoot++"-se.svg")
-
+    fitFretHistogram p outputRoot title (fitComps p) gamma' ctBins
+    let shotSigma2 = shotNoiseEVarFromBins gamma' ctBins
+        (mu,sigma2) = meanVariance $ VU.fromList fretEffs
     tellLog 2 $ H.section $ do
         H.h2 "Corrected FRET efficiency"
         H.img H.! HA.src (H.toValue $ outputRoot++"-se.svg")
@@ -316,9 +333,6 @@ analyzeBins bgRate dOnlyBins fretBins = do
             H.li $ H.toHtml $ varHtml "E"++" = "++showFFloat (Just 4) sigma2 ""
             H.li $ H.toHtml $ "Shot-noise variance = "++showFFloat (Just 4) shotSigma2 ""
 
-    liftIO $ renderableToSVGFile
-        (layoutThese plotBinTimeseries (Fret "Acceptor" "Donor") $ T.sequenceA bins)
-        500 500 (outputRoot++"-bins.svg")
 
 meanHtml x = "〈"++x++"〉"
 varHtml x = meanHtml $ x++"² − "++meanHtml x++"²"
