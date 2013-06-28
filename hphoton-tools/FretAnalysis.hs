@@ -222,28 +222,28 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
 
     let fretChannels = Fret Ch1 Ch0
     let clk = clockFromFreq $ clockrate p
-    (bins,bgBins) <- partition (\a->F.sum a > realToFrac (burstSize p))
-                 <$> readFretBins outputRoot fretChannels (realTimeToTime clk (binWidth p)) fname
-                  :: HtmlLogT IO ([Fret Double], [Fret Double])
+    (fgBins,bgBins) <- partition (\a->F.sum a > realToFrac (burstSize p))
+                   <$> readFretBins outputRoot fretChannels (realTimeToTime clk (binWidth p)) fname
+                    :: HtmlLogT IO ([Fret Double], [Fret Double])
 
     liftIO $ let names = Fret "acceptor" "donor"
                  colours = flip withOpacity 0.5 <$> Fret red green
-                 layout = layoutCountingHist fname 100 names colours (fmap V.fromList $ T.sequenceA bins)
+                 layout = layoutCountingHist fname 100 names colours (fmap V.fromList $ T.sequenceA fgBins)
              in renderableToSVGFile layout 640 480 (outputRoot++"-pch.svg")
     tellLog 15 $ H.section $ do
         H.h2 "Photon Counting Histogram"
         H.img H.! HA.src (H.toValue $ fname++"-pch.svg")
               H.! HA.width "30%"
 
-    summarizeCountStatistics bgBins bins
+    summarizeCountStatistics bgBins fgBins
 
-    liftIO $ let e = fmap proximityRatio bins
+    liftIO $ let e = fmap proximityRatio fgBins
              in renderableToSVGFile
                 (layoutFret fname (nbins p) e e [])
                 640 480 (outputRoot++"-uncorrected.svg")
 
     let bgRate = mean . VU.fromList <$> unflipFrets bgBins
-    (dOnlyBins, fretBins) <- liftIO $ partitionDOnly (dOnlyCriterion p) bins
+    (dOnlyBins, fretBins) <- liftIO $ partitionDOnly (dOnlyCriterion p) fgBins
     analyzeBins p outputRoot fname bgRate dOnlyBins fretBins
 
 fitFretHistogram :: FretAnalysis -> FilePath -> String
