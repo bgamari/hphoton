@@ -12,9 +12,13 @@ module HPhoton.Fret ( fretEfficiency
                     , module HPhoton.Fret.Types
                     ) where
 
+import           Prelude hiding (sum)
 import           Control.Applicative
 import           Data.Traversable    (traverse)
+import           Data.Foldable       (sum)
 import           HPhoton.Fret.Types
+import           Statistics.Sample
+import qualified Data.Vector.Unboxed as VU
 
 -- | `fretEfficiency gamma fret` is the gamma-corrected FRET efficiency
 -- for acceptor/donor intensities `fret`
@@ -63,3 +67,11 @@ unflipFrets xs = Fret (map fretA xs) (map fretD xs)
 -- | The variance of a shot-noise limited FRET peak
 shotNoiseEVar :: Double -> FretEff -> Double
 shotNoiseEVar nTotal e = e * (1-e) / nTotal
+
+-- | The variance of a shot-noise limited FRET peak given a set of bins
+shotNoiseEVarFromBins :: Gamma -> [Fret Double] -> Double
+shotNoiseEVarFromBins gamma bins =
+    let mu = mean $ VU.fromList $ map (fretEfficiency gamma) bins
+        nInv = mean $ VU.fromList $ map (\fret->1 / realToFrac (sum fret)) bins
+        shotSigma2 = shotNoiseEVar (1/nInv) mu
+    in shotSigma2
