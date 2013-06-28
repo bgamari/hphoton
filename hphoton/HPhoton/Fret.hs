@@ -1,6 +1,7 @@
 module HPhoton.Fret ( fretEfficiency
                     , proximityRatio
                     , shotNoiseEVar
+                    , shotNoiseEVarFromBins
                       -- * Corrections
                     , gammaFromFret
                     , gammaFromRates
