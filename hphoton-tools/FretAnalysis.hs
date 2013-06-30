@@ -166,8 +166,8 @@ partitionDOnly (FitOdds nComps) bins = do
            , filter (\b->dOnlyOdds b < 1/2) bins
            )
 
-readFretBins :: FilePath -> Fret Channel -> Time -> FilePath -> HtmlLogT IO [Fret Double]
-readFretBins outputRoot fretChannels binTime fname = do
+readFretBins :: Fret Channel -> Time -> FilePath -> IO [Fret Double]
+readFretBins fretChannels binTime fname = do
     recs <- liftIO $ withFile fname ReadMode $ \fIn->
         runProxy $ runToVectorK $   PBS.readHandleS fIn
                                 >-> decodeRecordsP
@@ -176,6 +176,11 @@ readFretBins outputRoot fretChannels binTime fname = do
                                 >-> toVectorD
     let times = fmap (strobeTimes recs) fretChannels :: Fret (VU.Vector Time)
         bins = map (fmap fromIntegral) $ binMany binTime times
+    return bins
+    
+getFretBins :: FilePath -> Fret Channel -> Time -> FilePath -> HtmlLogT IO [Fret Double]
+getFretBins outputRoot fretChannels binTime fname = do
+    bins <- liftIO $ readFretBins fretChannels binTime fname
     liftIO $ renderableToSVGFile
         (layoutThese plotBinTimeseries (Fret "Acceptor" "Donor") $ T.sequenceA bins)
         500 500 (outputRoot++"-bins.svg")
@@ -223,7 +228,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     let fretChannels = Fret Ch1 Ch0
     let clk = clockFromFreq $ clockrate p
     (fgBins,bgBins) <- partition (\a->F.sum a > realToFrac (burstSize p))
-                   <$> readFretBins outputRoot fretChannels (realTimeToTime clk (binWidth p)) fname
+                   <$> getFretBins fretChannels (realTimeToTime clk (binWidth p)) fname
                     :: HtmlLogT IO ([Fret Double], [Fret Double])
 
     liftIO $ let names = Fret "acceptor" "donor"
