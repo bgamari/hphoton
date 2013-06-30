@@ -59,6 +59,7 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
                                  , burstSize :: Int
                                  , upperThresh :: Maybe Int
                                  , nbins :: Int
+                                 , dOnlyFile :: Maybe FilePath
                                  , gamma :: Maybe Double
                                  , crosstalk :: Maybe Crosstalk
                                  , outputDir :: FilePath
@@ -95,6 +96,10 @@ fretAnalysis = FretAnalysis
               <> metavar "N"
               <> help "Number of bins in the FRET efficiency histogram"
                )
+    <*> nullOption ( long "donly-file" <> short 'D'
+                  <> reader (pure . Just)
+                  <> help "Donor only file to use for gamma and crosstalk estimation; uses donor-only population of current file by default"
+                   )
     <*> nullOption ( long "gamma" <> short 'g'
                   <> value (Just 1)
                   <> reader (\s->if s == "auto"
@@ -228,7 +233,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     let fretChannels = Fret Ch1 Ch0
     let clk = clockFromFreq $ clockrate p
     (fgBins,bgBins) <- partition (\a->F.sum a > realToFrac (burstSize p))
-                   <$> getFretBins fretChannels (realTimeToTime clk (binWidth p)) fname
+                   <$> getFretBins outputRoot fretChannels (realTimeToTime clk (binWidth p)) fname
                     :: HtmlLogT IO ([Fret Double], [Fret Double])
 
     liftIO $ let names = Fret "acceptor" "donor"
@@ -248,7 +253,16 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                 640 480 (outputRoot++"-uncorrected.svg")
 
     let bgRate = mean . VU.fromList <$> unflipFrets bgBins
-    (dOnlyBins, fretBins) <- liftIO $ partitionDOnly (dOnlyCriterion p) fgBins
+    (dOnlyBins, fretBins) <- case dOnlyFile p of
+      Nothing  -> liftIO $ partitionDOnly (dOnlyCriterion p) fgBins
+      Just dOnly -> do (dOnlyFg, dOnlyBg) <- liftIO
+                          $  partition (\a->F.sum a > realToFrac (burstSize p))
+                         <$> readFretBins fretChannels (realTimeToTime clk (binWidth p)) dOnly
+                       let dOnlyBgRate = mean . VU.fromList <$> unflipFrets dOnlyBg
+                           dOnlyFgCorrected = map (\a->(-) <$> a <*> dOnlyBgRate) dOnlyFg
+                    
+                       (_, fretBins) <- liftIO $ partitionDOnly (dOnlyCriterion p) fgBins
+                       return (dOnlyFg, fretBins)
     analyzeBins p outputRoot fname bgRate dOnlyBins fretBins
 
 fitFretHistogram :: FretAnalysis -> FilePath -> String
