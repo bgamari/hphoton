@@ -97,6 +97,7 @@ fretAnalysis = FretAnalysis
               <> help "Number of bins in the FRET efficiency histogram"
                )
     <*> nullOption ( long "donly-file" <> short 'D'
+                  <> value Nothing
                   <> reader (pure . Just)
                   <> help "Donor only file to use for gamma and crosstalk estimation; uses donor-only population of current file by default"
                    )
