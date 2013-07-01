@@ -233,7 +233,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
 
     let fretChannels = Fret Ch1 Ch0
     let clk = clockFromFreq $ clockrate p
-    (fgBins,bgBins) <- partition (\a->F.sum a > realToFrac (burstSize p))
+    (fgBins,bgBins) <- partition (\a->F.sum a >= realToFrac (burstSize p))
                    <$> getFretBins outputRoot fretChannels (realTimeToTime clk (binWidth p)) fname
                     :: HtmlLogT IO ([Fret Double], [Fret Double])
 
