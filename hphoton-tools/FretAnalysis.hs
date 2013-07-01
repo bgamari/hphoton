@@ -180,7 +180,7 @@ readFretBins fretChannels binTime fname = do
                                 >-> dropD 1024
                                 >-> filterDeltasP
                                 >-> toVectorD
-    let times = fmap (strobeTimes recs) fretChannels :: Fret (VU.Vector Time)
+    let times = unwrapTimes 0xfffffffff . strobeTimes recs <$> fretChannels :: Fret (VU.Vector Time)
         bins = map (fmap fromIntegral) $ binMany binTime times
     return bins
     
