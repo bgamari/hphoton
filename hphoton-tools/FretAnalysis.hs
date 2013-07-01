@@ -84,7 +84,7 @@ fretAnalysis = FretAnalysis
     <*> option ( long "burst-size" <> short 's'
               <> value 500
               <> metavar "N"
-              <> help "Minimum burst rate in Hz"
+              <> help "Minimum burst rate in counts per bin"
                )
     <*> option ( long "upper-thresh" <> short 'u'
               <> value Nothing
