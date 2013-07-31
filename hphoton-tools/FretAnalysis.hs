@@ -291,9 +291,11 @@ fitFretHistogram p outputRoot title nComps gamma bins = do
                    Just ps ->
                        let mkBetas (w,p) =
                                let (mu,sigma2) = paramToMoments p
-                               in [ (printf "fit <E>=%1.2f" mu, \e->w * realToFrac (betaProb p e))
-                                  , ("shot-limited", \e->w * realToFrac (betaProb (paramFromMoments (mu,shotSigma2)) e))
-                                  ]
+                                   mode = paramToMode p
+                               in [ (printf "fit <E>=%1.2f" mu, \e->w * realToFrac (betaProb p e)) ]
+                                 ++ if mode >= 0 && mode <= 1
+                                      then [("shot-limited", \e->w * realToFrac (betaProb (paramFromMoments (mu,shotSigma2)) e))]
+                                      else []
                        in concatMap mkBetas $ VU.toList ps
                    Nothing -> []
 
