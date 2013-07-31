@@ -188,7 +188,8 @@ getFretBins :: FilePath -> Fret Channel -> Time -> FilePath -> HtmlLogT IO (VB.V
 getFretBins outputRoot fretChannels binTime fname = do
     bins <- liftIO $ readFretBins fretChannels binTime fname
     liftIO $ renderableToSVGFile
-        (layoutThese plotBinTimeseries (Fret "Acceptor" "Donor") $ T.sequenceA $ VB.toList bins)
+        (layoutThese plotBinTimeseries (Fret "Acceptor" "Donor")
+         $ unflipFrets $ take 10000 $ VB.toList bins)
         500 500 (outputRoot++"-bins.svg")
     return bins
 
