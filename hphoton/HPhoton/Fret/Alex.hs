@@ -18,6 +18,7 @@ module HPhoton.Fret.Alex ( DirFactor
                          ) where
 
 import           Control.Applicative
+import           Control.DeepSeq
 import           Data.Traversable
 import           Data.Foldable
 import           Data.Monoid
@@ -39,6 +40,9 @@ data Alex a = Alex { alexAexcAem :: !a
             deriving (Show, Eq, Generic)
 
 instance (B.Binary a) => B.Binary (Alex a)
+
+instance NFData a => NFData (Alex a) where
+  rnf (Alex a b c d) = rnf a `seq` rnf b `seq` rnf c `seq` rnf d
 
 instance Functor Alex where
   fmap f (Alex a b c d) = Alex (f a) (f b) (f c) (f d)
