@@ -240,7 +240,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
 
     liftIO $ let names = Fret "acceptor" "donor"
                  colours = flip withOpacity 0.5 <$> Fret red green
-                 layout = layoutCountingHist fname 100 names colours (fmap V.convert $ T.sequenceA fgBins)
+                 layout = layoutCountingHist fname 100 names colours (fmap V.fromList $ unflipFrets $ V.toList fgBins)
              in renderableToSVGFile layout 640 480 (outputRoot++"-pch.svg")
     tellLog 15 $ H.section $ do
         H.h2 "Photon Counting Histogram"
@@ -411,7 +411,8 @@ colors n = map (\hue->opaque $ uncurryRGB sRGB $ hsv hue 0.8 0.8)
            [0,360 / realToFrac n..360]
 
 layoutCountingHist :: (F.Foldable f, Applicative f, RealFrac counts, PlotValue counts)
-                   => String -> Int -> f String -> f (AlphaColour Double) -> f (VB.Vector counts) -> Renderable ()
+                   => String -> Int -> f String -> f (AlphaColour Double)
+                   -> f (VB.Vector counts) -> Renderable ()
 layoutCountingHist title maxBins names colours bins =
     let plot name color bins =
             histToPlot
