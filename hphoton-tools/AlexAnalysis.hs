@@ -19,6 +19,7 @@ import           Control.Proxy.Vector
 
 import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector as VB
 
 import           HPhoton.Bin
 import           HPhoton.FpgaTimetagger.Alex
@@ -208,13 +209,13 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
         fgRates = Alex { alexAexcAem = 10000, alexAexcDem = 50
                        , alexDexcAem = 10000, alexDexcDem = 10000 }
         (bins,bgBins) =
-            --  filter (\alex->getAll $ F.fold
+            --  VB.filter (\alex->getAll $ F.fold
             --               $ pure (\a b->All $ a >= b) <*> alex <*> fmap (*binWidth p) thresh)
-              partition (\a->alexAexcAem a+alexDexcAem a+alexDexcDem a > realToFrac (burstSize p))
+              VB.partition (\a->alexAexcAem a+alexDexcAem a+alexDexcDem a > realToFrac (burstSize p))
             $ fmap (fmap fromIntegral)
-            -- $ filter (filterBinsBayes (binWidth p) bgRates fgRates)
+            -- $ VB.filter (filterBinsBayes (binWidth p) bgRates fgRates)
             $ binMany (realTimeToTime clk (binWidth p)) times
-            :: ([Alex Double], [Alex Double])
+            :: (VB.Vector (Alex Double), VB.Vector (Alex Double))
 
     let fgCountMoments = foldMap' (fmap M.sample) bins
         bgCountMoments = foldMap' (fmap M.sample) bgBins
@@ -237,23 +238,26 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
             alexRows $ fmap (\m->[ showFFloat (Just 2) (M.mean m) ""
                                  , showFFloat (Just 2) (M.variance m) ""
                                  ]) fgCountMoments
-            rows [ ["Number of foreground bins", show $ length bins] ]
+            rows [ ["Number of foreground bins", show $ VB.length bins] ]
             H.tr $ H.th "Background counts"
             H.tr $ mapM_ H.th ["", "mean", "variance"]
             alexRows $ fmap (\m->[ showFFloat (Just 2) (M.mean m) ""
                                  , showFFloat (Just 2) (M.variance m) ""
                                  ]) bgCountMoments
-            rows [ ["Number of background bins", show $ length bgBins] ]
+            rows [ ["Number of background bins", show $ VB.length bgBins] ]
 
     liftIO $ renderableToSVGFile
-        (layoutSE fname (nbins p) (fmap stoiciometry bins) (fmap proxRatio bins) (fmap proxRatio bins) [])
+        (layoutSE fname (nbins p) (VB.toList $ fmap stoiciometry bins)
+                                  (VB.toList $ fmap proxRatio bins)
+                                  (VB.toList $ fmap proxRatio bins)
+                                  [])
         640 480 (fname++"-uncorrected.svg")
     tellLog 20
         $ let ((muS,sigS), (muE,sigE)) =
-                           (\(s,e)->let f = meanVariance . VU.fromList in (f s, f e))
-                         $ unzip
-                         $ filter (\(s,e)->s < dOnlyThresh p)
-                         $ zip (fmap stoiciometry bins) (fmap proxRatio bins)
+                           (\(s,e)->(meanVariance s, meanVariance e))
+                         $ VB.unzip
+                         $ VB.filter (\(s,e)->s < dOnlyThresh p)
+                         $ VB.zip (fmap stoiciometry bins) (fmap proxRatio bins)
           in H.section $ do
                  H.h2 "Uncorrected FRET"
                  H.ul $ do H.li $ H.toHtml $ meanHtml "E"++" = "++show muE
@@ -263,23 +267,23 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                  H.img H.! HA.src (H.toValue $ fname++"-uncorrected.svg")
                        H.! HA.width "30%" H.! HA.style "float: right;"
 
-    let aOnlyBins = filter (\alex->stoiciometry alex < aOnlyThresh p)
-                    $ filter (\alex->alexDexcDem alex + alexDexcAem alex > realToFrac (fretThresh p))
+    let aOnlyBins = VB.filter (\alex->stoiciometry alex < aOnlyThresh p)
+                    $ VB.filter (\alex->alexDexcDem alex + alexDexcAem alex > realToFrac (fretThresh p))
                     $ bins
-        (dirD,dirDVar) = meanVariance $ VU.fromList $ map directAExc aOnlyBins
+        (dirD,dirDVar) = meanVariance $ fmap directAExc aOnlyBins
 
     let bgRate = fmap M.mean bgCountMoments
-        bgBins = map (\bin->(-) <$> bin <*> bgRate) bins
-        (dOnlyBins, fretBins) = partition (\alex->stoiciometry alex > dOnlyThresh p) bgBins
-        a = mean $ VU.fromList $ map crosstalkFactor dOnlyBins
+        bgBins = fmap (\bin->(-) <$> bin <*> bgRate) bins
+        (dOnlyBins, fretBins) = VB.partition (\alex->stoiciometry alex > dOnlyThresh p) bgBins
+        a = mean $ fmap crosstalkFactor dOnlyBins
         crosstalkAlpha = maybe a id $ crosstalk p
-        ctBins = map (correctDirectAExc dirD . correctCrosstalk crosstalkAlpha) bgBins
+        ctBins = fmap (correctDirectAExc dirD . correctCrosstalk crosstalkAlpha) bgBins
 
-    let (beta,g) = estimateGamma $ V.fromList
-            $ filter (\(s,e) -> s < dOnlyThresh p)
-            $ zip (fmap stoiciometry ctBins) (fmap proxRatio ctBins)
-        dSd = mean (VU.fromList $ map alexDexcDem fretBins) - mean (VU.fromList $ map alexDexcDem dOnlyBins)
-        dSa = mean (VU.fromList $ map alexDexcAem fretBins) - mean (VU.fromList $ map alexDexcAem dOnlyBins)
+    let (beta,g) = estimateGamma $ V.convert
+            $ VB.filter (\(s,e) -> s < dOnlyThresh p)
+            $ VB.zip (fmap stoiciometry ctBins) (fmap proxRatio ctBins)
+        dSd = mean (fmap alexDexcDem fretBins) - mean (fmap alexDexcDem dOnlyBins)
+        dSa = mean (fmap alexDexcAem fretBins) - mean (fmap alexDexcAem dOnlyBins)
         g2 = crosstalkAlpha - dSa / dSd
         gamma' = maybe (g) id $ gamma p
 
@@ -295,25 +299,26 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
 
     let s = fmap (stoiciometry' gamma') ctBins
         e = fmap (fretEff gamma') ctBins
-    liftIO $ writeFile (outputRoot++"-se") $ unlines
-        $ zipWith4 (\s e alex alexUncorr->intercalate "\t" $
-                       [show s, show e, "\t"]
-                       ++map show (F.toList alex)++["\t"]
-                       ++map show (F.toList alexUncorr)
-                   ) s e ctBins bins
+    liftIO $ writeFile (outputRoot++"-se") $ unlines $ VB.toList
+        $ VB.zipWith4 (\s e alex alexUncorr->intercalate "\t" $
+                          [show s, show e, "\t"]
+                          ++map show (F.toList alex)++["\t"]
+                          ++map show (F.toList alexUncorr)
+                      ) s e ctBins bins
 
-    let fretBins = filter (\a->let s = stoiciometry' gamma' a
-                               in s < dOnlyThresh p && s > aOnlyThresh p
-                          ) ctBins
-    let (mu,sigma2) = meanVariance $ VU.fromList
-                      $ map (fretEff gamma') fretBins
-        nInv = mean $ VU.fromList
-               $ map (\alex->1 / realToFrac (alexDexcAem alex + alexDexcDem alex))
+    let fretBins = VB.filter (\a->let s = stoiciometry' gamma' a
+                                  in s < dOnlyThresh p && s > aOnlyThresh p
+                             ) ctBins
+    let (mu,sigma2) = meanVariance $ fmap (fretEff gamma') fretBins
+        nInv = mean
+               $ fmap (\alex->1 / realToFrac (alexDexcAem alex + alexDexcDem alex))
                $ fretBins
         shotSigma2 = shotNoiseEVar (1/nInv) mu
 
     liftIO $ renderableToSVGFile
-        (layoutSE fname (nbins p) s e (map (fretEff gamma') fretBins)
+        (layoutSE fname (nbins p) (VB.toList s)
+                                  (VB.toList e)
+                                  (VB.toList $ fmap (fretEff gamma') fretBins)
                   [ ("shot-limited", Beta $ paramFromMoments (mu,shotSigma2))
                   , (printf "fit 〈E〉=%1.2f" mu, Beta $ paramFromMoments (mu, sigma2))
                   --  ("fit", Gaussian (mu, sigma2))
@@ -331,13 +336,13 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
             H.li $ H.toHtml $ varHtml "E"++" = "++showFFloat (Just 4) sigma2 ""
             H.li $ H.toHtml $ "Shot-noise variance = "++showFFloat (Just 4) shotSigma2 ""
             H.li $ H.toHtml $
-              let e = VU.fromList $ map (fretEff gamma') fretBins
-                  bootstrap = bootstrapBCA 0.9 e [varianceUnbiased] [Resample resamp]
-                  resamp = jackknife varianceUnbiased e
+              let e = fmap (fretEff gamma') fretBins
+                  bootstrap = bootstrapBCA 0.9 (V.convert e) [varianceUnbiased] [Resample resamp]
+                  resamp = jackknife varianceUnbiased (V.convert e)
               in "Bootstrap variance = "++show bootstrap
 
     liftIO $ renderableToSVGFile
-        (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA bins)
+        (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA $ VB.toList bins)
         500 500 (outputRoot++"-bins.svg")
 
 meanHtml x = "〈"++x++"〉"
