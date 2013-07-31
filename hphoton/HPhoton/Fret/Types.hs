@@ -10,6 +10,7 @@ import Data.Foldable
 import Data.Monoid
 import Data.Traversable
 import Control.Applicative
+import Control.DeepSeq
 
 type FretEff = Double
 type ProxRatio = Double
@@ -24,6 +25,9 @@ type Crosstalk = Double
 data FretChannel = Donor | Acceptor deriving (Show, Eq)
 
 data Fret a = Fret { fretA, fretD :: !a } deriving (Show, Eq)
+
+instance NFData a => NFData (Fret a) where
+  rnf (Fret x y) = rnf x `seq` rnf y
 
 instance Functor Fret where
   fmap f (Fret x y) = Fret (f x) (f y)

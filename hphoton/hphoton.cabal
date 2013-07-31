@@ -34,6 +34,7 @@ Library
                      vector-algorithms,
                      random-fu,
                      vector,
+                     deepseq,
                      storable-endian,
                      mwc-random,
                      cmdargs,
