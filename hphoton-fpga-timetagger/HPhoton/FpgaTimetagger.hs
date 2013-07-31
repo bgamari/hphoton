@@ -156,15 +156,19 @@ encodeRecord :: Record -> BS.ByteString
 encodeRecord (Record r) =
     BS.pack [ fromIntegral (r `shiftR` (8*i)) | i <- [5,4..0] ]
     
+data UnwrapState = US { offset :: !Time
+                      , lastT  :: !Time
+                      }
+                      
 -- | Fix timing wraparounds
 unwrapTimes :: Time -> Vector Time -> Vector Time
-unwrapTimes maxT ts = evalState (G.mapM f ts) (0,0)
-  where f :: Time -> State (Time,Time) Time
-        f t = do (offset,lastT) <- get
+unwrapTimes maxT ts = evalState (G.mapM f ts) (US 0 0)
+  where f :: Time -> State UnwrapState Time
+        f t = do US offset lastT <- get
                  let offset' = if t < lastT
                                    then offset+maxT
                                    else offset
-                 put (offset', t)
+                 put $ US offset' t
                  return $! t + offset'
 
 -- | Return all of the strobe records for a given channel
