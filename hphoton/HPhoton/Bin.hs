@@ -16,7 +16,9 @@ module HPhoton.Bin ( -- * Temporal photon binning
 
 import HPhoton.Types
 import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector as V
 
+import           Control.DeepSeq
 import           Control.Applicative
 import           Data.Foldable as F
 import           Data.Traversable as T
@@ -83,8 +85,10 @@ bin' _ [] Nothing _ _                    = []
 
 -- | Bin simultaneous photon streams. Here we take the bin range to be
 -- the intersection of all of the streams.
-binMany :: (Traversable f, Applicative f) => Time -> f (VU.Vector Time) -> [f Int]
+binMany :: (NFData (f Int), Traversable f, Applicative f)
+        => Time -> f (VU.Vector Time) -> V.Vector (f Int)
 binMany binWidth times =
-    getZipList $ T.sequenceA $ pure (ZipList . binRangeL binWidth (start,end)) <*> times
+    force $ V.fromList
+    $ getZipList $ T.sequenceA $ pure (ZipList . binRangeL binWidth (start,end)) <*> times
     where start = F.maximum $ fmap VU.head times
           end   = F.minimum $ fmap VU.last times
