@@ -17,3 +17,7 @@ styleSheet = do
     div # ".container" ? do
         marginLeft (px 100)
         backgroundColor white
+    th ? do
+        backgroundColor lightgray
+    th # ("colSpan" @= "1") ? do
+        backgroundColor white
