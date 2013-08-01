@@ -18,6 +18,6 @@ styleSheet = do
         marginLeft (px 100)
         backgroundColor white
     th ? do
-        backgroundColor lightgray
+        backgroundColor "#eef"
     th # ("colSpan" @= "1") ? do
         backgroundColor white
