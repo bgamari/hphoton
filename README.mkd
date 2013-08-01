@@ -39,6 +39,7 @@ directory is in your environment's `PATH`.
 
 Installation is quite simple,
 
+    $ cabal update
     $ cabal install cabal-meta
     $ git clone ­­recursive https://github.com/bgamari/hphoton.git
     $ cd hphoton
