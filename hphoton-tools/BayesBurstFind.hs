@@ -71,5 +71,5 @@ main = do
 
                let printSpan (start,end) counts =
                      printf "%9u\t%9u\t%4u\t%4u" start end (fretA counts) (fretD counts)
-               writeFile (fname args) $ unlines
-                 $ zipWith printSpan cspans (flipFrets counts)
+               writeFile (fname args++".spans") $ unlines
+                 $ zipWith printSpan (V.toList cspans) (flipFrets counts)
