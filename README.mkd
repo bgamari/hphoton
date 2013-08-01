@@ -41,7 +41,7 @@ Installation is quite simple,
 
     $ cabal update
     $ cabal install cabal-meta
-    $ git clone ­­recursive https://github.com/bgamari/hphoton.git
+    $ git clone --recursive https://github.com/bgamari/hphoton.git
     $ cd hphoton
     $ cabal-meta install
 
