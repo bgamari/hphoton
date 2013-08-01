@@ -279,11 +279,39 @@ fitFretHistogram p outputRoot title nComps gamma bins = do
         case fitParams of
           Nothing -> H.p "Fit failed"
           Just params ->
-            H.ul $ forM_ (V.toList params) $ \(w,(a,b))->
-              let (mu,sigma2) = paramToMoments (a,b)
-                  s :: String
-                  s = printf "weight=%1.3f, μ=%1.4f, σ²=%1.4f, mode=%1.4f, α=%1.3f, β=%1.3f" w mu sigma2 ((a-1)/(a+b-2)) a b
-              in H.li $ H.toHtml s
+            H.table $ do
+              H.tr $ do
+                H.th H.! HA.colspan "6" $ "fit"
+                H.th H.! HA.colspan "6" $ "count statistics"
+                H.th H.! HA.colspan "2" $ "FRET"
+              H.tr $ mapM_ H.th [ "weight", "μ", "σ²", "mode", "α", "β"
+                                , "Σ N_A", "Σ N_D"
+                                , H.toHtml $ meanHtml "N_A", H.toHtml $ meanHtml "N_D"
+                                , H.toHtml $ varHtml "N_A", H.toHtml $ varHtml "N_D"
+                                , H.toHtml $ meanHtml "E", "N_A / N"
+                                ]
+              forM_ (zip [0..] $ V.toList params) $ \(i, (w,(a,b)))->H.tr $ do
+                let (mu,sigma2) = paramToMoments (a,b)
+                    mode = paramToMode (a,b)
+                    assignments = filter (\bin->classify params (fretEfficiency gamma bin) == i) bins
+                    Fret na nd = getSum <$> F.foldMap (fmap Sum) assignments
+                mapM_ (H.td . H.toHtml) $
+                  [ printf "%1.3f" w :: String
+                  , printf "%1.4f" mu
+                  , printf "%1.4f" sigma2
+                  , printf "%1.4f" mode
+                  , printf "%1.3f" a
+                  , printf "%1.3f" b
+                  , printf "%1.2e" na
+                  , printf "%1.2e" nd
+                  , printf "%1.3f" $ mean $ VU.fromList $ map fretA assignments
+                  , printf "%1.3f" $ mean $ VU.fromList $ map fretD assignments
+                  , printf "%1.3f" $ variance $ VU.fromList $ map fretA assignments
+                  , printf "%1.3f" $ variance $ VU.fromList $ map fretD assignments
+                  , printf "%1.3f" $ mean $ VU.fromList
+                                   $ map (fretEfficiency gamma) assignments
+                  , printf "%1.3f" $ na / (na+nd)
+                  ]
 
     -- Plotting
     let shotSigma2 = shotNoiseEVarFromBins gamma bins
@@ -357,6 +385,7 @@ analyzeBins p outputRoot title bgRate dOnlyBins fretBins = do
             H.li $ H.toHtml $ "Shot-noise variance = "++showFFloat (Just 4) shotSigma2 ""
 
 
+meanHtml, varHtml :: String -> String
 meanHtml x = "〈"++x++"〉"
 varHtml x = meanHtml $ x++"² − "++meanHtml x++"²"
 
