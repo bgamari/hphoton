@@ -1,3 +1,4 @@
+import Prelude hiding (sum)
 import HPhoton.BurstIdent.Bayes
 import HPhoton.Types
 import HPhoton.Fret
@@ -11,12 +12,14 @@ import Data.Vector.Algorithms.Merge (sort)
 import HPhoton.FpgaTimetagger
 import Text.Printf
 import Data.List (foldl')
+import Data.Foldable (sum)
 
 data BurstFind = BurstFind { fname :: FilePath
                            , bg_rate :: RealTime
                            , burst_rate :: RealTime
                            , clockrate :: Freq
-                           , burst_length :: Int
+                           , window :: Int
+                           , min_burst_length :: Int
                            , beta_thresh :: Double
                            }
                deriving (Show)
@@ -30,6 +33,8 @@ burstFind = BurstFind
               <> help "Burst count rate (Hz)" )
     <*> option ( long "clockrate" <> short 'c' <> value (round (128e6 :: Double))
               <> help "Clock period (s)" )
+    <*> option ( long "window" <> short 'w' <> value 10
+              <> help "Model window size" )
     <*> option ( long "min-length" <> short 'l' <> value 10
               <> help "Minimum burst length" )
     <*> option ( long "odds-thresh" <> short 'o' <> value 2
@@ -41,7 +46,7 @@ main = do
                     ( fullDesc <> progDesc "Bayesian fluorescence burst identification" )
     args <- execParser opts
     let realRateToTau rate = round $ realToFrac (clockrate args) / rate
-        mp = ModelParams { mpWindow = burst_length args
+        mp = ModelParams { mpWindow = window args
                          , mpProbB = 0.05
                          , mpTauBg = realRateToTau $ bg_rate args
                          , mpTauBurst = realRateToTau $ burst_rate args
@@ -65,12 +70,20 @@ main = do
        then putStrLn "No bursts found"
        else do printf "Found %u burst photons\n" nBurst
                let cspans = compressSpans (40*mpTauBurst mp) burstTimes
-                   counts = fmap (map V.length . spansPhotons (V.toList cspans)) fret
-               printf "Found %d distinct spans\n" (V.length cspans)
+                   counts = flipFrets
+                            $ map V.length . spansPhotons (V.toList cspans) <$> fret
+
+               printf "Found %d distinct spans, %d larger than minimum threshold\n"
+                 (V.length cspans)
+                 (length $ filter (\(Fret a d)->a+d > min_burst_length args) counts)
+
                printf "Average %f photons/burst\n"
                  (realToFrac nBurst / realToFrac (V.length cspans) :: Double)
 
-               let printSpan (start,end) counts =
-                     printf "%9u\t%9u\t%4u\t%4u" start end (fretA counts) (fretD counts)
+               let printSpan (start,end) counts
+                     | sum counts > min_burst_length args =
+                         printf "%9u\t%9u\t%4u\t%4u" start end (fretA counts) (fretD counts)
+                     | otherwise = ""
                writeFile (fname args++".spans") $ unlines
-                 $ zipWith printSpan (V.toList cspans) (flipFrets counts)
+                 $ filter (not . null)
+                 $ zipWith printSpan (V.toList cspans) counts
