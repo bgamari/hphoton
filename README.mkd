@@ -1,0 +1,64 @@
+# HPhoton: Tools for data analysis for fluorescence experiments
+
+HPhoton is a library and suite of tools written in [Haskell][haskell]
+for working with time-stamped photon arrival data from fluorescence
+experiments, namely fluorescence correlation spectroscopy (FCS) and
+Förster resonance energy transfer (FRET).
+
+The repository contains a number of subtrees,
+ * `hphoton` contains the core of the library, implementing much of
+   basis on which the other components are built
+ * `hphoton-fpga-timetagger` is a library for reading data produced by
+   the Goldner lab [FPGA timetagger][]
+ * `hphoton-tools` provides a set of user-friendly analysis tools
+
+[FPGA timetagger]: http://goldnerlab.physics.umass.edu/wiki/FpgaTimeTagger
+
+## Tools
+
+A number of tools are provided,
+
+ * `fret-analysis` provides an end-to-end analysis pipeline for FRET data,
+   including semi-automatic correction for background, crosstalk, and gamma
+   artifacts
+ * `alex-analysis` is similar to `fret-analysis` but targets FRET experiments
+   performed with alternating laser excitation (ALEX)
+ * `bayes-burst-find` implemenst a Bayesian photon-by-photon
+   fluorescence burst detection scheme
+
+[haskell]: http://www.haskell.org/
+
+## Installation
+
+Being written in Haskell, HPhoton requires a modern version of the
+[Glasgow Haskell Compiler][ghc] and [cabal][]. These are most
+easily obtained as part of the [Haskell Platform][hp], which is
+available for most Linux distributions, Mac OS X, and Windows.
+It is recommended that the `.cabal/bin` directory in your home
+directory is in your environment's `PATH`.
+
+Installation is quite simple,
+
+    $ cabal install cabal-meta
+    $ git clone ­­recursive https://github.com/bgamari/hphoton.git
+    $ cd hphoton
+    $ cabal-meta install
+
+[ghc]: http://www.haskell.org/ghc/
+[cabal]: http://www.haskell.org/cabal/
+[hp]: http://www.haskell.org/platform/
+
+## Why Haskell?
+
+For data analysis tasks correctness, reproducibility, and ease of
+comprehension are paramount. Being a [purely][pure] [functional][]
+language, Haskell is a natural choice for this work. Its rich type
+system allows for strong invariants to be checked at compile time and
+common patterns to be effectively captured. The strong ecosystem of
+libraries makes even sophisticated techniques easy to implement and
+the high performance of the Glasgow Haskell Compiler enables
+implementation of algorithms which would be prohibitively slow in more
+traditional choices like Python.
+
+[pure]: http://en.wikipedia.org/wiki/Purely_functional
+[functional]: http://en.wikipedia.org/wiki/Functional_programming
