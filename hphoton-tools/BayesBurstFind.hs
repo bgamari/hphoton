@@ -1,11 +1,9 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 import HPhoton.BurstIdent.Bayes
 import HPhoton.Types
 import HPhoton.Fret
 import HPhoton.Bin
 import HPhoton.Utils
-import System.Console.CmdArgs
+import Options.Applicative
 import System.IO
 import qualified Data.Vector.Unboxed as V
 import Data.Vector.Unboxed ((!))
@@ -21,18 +19,26 @@ data BurstFind = BurstFind { fname :: FilePath
                            , burst_length :: Int
                            , beta_thresh :: Double
                            } 
-               deriving (Show, Data, Typeable)
+               deriving (Show)
 
-burstFind = BurstFind { fname = def &= typFile &= argPos 0
-                      , bg_rate = 1000 &= help "Background count rate (Hz)"
-                      , burst_rate = 4000 &= help "Burst count rate (Hz)"
-                      , clockrate = round $ (128e6::Double) &= help "Clock period (s)"
-                      , burst_length = 10 &= help "Minimum burst length"
-                      , beta_thresh = 2 &= help "Acceptance threshold on beta"
-                      }
-                      &= summary "Bayesian Burst Find"
+burstFind :: Parser BurstFind
+burstFind = BurstFind
+    <$> argument Just ( help "Input file" <> action "file" )
+    <*> option ( long "bg-rate" <> short 'b' <> value 1000
+              <> help "Background count rate (Hz)" )
+    <*> option ( long "burst-rate" <> short 'B' <> value 4000
+              <> help "Burst count rate (Hz)" )
+    <*> option ( long "clockrate" <> short 'c' <> value (round (128e6 :: Double))
+              <> help "Clock period (s)" )
+    <*> option ( long "min-length" <> short 'l' <> value 10
+              <> help "Minimum burst length" )
+    <*> option ( long "odds-thresh" <> short 'o' <> value 2
+              <> help "Acceptance threshold on the Bayes factor" )
 
-main = do args <- cmdArgs burstFind
+main :: IO ()
+main = do let opts = info (helper <*> burstFind)
+                          ( fullDesc <> progDesc "Bayesian fluorescence burst identification" )
+          args <- execParser opts
           let realRateToTau rate = round $ realToFrac (clockrate args) / rate
               mp = ModelParams { mpWindow = burst_length args
                                , mpProbB = 0.05

@@ -22,7 +22,7 @@ Executable bayes-burst-find
                      vector,
                      storable-endian,
                      mwc-random,
-                     cmdargs,
+                     optparse-applicative,
                      bytestring,
                      transformers,
                      cereal,
