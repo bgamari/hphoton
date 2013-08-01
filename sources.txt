@@ -3,7 +3,6 @@
 ./hphoton-tools
 ./mixture-model
 ./chart-histogram
-./logfloat-unboxed
 ./pipes-bytestring
 ./pipes-vector
 ./haskell-chart/chart
