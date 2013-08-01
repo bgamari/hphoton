@@ -18,7 +18,7 @@ data BurstFind = BurstFind { fname :: FilePath
                            , clockrate :: Freq
                            , burst_length :: Int
                            , beta_thresh :: Double
-                           } 
+                           }
                deriving (Show)
 
 burstFind :: Parser BurstFind
@@ -68,10 +68,8 @@ main = do
                    counts = fmap (map V.length . spansPhotons cspans) fret
                printf "Average %f photons/burst\n"
                  (realToFrac nBurst / realToFrac (length cspans) :: Double)
-    
+
                let printSpan (start,end) counts =
                      printf "%9u\t%9u\t%4u\t%4u" start end (fretA counts) (fretD counts)
                writeFile (fname args) $ unlines
                  $ zipWith printSpan cspans (flipFrets counts)
-                     
-
