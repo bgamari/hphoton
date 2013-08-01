@@ -64,10 +64,11 @@ main = do
     if nBurst == 0
        then putStrLn "No bursts found"
        else do printf "Found %u burst photons\n" nBurst
-               let cspans = V.toList $ compressSpans (40*mpTauBurst mp) burstTimes
-                   counts = fmap (map V.length . spansPhotons cspans) fret
+               let cspans = compressSpans (40*mpTauBurst mp) burstTimes
+                   counts = fmap (map V.length . spansPhotons (V.toList cspans)) fret
+               printf "Found %d distinct spans\n" (V.length cspans)
                printf "Average %f photons/burst\n"
-                 (realToFrac nBurst / realToFrac (length cspans) :: Double)
+                 (realToFrac nBurst / realToFrac (V.length cspans) :: Double)
 
                let printSpan (start,end) counts =
                      printf "%9u\t%9u\t%4u\t%4u" start end (fretA counts) (fretD counts)
