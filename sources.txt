@@ -7,3 +7,5 @@
 ./pipes-vector
 ./haskell-chart/chart
 ./haskell-chart/chart-gtk
+./haskell-chart/chart-cairo
+./haskell-chart/chart-diagrams
