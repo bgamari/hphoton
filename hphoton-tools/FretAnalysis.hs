@@ -13,9 +13,9 @@ import           Control.Monad.IO.Class
 import           System.IO
 import           System.Directory (doesFileExist, createDirectoryIfMissing)
 import           System.FilePath
-import           Control.Proxy as P
-import qualified Control.Proxy.ByteString as PBS
-import           Control.Proxy.Vector
+import           Pipes as P
+import qualified Pipes.ByteString as PBS
+import           Pipes.Vector
 
 import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Unboxed as VU
@@ -175,7 +175,7 @@ partitionDOnly (FitOdds nComps) bins = do
 readFretBins :: Fret Channel -> Time -> FilePath -> IO (VB.Vector (Fret Double))
 readFretBins fretChannels binTime fname = do
     recs <- liftIO $ withFile fname ReadMode $ \fIn->
-        runProxy $ runToVectorK $   PBS.readHandleS fIn
+        run $ runToVectorP $   PBS.readHandleS fIn
                                 >-> decodeRecordsP
                                 >-> dropD 1024
                                 >-> filterDeltasP
