@@ -1,6 +1,7 @@
 {-# LANGUAGE PackageImports #-}
 
 import Control.Lens
+import Data.Default       
 import System.Environment
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as V
@@ -26,7 +27,7 @@ main = do
              $ plot_hist_range   .~ Just (0, 150)
              $ defaultPlotHist
         layout = layout1_plots   .~ [Left $ histToPlot hist]
-               $ defaultLayout1
+               $ def
 
     putStrLn "hi"
     mapM_ (\((a,b),n)->putStr $ printf "%1.3e %1.3e    %6d\n" (a::Double) b n)
