@@ -31,7 +31,7 @@ makeLenses ''TextHdr
 getTextHdr :: Get TextHdr
 getTextHdr =
     TextHdr <$> getByteString 16
-            <*> getByteString 16
+            <*> getByteString 6
             <*> getByteString 18
             <*> getByteString 12
             <*> getByteString 18
@@ -198,7 +198,7 @@ getBoardHdr =
              <*> getFloat32le
              <*> getWord32le
              <*> getEnum getWord32le
-             <*> V.replicateM 8 getRouterChannel
+             <*> V.replicateM 4 getRouterChannel
 
 data CurveHdr = CurveHdr { _curveIndex           :: Word32
                          , _curveTimeOfRecording :: Word32
