@@ -23,6 +23,7 @@ encodeOpts =
     Csv.defaultEncodeOptions { Csv.encDelimiter = fromIntegral $ ord '\t' }
 
 data Options = Options { fileName :: FilePath
+                       , output   :: Maybe FilePath
                        }
 
 opts :: Parser Options     
@@ -30,13 +31,20 @@ opts =
     Options <$> argument Just ( help "Name of .phd file to export"
                              <> metavar "FILE"
                               )
+            <*> option ( help "Output file"
+                      <> metavar "FILE"
+                      <> short 'o'
+                      <> long "output"
+                      <> value Nothing
+                      <> reader (pure . Just)
+                       )
     
 main = do
     o <- execParser $ info opts $ header "Export Picoharp .phd histograms"
                             
     phd <- runGet getPhdHistogram <$> LBS.readFile (fileName o)
     forM_ (phd ^. phdCurves) $ \(hdr, bins) -> do
-      LBS.writeFile "curve.txt"
+      LBS.writeFile (maybe (fileName o++".txt") id $ output o)
         $ Csv.encodeWith encodeOpts $ V.zip (binStarts hdr) bins
     
 
