@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, DeriveDataTypeable #-}                
+{-# LANGUAGE DeriveGeneric, DeriveDataTypeable #-}
 module HPhoton.IO.Picoquant.Types where
 
 import Data.Word
@@ -11,6 +11,8 @@ import Control.Applicative
 import GHC.Generics
 import Data.Typeable
 import Control.Monad (replicateM)
+import qualified Data.Vector as V
+import Data.Vector (Vector)
 
 getEnum :: (Integral n, Enum a) => Get n -> Get a
 getEnum getIntegral = fmap (toEnum . fromIntegral) getIntegral
@@ -23,7 +25,7 @@ data TextHdr = TextHdr { ident          :: ByteString
                        , comment        :: ByteString
                        }
              deriving (Show, Read, Eq, Ord, Typeable, Generic)
-                       
+
 getTextHdr :: Get TextHdr
 getTextHdr =
     TextHdr <$> getByteString 16
@@ -33,7 +35,7 @@ getTextHdr =
             <*> getByteString 18
             <*  getByteString 2
             <*> getByteString 256
-   
+
 data MeasurementMode = Interactive | T2 | T3
                      deriving (Show, Read, Ord, Eq, Typeable, Generic)
 
@@ -54,13 +56,13 @@ data Range = BaseResolution | ResX2 | Resx4 | ResX8 | ResX16 | ResX32 | ResX64 |
 
 data LinLog = Linear | Log
             deriving (Show, Read, Eq, Ord, Bounded, Enum, Typeable, Generic)
-            
+
 data Parameter = Parameter { paramStart  :: Float
                            , paramStep   :: Float
                            , paramEnd    :: Float
                            }
                deriving (Show, Read, Eq, Ord, Typeable, Generic)
-               
+
 getParameter :: Get Parameter
 getParameter =
     Parameter <$> getFloat32le
@@ -71,67 +73,67 @@ data DisplayCurve = DisplayCurve { mapTo            :: Word32
                                  , showCurve        :: Bool
                                  }
                   deriving (Show, Read, Eq, Ord, Typeable, Generic)
-                                 
+
 getDisplayCurve :: Get DisplayCurve
 getDisplayCurve =
     DisplayCurve <$> getWord32le
                  <*> getEnum getWord32le
 
-data BinaryHeader = BinaryHeader { nCurves          :: Word32
-                                 , bitsPerRecord    :: Word32
-                                 , routingChannels  :: Word32
-                                 , nBoards          :: Word32
-                                 , activeCurve      :: Word32
-                                 , measurementMode  :: MeasurementMode
-                                 , subMode          :: SubMode
-                                 , rangeNo          :: Range
-                                 , offset           :: Word32
-                                 , acqTime          :: Word32
-                                 , stopAt           :: Word32
-                                 , stopOnOverflow   :: Bool
-                                 , restart          :: Bool
-                                 , displayLinLog    :: LinLog
-                                 , displayTimeAxisFrom  :: Word32
-                                 , displayTimeAxisTo    :: Word32
-                                 , displayCountAxisTo   :: Word32
-                                 , displayCountAxisFrom :: Word32
-                                 , displayCurves    :: [DisplayCurve]
-                                 , parameters       :: [Parameter]
-                                 , repeatMode       :: Word32
-                                 , repeatsPerCurve  :: Word32
-                                 , repeatTime       :: Word32
-                                 , repeatWaitTime   :: Word32
-                                 , scriptName       :: ByteString
-                                 }
+data BinaryHdr = BinaryHdr { nCurves          :: Word32
+                           , bitsPerRecord    :: Word32
+                           , routingChannels  :: Word32
+                           , nBoards          :: Word32
+                           , activeCurve      :: Word32
+                           , measurementMode  :: MeasurementMode
+                           , subMode          :: SubMode
+                           , rangeNo          :: Range
+                           , offset           :: Word32
+                           , acqTime          :: Word32
+                           , stopAt           :: Word32
+                           , stopOnOverflow   :: Bool
+                           , restart          :: Bool
+                           , displayLinLog    :: LinLog
+                           , displayTimeAxisFrom  :: Word32
+                           , displayTimeAxisTo    :: Word32
+                           , displayCountAxisTo   :: Word32
+                           , displayCountAxisFrom :: Word32
+                           , displayCurves    :: Vector DisplayCurve
+                           , parameters       :: Vector Parameter
+                           , repeatMode       :: Word32
+                           , repeatsPerCurve  :: Word32
+                           , repeatTime       :: Word32
+                           , repeatWaitTime   :: Word32
+                           , scriptName       :: ByteString
+                           }
                     deriving (Show, Read, Eq, Ord, Typeable, Generic)
-     
-getBinaryHeader :: Get BinaryHeader
-getBinaryHeader = do
-    BinaryHeader <$> getWord32le
-                 <*> getWord32le
-                 <*> getWord32le
-                 <*> getWord32le
-                 <*> getWord32le
-                 <*> getEnum getWord32le
-                 <*> getEnum getWord32le
-                 <*> getEnum getWord32le
-                 <*> getWord32le
-                 <*> getWord32le
-                 <*> getWord32le
-                 <*> getEnum getWord32le
-                 <*> getEnum getWord32le
-                 <*> getEnum getWord32le
-                 <*> getWord32le
-                 <*> getWord32le
-                 <*> getWord32le
-                 <*> getWord32le
-                 <*> replicateM 8 getDisplayCurve
-                 <*> replicateM 3 getParameter
-                 <*> getWord32le
-                 <*> getWord32le
-                 <*> getWord32le
-                 <*> getWord32le
-                 <*> getByteString 20
+
+getBinaryHdr :: Get BinaryHdr
+getBinaryHdr = do
+    BinaryHdr <$> getWord32le
+              <*> getWord32le
+              <*> getWord32le
+              <*> getWord32le
+              <*> getWord32le
+              <*> getEnum getWord32le
+              <*> getEnum getWord32le
+              <*> getEnum getWord32le
+              <*> getWord32le
+              <*> getWord32le
+              <*> getWord32le
+              <*> getEnum getWord32le
+              <*> getEnum getWord32le
+              <*> getEnum getWord32le
+              <*> getWord32le
+              <*> getWord32le
+              <*> getWord32le
+              <*> getWord32le
+              <*> V.replicateM 8 getDisplayCurve
+              <*> V.replicateM 3 getParameter
+              <*> getWord32le
+              <*> getWord32le
+              <*> getWord32le
+              <*> getWord32le
+              <*> getByteString 20
 
 data CfdChannel = CfdChannel { cfdZeroCross   :: Word32
                              , cfdLevel       :: Word32
@@ -141,7 +143,7 @@ data CfdChannel = CfdChannel { cfdZeroCross   :: Word32
 getCfdChannel :: Get CfdChannel
 getCfdChannel =
     CfdChannel <$> getWord32le <*> getWord32le
-    
+
 data RouterInputType = RouterInputCustom | RouterInputNIM | RouterInputTTL
                      deriving (Show, Read, Eq, Ord, Bounded, Enum, Typeable, Generic)
 
@@ -156,7 +158,7 @@ data RouterChannel = RouterChannel { routerInputType     :: RouterInputType
                                    , routerCfdZeroCross  :: Word32
                                    }
                    deriving (Show, Read, Eq, Ord, Typeable, Generic)
-                  
+
 getRouterChannel :: Get RouterChannel
 getRouterChannel =
     RouterChannel <$> getEnum getWord32le
@@ -170,25 +172,25 @@ data BoardHdr = BoardHdr { hardwareIdent      :: ByteString
                          , hardwareVersion    :: ByteString
                          , hardwareSerial     :: Word32
                          , syncDivider        :: Word32
-                         , cfdChannels        :: [CfdChannel]
+                         , cfdChannels        :: Vector CfdChannel
                          , resolution         :: Float
                          , routerModelCode    :: Word32
                          , routerEnabled      :: Bool
-                         , routerChannels     :: [RouterChannel]
+                         , routerChannels     :: Vector RouterChannel
                          }
               deriving (Show, Read, Eq, Ord, Typeable, Generic)
-              
+
 getBoardHdr :: Get BoardHdr
 getBoardHdr =
-    BoardHdr <$> getByteString 16     
+    BoardHdr <$> getByteString 16
              <*> getByteString 8
              <*> getWord32le
              <*> getWord32le
-             <*> replicateM 2 getCfdChannel
+             <*> V.replicateM 2 getCfdChannel
              <*> getFloat32le
              <*> getWord32le
              <*> getEnum getWord32le
-             <*> replicateM 8 getRouterChannel
+             <*> V.replicateM 8 getRouterChannel
 
 data CurveHdr = CurveHdr { curveIndex           :: Word32
                          , curveTimeOfRecording :: Word32
@@ -196,7 +198,7 @@ data CurveHdr = CurveHdr { curveIndex           :: Word32
                          , curveHardwareVersion :: ByteString
                          , curveHardwareSerial  :: Word32
                          , curveSyncDivider     :: Word32
-                         , curveCfdChannels     :: [CfdChannel]
+                         , curveCfdChannels     :: Vector CfdChannel
                          , curveOffset          :: Word32
                          , curveRoutingChannel  :: Word32
                          , curveExtDevices      :: Word32
@@ -221,7 +223,7 @@ data CurveHdr = CurveHdr { curveIndex           :: Word32
                          , curveRouterChannel   :: RouterChannel
                          }
               deriving (Show, Read, Eq, Ord, Typeable, Generic)
-     
+
 getCurveHdr :: Get CurveHdr
 getCurveHdr =
     CurveHdr <$> getWord32le
@@ -230,7 +232,7 @@ getCurveHdr =
              <*> getByteString 8
              <*> getWord32le
              <*> getWord32le
-             <*> replicateM 2 getCfdChannel
+             <*> V.replicateM 2 getCfdChannel
              <*> getWord32le
              <*> getWord32le
              <*> getWord32le
@@ -253,4 +255,3 @@ getCurveHdr =
              <*> getWord32le
              <*> getEnum getWord32le
              <*> getRouterChannel
-
