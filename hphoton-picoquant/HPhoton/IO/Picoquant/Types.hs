@@ -264,3 +264,24 @@ getCurveHdr =
              <*> getWord32le
              <*> getEnum getWord32le
              <*> getRouterChannel
+
+data THdr = THdr { _tExtDevices    :: Word32
+                 , _tInpRate0      :: Word32
+                 , _tInpRate1      :: Word32
+                 , _tStopAfter     :: Word32
+                 , _tStopReason    :: Word32
+                 , _tNumRecords    :: Word32
+                 , _tImgHdrSize    :: Word32
+                 }
+          deriving (Show, Read, Eq, Ord, Typeable, Generic)
+makeLenses ''THdr
+
+getTHdr :: Get THdr
+getTHdr = 
+    THdr <$> getWord32le           
+         <*> getWord32le
+         <*> getWord32le
+         <*> getWord32le
+         <*> getWord32le
+         <*> getWord32le
+         <*> getWord32le
