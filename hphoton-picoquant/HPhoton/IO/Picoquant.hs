@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric, DeriveDataTypeable, TemplateHaskell #-}
 module HPhoton.IO.Picoquant where
 
 import Data.Binary
@@ -9,12 +9,13 @@ import Data.Traversable as T
 import qualified Data.Vector as V
 import Data.Vector (Vector)
 import Data.Typeable
-import GHC.Generics
+import GHC.Generics (Generic)
+import Control.Lens
 
-data PhdHistogram = PhdHistogram { phdTextHdr   :: TextHdr
-                                 , phdBinaryHdr :: BinaryHdr
-                                 , phdBoards    :: Vector BoardHdr
-                                 , phdCurves    :: Vector (CurveHdr, Vector Word32)
+data PhdHistogram = PhdHistogram { _phdTextHdr   :: TextHdr
+                                 , _phdBinaryHdr :: BinaryHdr
+                                 , _phdBoards    :: Vector BoardHdr
+                                 , _phdCurves    :: Vector (CurveHdr, Vector Word32)
                                  }
                   deriving (Show, Read, Eq, Ord, Typeable, Generic)
 
@@ -23,8 +24,9 @@ getPhdHistogram :: Get PhdHistogram
 getPhdHistogram = do
     thdr <- getTextHdr
     bhdr <- getBinaryHdr
-    boards <- V.replicateM (fromIntegral $ nBoards bhdr) getBoardHdr
-    curves <- V.replicateM (fromIntegral $ nCurves bhdr) getCurveHdr
+    boards <- V.replicateM (bhdr ^. nBoards . to fromIntegral) getBoardHdr
+    curves <- V.replicateM (bhdr ^. nCurves . to fromIntegral) getCurveHdr
     histograms <- T.forM curves $ \curve->do
-        V.replicateM (fromIntegral $ curveChannels curve) getWord32le
+        V.replicateM (curve ^. curveChannels . to fromIntegral)
+            $ getWord32le
     return $ PhdHistogram thdr bhdr boards (V.zip curves histograms)
