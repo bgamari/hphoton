@@ -1,14 +1,14 @@
 {-# LANGUAGE PatternGuards, DeriveGeneric, FlexibleInstances #-}
 
-module HPhoton.FpgaTimetagger.Alex ( Fret(..)
-                                   , AlexChannels(..)
-                                   , alexTimes
-                                   ) where
+module HPhoton.IO.FpgaTimetagger.Alex ( Fret(..)
+                                      , AlexChannels(..)
+                                      , alexTimes
+                                      ) where
 
 import           HPhoton.Types
 import           HPhoton.Fret (Fret(..))
 import           HPhoton.Fret.Alex
-import           HPhoton.FpgaTimetagger
+import           HPhoton.IO.FpgaTimetagger
 import qualified Data.Vector.Unboxed as V
 import           Control.Monad.Trans.State
 import           Control.Lens

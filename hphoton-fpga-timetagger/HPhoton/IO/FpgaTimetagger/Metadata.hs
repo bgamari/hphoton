@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module HPhoton.FpgaTimetagger.Metadata (getMetadata) where
+module HPhoton.IO.FpgaTimetagger.Metadata (getMetadata) where
 
 import           Prelude hiding (readFile)
 

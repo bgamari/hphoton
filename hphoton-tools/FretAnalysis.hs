@@ -23,8 +23,8 @@ import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as VB
 
 import           HPhoton.Bin
-import           HPhoton.FpgaTimetagger
-import           HPhoton.FpgaTimetagger.Pipe
+import           HPhoton.IO.FpgaTimetagger
+import           HPhoton.IO.FpgaTimetagger.Pipe
 import           HPhoton.Fret
 import           HPhoton.Types
 import qualified Moments as M

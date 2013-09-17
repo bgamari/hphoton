@@ -1,6 +1,6 @@
 import HPhoton.Types
-import HPhoton.FpgaTimetagger
-import HPhoton.FpgaTimetagger.Alex
+import HPhoton.IO.FpgaTimetagger
+import HPhoton.IO.FpgaTimetagger.Alex
 import Data.Function
 import Data.List
 import qualified Data.Vector.Unboxed as V

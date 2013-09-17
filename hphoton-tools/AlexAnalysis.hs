@@ -23,8 +23,8 @@ import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as VB
 
 import           HPhoton.Bin
-import           HPhoton.FpgaTimetagger.Alex
-import           HPhoton.FpgaTimetagger.Pipe
+import           HPhoton.IO.FpgaTimetagger.Alex
+import           HPhoton.IO.FpgaTimetagger.Pipe
 import           HPhoton.Fret (shotNoiseEVar)
 import           HPhoton.Fret.Alex
 import           HPhoton.Types

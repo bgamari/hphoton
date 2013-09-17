@@ -9,7 +9,7 @@ import System.IO
 import qualified Data.Vector.Unboxed as V
 import Data.Vector.Unboxed ((!))
 import Data.Vector.Algorithms.Merge (sort)
-import HPhoton.FpgaTimetagger
+import HPhoton.IO.FpgaTimetagger
 import Text.Printf
 import Data.List (foldl')
 import Data.Foldable (sum)

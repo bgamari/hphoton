@@ -1,26 +1,27 @@
 {-# LANGUAGE BangPatterns, TypeFamilies, MultiParamTypeClasses, TemplateHaskell, RankNTypes #-}
 
-module HPhoton.FpgaTimetagger ( -- * Types and fields
-                                Record, zeroRecord
-                              , recDelta, recStrobe
-                              , recTime
-                              , Channel(..)
-                              , recChannel, recChannels
-                              , recLost, recWrap
-                              , recTimeMask
-                                         
-                                -- * Encoding and decoding records
-                              , readRecords, readRecords'
-                              , decodeRecords, decodeRecord
-                              , encodeRecord
-                              
-                                -- * Utilities
-                              , strobeTimes
-                              , unwrapTimes
-                                
-                                -- * Metadata
-                              , module HPhoton.FpgaTimetagger.Metadata
-                              ) where
+module HPhoton.IO.FpgaTimetagger
+    ( -- * Types and fields
+      Record, zeroRecord
+    , recDelta, recStrobe
+    , recTime
+    , Channel(..)
+    , recChannel, recChannels
+    , recLost, recWrap
+    , recTimeMask
+               
+      -- * Encoding and decoding records
+    , readRecords, readRecords'
+    , decodeRecords, decodeRecord
+    , encodeRecord
+    
+      -- * Utilities
+    , strobeTimes
+    , unwrapTimes
+      
+      -- * Metadata
+    , module HPhoton.IO.FpgaTimetagger.Metadata
+    ) where
 
 import           Data.Maybe (catMaybes)
 import           Data.Word
@@ -45,7 +46,7 @@ import qualified Data.Vector.Unboxed.Mutable as VM
 import           Control.Monad (liftM, when)
 import           Control.Monad.Trans.State
 
-import           HPhoton.FpgaTimetagger.Metadata
+import           HPhoton.IO.FpgaTimetagger.Metadata
 
 -- | A timetagger input channel
 data Channel = Ch0 | Ch1 | Ch2 | Ch3 deriving (Show, Eq, Enum, Bounded)

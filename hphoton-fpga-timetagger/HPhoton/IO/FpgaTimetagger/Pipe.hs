@@ -1,8 +1,8 @@
-module HPhoton.FpgaTimetagger.Pipe ( decodeRecordsP
-                                   , filterDeltasP
-                                   , encodeRecordsP
-                                   , module HPhoton.FpgaTimetagger
-                                   ) where
+module HPhoton.IO.FpgaTimetagger.Pipe ( decodeRecordsP
+                                      , filterDeltasP
+                                      , encodeRecordsP
+                                      , module HPhoton.IO.FpgaTimetagger
+                                      ) where
 
 import           Control.Lens
 import           Pipes
@@ -10,7 +10,7 @@ import qualified Pipes.Prelude as P
 import qualified Pipes.ByteString as PBS
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Unsafe as BU
-import           HPhoton.FpgaTimetagger
+import           HPhoton.IO.FpgaTimetagger
 
 -- | Decode records
 decodeRecordsP :: (Monad m) => Pipe BS.ByteString Record m r

@@ -16,7 +16,7 @@ import           Graphics.Rendering.Chart.Plot.Histogram
 import           Numeric.Log hiding (sum)
 
 import           Numeric.MixtureModel.Exponential
-import           HPhoton.FpgaTimetagger
+import           HPhoton.IO.FpgaTimetagger
 import           HPhoton.Bin.Plot
 import           HPhoton.Utils
 import           HPhoton.Types hiding (Freq)
