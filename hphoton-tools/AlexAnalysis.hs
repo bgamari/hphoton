@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Control.Lens
+import           Control.Lens hiding (each)
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import           Data.List (partition, intercalate, zipWith4)
@@ -13,9 +13,10 @@ import           Control.Monad.IO.Class
 import           System.IO
 import           System.Directory (doesFileExist, createDirectoryIfMissing)
 import           System.FilePath
-import           Control.Proxy as P
-import qualified Control.Proxy.ByteString as PBS
-import           Control.Proxy.Vector
+import           Pipes
+import qualified Pipes.Prelude as PP
+import qualified Pipes.ByteString as PBS
+import           Pipes.Vector
 
 import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Unboxed as VU
@@ -36,7 +37,9 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as HA
 import           Text.Printf
 
+import           Data.Default
 import           Graphics.Rendering.Chart
+import           Graphics.Rendering.Chart.Backend.Cairo
 import           Graphics.Rendering.Chart.Plot.Histogram
 import           Data.Colour
 import           Data.Colour.SRGB (sRGB)
@@ -51,7 +54,7 @@ import           Statistics.Resampling
 import           Statistics.Resampling.Bootstrap
 import           Statistics.LinearRegression
 
-import           Options.Applicative
+import           Options.Applicative hiding ((&))
 
 type Rate = Double
 type Gamma = Double
@@ -174,15 +177,16 @@ readAlexData useCache fname = do
     cacheExists <- liftIO $ doesFileExist trimFName
     let fname' = if cacheExists && useCache then trimFName else fname
     recs <- liftIO $ withFile fname' ReadMode $ \fIn->
-        runProxy $ runToVectorK $   PBS.readHandleS fIn
-                                >-> decodeRecordsP
-                                >-> dropD 1024
-                                >-> filterDeltasP
-                                >-> toVectorD
+        runToVector $ runEffect
+            $   PBS.fromHandle fIn
+            >-> decodeRecordsP
+            >-> PP.drop 1024
+            >-> filterDeltasP
+            >-> toVector
 
     when (useCache && not cacheExists)
         $ liftIO $ withFile trimFName WriteMode $ \fOut->
-        runProxy $ fromListS (V.toList recs) >-> encodeRecordsP >-> PBS.writeHandleD fOut
+        runEffect $ each (V.toList recs) >-> encodeRecordsP >-> PBS.toHandle fOut
 
     return recs
 
@@ -359,21 +363,23 @@ estimateGamma xs =
 layoutThese :: (F.Foldable f, Applicative f, PlotValue x, PlotValue y, Num y)
             => (a -> Plot x y) -> f String -> f a -> Renderable ()
 layoutThese f titles xs =
-    renderLayout1sStacked $ F.toList
-    $ pure makeLayout <*> titles <*> xs
-    where --makeLayout :: String -> Plot x y -> Layout1 x y
-          makeLayout title x = withAnyOrdinate
-                               $ layout1_title .~ title
-                               $ layout1_left_axis . laxis_override .~ (axis_viewport .~ vmap (0,150))
-                               $ layout1_plots .~ [Left $ f x]
-                               $ defaultLayout1
+    renderStackedLayouts
+    $ def
+    & slayouts_layouts .~ (F.toList $ makeLayout <$> titles <*> xs)
+    where --makeLayout :: String -> a -> StackedLayout y
+          makeLayout title x =
+              StackedLayout
+              $ layout1_title .~ title
+              $ layout1_left_axis . laxis_override .~ (axis_viewport .~ vmap (0,150))
+              $ layout1_plots .~ [Left $ f x]
+              $ def
 
 plotBinTimeseries :: [a] -> Plot Int a
 plotBinTimeseries counts =
     toPlot
     $ plot_points_values .~ zip [0..] counts
     $ plot_points_style .~ filledCircles 0.5 (opaque blue)
-    $ defaultPlotPoints
+    $ def
 
 data Fit = Gaussian (Double, Double) -- ^ (Mean, Variance)
          | Beta BetaParam
@@ -388,7 +394,7 @@ layoutSE title eBins s e fretEs fits =
     let pts = toPlot
               $ plot_points_values .~ zip e s
               $ plot_points_style .~ filledCircles 2 (opaque blue)
-              $ defaultPlotPoints
+              $ def
         xs = [0.01,0.02..0.99]
         norm = realToFrac (length fretEs) / realToFrac eBins
         fit :: (String, Fit) -> AlphaColour Double -> Plot Double Double
@@ -399,29 +405,30 @@ layoutSE title eBins s e fretEs fits =
                  $ plot_lines_values .~ [map (\x->(x, f x * norm)) xs]
                  $ plot_lines_title  .~ title
                  $ plot_lines_style  .  line_color .~ color
-                 $ defaultPlotLines
+                 $ def
         eHist = histToPlot
                 $ plot_hist_bins .~ eBins
                 $ plot_hist_values .~ V.fromList fretEs
                 $ plot_hist_range .~ Just (0,1)
                 $ defaultFloatPlotHist
-        unitAxis = scaledAxis defaultLinearAxis (0,1)
-    in renderLayout1sStacked
-       [ withAnyOrdinate
-         $ layout1_title .~ title
-         $ layout1_plots .~ [Left pts]
-         $ layout1_bottom_axis . laxis_generate .~ unitAxis
-         $ layout1_left_axis   . laxis_generate .~ unitAxis
-         $ layout1_left_axis   . laxis_title .~ "Stoiciometry"
-         $ defaultLayout1
-       , withAnyOrdinate
-         $ layout1_plots .~ ([Left eHist]++zipWith (\p color->Left $ fit p color)
-                                                   fits (colors $ length fits))
-         $ layout1_bottom_axis . laxis_title .~ "Proximity Ratio"
-         $ layout1_bottom_axis . laxis_generate .~ unitAxis
-         $ layout1_left_axis   . laxis_title .~ "Occurrences"
-         $ defaultLayout1
-       ]
+        unitAxis = scaledAxis def (0,1) :: AxisFn Double
+        layouts = 
+          [ StackedLayout
+            $ layout1_title .~ title
+            $ layout1_plots .~ [Left pts]
+            $ layout1_bottom_axis . laxis_generate .~ unitAxis
+            $ layout1_left_axis   . laxis_generate .~ unitAxis
+            $ layout1_left_axis   . laxis_title .~ "Stoiciometry"
+            $ def
+          , StackedLayout
+            $ layout1_plots .~ ([Left eHist]++zipWith (\p color->Left $ fit p color)
+                                                      fits (colors $ length fits))
+            $ layout1_bottom_axis . laxis_title .~ "Proximity Ratio"
+            $ layout1_bottom_axis . laxis_generate .~ unitAxis
+            $ layout1_left_axis   . laxis_title .~ "Occurrences"
+            $ def
+          ]
+    in renderStackedLayouts $ def & slayouts_layouts .~ layouts
 
 colors :: Int -> [AlphaColour Double]
 colors n = map (\hue->opaque $ uncurryRGB sRGB $ hsv hue 0.8 0.8)
