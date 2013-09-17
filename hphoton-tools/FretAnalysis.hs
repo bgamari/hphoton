@@ -35,7 +35,9 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as HA
 import           Text.Printf
 
+import           Data.Default
 import           Graphics.Rendering.Chart
+import           Graphics.Rendering.Chart.Backend.Cairo
 import           Graphics.Rendering.Chart.Plot.Histogram
 import           Data.Colour
 import           Data.Colour.SRGB (sRGB)
@@ -49,7 +51,7 @@ import           Numeric.Log hiding (sum)
 import           Statistics.Sample
 import           Statistics.Resampling
 
-import           Options.Applicative
+import           Options.Applicative hiding ((&))
 
 type Rate = Double
 
@@ -392,21 +394,23 @@ varHtml x = meanHtml $ x++"² − "++meanHtml x++"²"
 layoutThese :: (F.Foldable f, Applicative f, PlotValue x, PlotValue y, Num y)
             => (a -> Plot x y) -> f String -> f a -> Renderable ()
 layoutThese f titles xs =
-    renderLayout1sStacked $ F.toList
-    $ pure makeLayout <*> titles <*> xs
-    where --makeLayout :: String -> Plot x y -> Layout1 x y
-          makeLayout title x = withAnyOrdinate
-                               $ layout1_title .~ title
-                               $ layout1_left_axis . laxis_override .~ (axis_viewport .~ vmap (0,150))
-                               $ layout1_plots .~ [Left $ f x]
-                               $ defaultLayout1
+    renderStackedLayouts
+    $ def
+    & slayouts_layouts .~ (F.toList $ makeLayout <$> titles <*> xs)
+    where --makeLayout :: String -> a -> StackedLayout y
+          makeLayout title x =
+              StackedLayout
+              $ layout1_title .~ title
+              $ layout1_left_axis . laxis_override .~ (axis_viewport .~ vmap (0,150))
+              $ layout1_plots .~ [Left $ f x]
+              $ def
 
 plotBinTimeseries :: [a] -> Plot Int a
 plotBinTimeseries counts =
     toPlot
     $ plot_points_values .~ zip [0..] counts
     $ plot_points_style .~ filledCircles 0.5 (opaque blue)
-    $ defaultPlotPoints
+    $ def
 
 gaussianProb :: (Double,Double) -> Double -> Double
 gaussianProb (mu,sigma2) x = exp (-(x-mu)^2 / 2 / sigma2) / sqrt (2*pi*sigma2)
@@ -422,20 +426,20 @@ layoutFret title eBins e fretEs fits =
               $ plot_lines_values .~ [map (\x->(x, f x * norm)) xs]
               $ plot_lines_title  .~ title
               $ plot_lines_style  .  line_color .~ color
-              $ defaultPlotLines
+              $ def
         eHist = histToPlot
                 $ plot_hist_bins .~ eBins
                 $ plot_hist_values .~ V.fromList fretEs
                 $ plot_hist_range .~ Just (0,1)
                 $ defaultFloatPlotHist
-        unitAxis = scaledAxis defaultLinearAxis (0,1)
+        unitAxis = scaledAxis def (0,1) :: AxisFn Double
     in toRenderable
        $ layout1_plots .~ ([Left eHist]++zipWith (\p color->Left $ fit p color)
                                                fits (colors $ length fits))
        $ layout1_bottom_axis . laxis_title    .~ "Proximity Ratio"
        $ layout1_bottom_axis . laxis_generate .~ unitAxis
        $ layout1_left_axis   . laxis_title    .~ "Occurrences"
-       $ defaultLayout1
+       $ def
 
 colors :: Int -> [AlphaColour Double]
 colors n = map (\hue->opaque $ uncurryRGB sRGB $ hsv hue 0.8 0.8)
@@ -457,4 +461,4 @@ layoutCountingHist title maxBins names colours bins =
        $ layout1_plots .~ map Left (F.toList $ plot <$> names <*> colours <*> bins)
        $ layout1_bottom_axis . laxis_title .~ "counts"
        $ layout1_left_axis   . laxis_title .~ "occurrences"
-       $ defaultLayout1
+       $ def
