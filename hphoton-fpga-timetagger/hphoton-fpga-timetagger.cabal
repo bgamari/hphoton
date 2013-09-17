@@ -14,7 +14,7 @@ Library
   Exposed-Modules:   HPhoton.IO.FpgaTimetagger,
                      HPhoton.IO.FpgaTimetagger.Alex,
                      HPhoton.IO.FpgaTimetagger.Metadata,
-                     HPhoton.IO.FpgaTimetagger.Pipe
+                     HPhoton.IO.FpgaTimetagger.Pipes
 
   Build-depends:     base,
                      ghc-prim,
