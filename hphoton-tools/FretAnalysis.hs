@@ -14,6 +14,7 @@ import           System.IO
 import           System.Directory (doesFileExist, createDirectoryIfMissing)
 import           System.FilePath
 import           Pipes as P
+import qualified Pipes.Prelude as PP
 import qualified Pipes.ByteString as PBS
 import           Pipes.Vector
 
@@ -177,11 +178,11 @@ partitionDOnly (FitOdds nComps) bins = do
 readFretBins :: Fret Channel -> Time -> FilePath -> IO (VB.Vector (Fret Double))
 readFretBins fretChannels binTime fname = do
     recs <- liftIO $ withFile fname ReadMode $ \fIn->
-        run $ runToVectorP $   PBS.readHandleS fIn
-                                >-> decodeRecordsP
-                                >-> dropD 1024
-                                >-> filterDeltasP
-                                >-> toVectorD
+        runToVector $ runEffect $ PBS.fromHandle fIn
+                    >-> decodeRecordsP
+                    >-> PP.drop 1024
+                    >-> filterDeltasP
+                    >-> toVector
     let times = unwrapTimes 0xfffffffff . strobeTimes recs <$> fretChannels :: Fret (VU.Vector Time)
         bins = fmap (fmap fromIntegral) $ binMany binTime times
     return bins
