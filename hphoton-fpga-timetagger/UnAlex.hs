@@ -1,6 +1,6 @@
 import           System.IO
-import           HPhoton.FpgaTimetagger.Alex
-import           HPhoton.FpgaTimetagger.Pipe
+import           HPhoton.IO.FpgaTimetagger.Alex
+import           HPhoton.IO.FpgaTimetagger.Pipe
 import           HPhoton.Fret.Alex
 import           HPhoton.Types
 

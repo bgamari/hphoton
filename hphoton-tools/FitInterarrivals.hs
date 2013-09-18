@@ -19,7 +19,7 @@ import           Data.List (transpose)
 import           Data.IORef
 import           Control.Concurrent                 
 import           Control.Concurrent.ParallelIO
-import           HPhoton.FpgaTimetagger
+import           HPhoton.IO.FpgaTimetagger
 import           HPhoton.Utils
 import           HPhoton.Types hiding (Freq)
 import           Options.Applicative

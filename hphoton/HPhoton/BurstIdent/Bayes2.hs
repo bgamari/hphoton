@@ -2,7 +2,6 @@ module HPhoton.BayesBurstFind2 where
 
 import HPhoton.Types
 import HPhoton.Utils
-import HPhoton.FpgaTimetagger
 import qualified Data.Vector.Unboxed as V
 import Data.Number.LogFloat hiding (realToFrac)
 import Data.Number.LogFloat.Vector

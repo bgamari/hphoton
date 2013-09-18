@@ -24,7 +24,7 @@ import Data.Vector.Unboxed ((!))
 import qualified System.Random.MWC as MWC
 import Data.Random
 import Data.Random.Distribution.Exponential
-import HPhoton.FpgaTimetagger
+import HPhoton.IO.FpgaTimetagger
 
 n = 10
 betaThresh = 2

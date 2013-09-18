@@ -23,8 +23,8 @@ import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as VB
 
 import           HPhoton.Bin
-import           HPhoton.FpgaTimetagger.Alex
-import           HPhoton.FpgaTimetagger.Pipe
+import           HPhoton.IO.FpgaTimetagger.Alex
+import           HPhoton.IO.FpgaTimetagger.Pipes
 import           HPhoton.Fret (shotNoiseEVar)
 import           HPhoton.Fret.Alex
 import           HPhoton.Types
@@ -179,14 +179,14 @@ readAlexData useCache fname = do
     recs <- liftIO $ withFile fname' ReadMode $ \fIn->
         runToVector $ runEffect
             $   PBS.fromHandle fIn
-            >-> decodeRecordsP
+            >-> decodeRecords
             >-> PP.drop 1024
-            >-> filterDeltasP
+            >-> filterDeltas
             >-> toVector
 
     when (useCache && not cacheExists)
         $ liftIO $ withFile trimFName WriteMode $ \fOut->
-        runEffect $ each (V.toList recs) >-> encodeRecordsP >-> PBS.toHandle fOut
+        runEffect $ each (V.toList recs) >-> encodeRecords >-> PBS.toHandle fOut
 
     return recs
 

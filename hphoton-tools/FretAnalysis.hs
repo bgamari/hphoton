@@ -23,8 +23,7 @@ import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as VB
 
 import           HPhoton.Bin
-import           HPhoton.FpgaTimetagger
-import           HPhoton.FpgaTimetagger.Pipe
+import           HPhoton.IO.FpgaTimetagger.Pipes
 import           HPhoton.Fret
 import           HPhoton.Types
 import qualified Moments as M
@@ -180,9 +179,9 @@ readFretBins fretChannels binTime fname = do
     recs <- liftIO $ withFile fname ReadMode $ \fIn->
         runToVector $ runEffect
             $   PBS.fromHandle fIn
-            >-> decodeRecordsP
+            >-> decodeRecords
             >-> PP.drop 1024
-            >-> filterDeltasP
+            >-> filterDeltas
             >-> toVector
     let times = unwrapTimes 0xfffffffff . strobeTimes recs <$> fretChannels :: Fret (VU.Vector Time)
         bins = fmap (fmap fromIntegral) $ binMany binTime times

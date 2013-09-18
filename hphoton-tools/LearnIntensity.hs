@@ -7,7 +7,7 @@ import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as V
 import HPhoton.Types
 import HPhoton.Bin
-import HPhoton.FpgaTimetagger
+import HPhoton.IO.FpgaTimetagger
 import Graphics.Rendering.Chart
 import Graphics.Rendering.Chart.Plot.Histogram
 import Numeric.Histogram
