@@ -10,3 +10,4 @@ cabal-dev
 data
 .shelly
 */dist_hphoton
+.cabal-sandbox
