@@ -11,7 +11,7 @@ import           Control.Parallel.Strategies
 
 import           HPhoton.Corr.PackedVec  (PackedVec (PVec))
 import           HPhoton.Corr.SparseCorr
-import           HPhoton.RawTimestamps
+import           HPhoton.IO.RawTimestamps
 import           HPhoton.Types
 
 import           Options.Applicative

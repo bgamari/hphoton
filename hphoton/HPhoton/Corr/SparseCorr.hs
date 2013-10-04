@@ -134,4 +134,3 @@ trimData longlag (PVec a) (PVec b) lag =
             b' = V.dropWhile (\(a,o) -> a < (startT + longlag - lag)) b
             b'' = V.takeWhile (\(a,o) -> a <= (endT - lag)) b'
         in (PVec a', PVec b'')
-
