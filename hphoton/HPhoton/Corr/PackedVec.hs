@@ -27,6 +27,7 @@ packedVec v = PVec $ runST $ do
                   v' <- V.thaw v
                   VA.sortBy (compare `on` fst) v'
                   V.freeze v'
+{-# INLINEABLE packedVec #-}
 
 -- | Construct a PackedVec assuming that the entries are already sorted.
 packedVec' :: (V.Unbox i, V.Unbox v) => V.Vector (i,v) -> PackedVec i v
@@ -36,7 +37,6 @@ packedVec' = PVec
 dot :: (Ord i, Num v, V.Unbox i, V.Unbox v)
     => PackedVec i v -> PackedVec i v -> v
 dot (PVec as) (PVec bs) = dot' as bs 0
-{-# SPECIALIZE dot :: PackedVec Time Int -> PackedVec Time Int -> Int #-}
 {-# INLINEABLE dot #-}
 
 dot' :: (Ord i, Eq i, Num v, V.Unbox i, V.Unbox v)
@@ -60,6 +60,7 @@ index (PVec v) i =
     case V.find (\(x,_)->x==i) v of
         Just (x,y) -> y
         Nothing    -> 0
+{-# INLINEABLE index #-}
 
 -- | Shift the abscissas in a sparse vector
 shiftVec :: (Num i, V.Unbox i, V.Unbox v) => i -> PackedVec i v -> PackedVec i v

@@ -33,10 +33,12 @@ type BinnedVec t v = Binned t (PackedVec t v)
 vecFromStamps :: (Num t, Ord t, V.Unbox t, V.Unbox v, Num v)
               => V.Vector t -> Binned t (PackedVec t v)
 vecFromStamps = Binned 1 . PV.packedVec . V.map (,1) 
+{-# INLINEABLE vecFromStamps #-}
 
 vecFromStamps' :: (Num t, Ord t, V.Unbox t, V.Unbox v, Num v)
               => V.Vector t -> Binned t (PackedVec t v)
 vecFromStamps' = Binned 1 . PV.packedVec' . V.map (,1) 
+{-# INLINEABLE vecFromStamps' #-}
 
 -- | Shifted sparse dot product
 shiftedDot :: (Ord t, Num t, Num v, V.Unbox t, V.Unbox v)
@@ -52,8 +54,6 @@ shiftedDot2 shift a b =
 
 -- | For condensing data into larger bins. This is sometimes desireable
 -- when computing longer lag times.
-{-# SPECIALIZE rebin :: Int -> BinnedVec Time Int -> BinnedVec Time Int #-}
-{-# INLINEABLE rebin #-}
 rebin :: (Num t, Ord t, Integral t, V.Unbox t, V.Unbox v, Num v, Eq v)
       => Int -> BinnedVec t v -> BinnedVec t v
 rebin n v | n <= 0 = error "Invalid rebin size"
@@ -70,6 +70,7 @@ rebin n (Binned oldWidth (PVec v)) = Binned width (PVec $ V.fromList bins)
                                        then (bin*width, accum):f (start_bin a) o rest
                                        else f (start_bin a) o rest
             | otherwise           = f bin (accum+o) rest
+{-# INLINEABLE rebin #-}
 
 -- | Compute the correlation function G(lag). We don't do anything here to
 -- ensure that the zone size is sane, etc. This is left to calling code
@@ -91,8 +92,6 @@ corr' width (PVec a) (PVec b) lag
             bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
         in (g, sqrt bar2)
 
-{-# SPECIALIZE corr :: Time -> BinnedVec Time Int -> BinnedVec Time Int -> Time -> (Double,Double) #-}
-{-# INLINEABLE corr #-}
 corr :: (Show t, Num t, Integral t, Ord t, Real v, V.Unbox t, V.Unbox v)
      => t -> BinnedVec t v -> BinnedVec t v -> t -> (Double, Double)
 corr longlag (Binned ta a) (Binned tb b) lag
@@ -102,6 +101,7 @@ corr longlag (Binned ta a) (Binned tb b) lag
 corr longlag (Binned t a) (Binned _ b) lag =
     let (a',b') = trimData longlag a b lag
     in corr' t a' b' lag
+{-# INLINEABLE corr #-}
 
 -- | Here we try to ensure that the zone is sized such that the same amount
 -- of data is used in the correlation over various lags. This requires that
@@ -125,7 +125,6 @@ corr longlag (Binned t a) (Binned _ b) lag =
 --    Channel A  |     ────════════════════════
 --    Channel B  |         ════════════════════────
 --  
-{-# SPECIALIZE trimData :: Time -> PackedVec Time Int -> PackedVec Time Int -> Time -> (PackedVec Time Int, PackedVec Time Int) #-}
 trimData :: (Ord t, Num t, Real v, V.Unbox v, V.Unbox t)
          => t -> PackedVec t v -> PackedVec t v -> t -> (PackedVec t v, PackedVec t v)
 trimData longlag (PVec a) (PVec b) lag =
