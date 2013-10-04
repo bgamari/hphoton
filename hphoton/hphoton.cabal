@@ -20,7 +20,7 @@ Library
                      HPhoton.BurstIdent.Bayes,
                      HPhoton.BurstIdent.BinThreshold
                      HPhoton.Types,
-                     HPhoton.RawTimestamps,
+                     HPhoton.IO.RawTimestamps,
                      HPhoton.Utils,
                      HPhoton.Corr.SparseCorr,
                      HPhoton.Corr.PackedVec,

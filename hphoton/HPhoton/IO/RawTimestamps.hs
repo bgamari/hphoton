@@ -1,4 +1,4 @@
-module HPhoton.RawTimestamps (readStamps) where
+module HPhoton.IO.RawTimestamps (readStamps) where
 
 import HPhoton.Types
 import Data.Vector.Storable as V
