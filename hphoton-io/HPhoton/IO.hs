@@ -1,30 +1,54 @@
-module HPhoton.IO (readStamps) where
+module HPhoton.IO ( ReadError(..)
+                  , Metadata(..)
+                  , Channel
+                  , readStamps
+                  ) where
 
+import Data.List
+import Data.Time.Clock
+import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Unboxed as VU
+import Control.Exception.Base (IOException)
+import Control.Monad.Trans.Class
 import Control.Error
+import Control.Applicative
+import HPhoton.Types
 import qualified HPhoton.IO.RawTimestamps as Raw
 
 data ReadError = ReadIOException IOException
                | ParseError String
+               | InvalidChannel
                | UnrecognizedFormat
 
 data Metadata = Jiffy Double
-              | CreationDate UTCTime
-              deriving (Show, Ord)
+              | CreationTime UTCTime
+              deriving (Show)
 
 type Channel = Int
 
-readStamps :: FilePath -> Channel -> EitherT ReadError IO (V.Vector Time, [Metadata])
-readStamps fname = tryReaders readers
+readStamps :: FilePath -> Channel
+           -> EitherT ReadError IO (VU.Vector Time, [Metadata])
+readStamps = readStamps' formats
     
-tryReaders :: FilePath -> Channel -> [Reader]           
+readStamps' :: [Format] -> FilePath -> Channel
+            -> EitherT ReadError IO (VU.Vector Time, [Metadata])
+readStamps' [] _ _ = left UnrecognizedFormat
+readStamps' (reader:rest) fname channel
+  | (fmtIdentify reader) fname = do
+      res <- lift $ runEitherT $ (fmtReader reader) fname channel
+      case res of
+        Left UnrecognizedFormat   -> readStamps' rest fname channel
+        Left err                  -> left err
+        Right ret                 -> return ret
+  | otherwise = readStamps' rest fname channel
 
 data Format = Format { fmtIdentify :: FilePath -> Bool
                      , fmtReader   :: FilePath -> Channel
-                                   -> EitherT ReadError IO (V.Vector Time, [Metadata])
+                                   -> EitherT ReadError IO (VU.Vector Time, [Metadata])
                      }
 
 formats :: [Format]
-readers = [fpgaTimetagger, picoharp, raw]
+formats = [fpgaTimetagger, picoharp, raw]
 
 hasExtension :: [String] -> String -> Bool
 hasExtension exts fname = any (`isPrefixOf` fname) exts
@@ -32,11 +56,16 @@ hasExtension exts fname = any (`isPrefixOf` fname) exts
 fpgaTimetagger :: Format
 fpgaTimetagger = Format (hasExtension [".timetag"]) reader
   where
-    reader n = undefined
+    reader fname channel = undefined
 
-rawReader :: (Identify, Reader)
-rawReader = Format (hasExtension [".times", ".raw"]) reader
+raw :: Format
+raw = Format (hasExtension [".times", ".raw"]) reader
   where
-    reader fname = do
-      stamps <- Raw.readStamps fname
+    reader fname channel = do
+      stamps <- VU.convert <$> lift (Raw.readStamps fname)
       return (stamps, [])
+
+picoharp :: Format
+picoharp = Format (hasExtension [".pt2", ".pt3"]) reader
+  where
+    reader fname channel = undefined
