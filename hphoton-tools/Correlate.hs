@@ -42,6 +42,7 @@ opts = Args
                   )
     <*> option    ( help "Channel"
                  <> short 'X'
+                 <> value 0
                   )
     <*> option    ( help "File containing timestamps"
                  <> value Nothing
@@ -50,6 +51,7 @@ opts = Args
                   )
     <*> option    ( help "Channel"
                  <> short 'Y'
+                 <> value 0
                   )
     <*> option    ( help "Timestamp timebase period"
                  <> long "jiffy"
