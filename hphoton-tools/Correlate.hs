@@ -71,7 +71,7 @@ opts = Args
                  <> value 1
                  <> metavar "TIME"
                   )
-    <*> option    ( help "Number of lags to computer per decade"
+    <*> option    ( help "Number of lags to compute per decade"
                  <> long "nbins"
                  <> short 'n'
                  <> value 20
