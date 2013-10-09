@@ -45,7 +45,7 @@ shiftedDot :: (Ord t, Num t, Num v, V.Unbox t, V.Unbox v)
            => t -> PackedVec t v -> PackedVec t v -> v
 shiftedDot shift a b = PV.dot a (PV.shiftVec shift b)
 
--- | Shifted squared dot product
+-- | Shifted sparse squared dot product
 shiftedDot2 :: (Ord t, Num t, Num v, V.Unbox t, V.Unbox v)
             => t -> PackedVec t v -> PackedVec t v -> v
 shiftedDot2 shift a b =
