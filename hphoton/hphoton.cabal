@@ -36,7 +36,6 @@ Library
                      deepseq,
                      storable-endian,
                      mwc-random,
-                     cmdargs,
                      bytestring,
                      transformers,
                      binary,
