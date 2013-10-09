@@ -19,6 +19,7 @@ data ReadError = ReadIOException IOException
                | ParseError String
                | InvalidChannel
                | UnrecognizedFormat
+               deriving (Show)
 
 data Metadata = Jiffy Double
               | CreationTime UTCTime
