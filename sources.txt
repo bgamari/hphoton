@@ -1,6 +1,7 @@
 ./hphoton
 ./hphoton-fpga-timetagger
 ./hphoton-tools
+./hphoton-io
 ./mixture-model
 ./chart-histogram
 ./pipes-bytestring
