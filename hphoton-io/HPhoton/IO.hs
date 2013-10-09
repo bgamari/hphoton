@@ -10,10 +10,12 @@ import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 import Control.Exception.Base (IOException)
 import Control.Monad.Trans.Class
+import Control.Monad.IO.Class
 import Control.Error
 import Control.Applicative
 import HPhoton.Types
 import qualified HPhoton.IO.RawTimestamps as Raw
+import qualified HPhoton.IO.FpgaTimetagger as Fpga
 
 data ReadError = ReadIOException IOException
                | ParseError String
@@ -53,11 +55,18 @@ formats = [fpgaTimetagger, picoharp, raw]
 
 hasExtension :: [String] -> String -> Bool
 hasExtension exts fname = any (`isPrefixOf` fname) exts
- 
+
+toEnum' :: (Bounded a, Enum a) => Int -> Maybe a
+toEnum' n | n < minBound || n > maxBound = Nothing
+          | otherwise                    = Just (toEnum n)
+
 fpgaTimetagger :: Format
 fpgaTimetagger = Format (hasExtension [".timetag"]) reader
   where
-    reader fname channel = undefined
+    reader fname channel = do
+      ch <- maybe (left InvalidChannel) right $ toEnum' channel
+      records <- liftIO $ Fpga.readRecords fname
+      return (Fpga.strobeTimes records ch, [])
 
 raw :: Format
 raw = Format (hasExtension [".times", ".raw"]) reader
