@@ -1,7 +1,7 @@
-module Main (main) where
-
 import           Control.Applicative
+import           Control.Error
 import           Control.Monad           (forM_, liftM)
+import           Control.Monad.Trans
 import           Data.List
 import           Data.Monoid
 import qualified Data.Vector.Unboxed     as V
@@ -11,7 +11,7 @@ import           Control.Parallel.Strategies
 
 import           HPhoton.Corr.PackedVec  (PackedVec (PVec))
 import           HPhoton.Corr.SparseCorr
-import           HPhoton.IO.RawTimestamps
+import           HPhoton.IO
 import           HPhoton.Types
 
 import           Options.Applicative
@@ -26,21 +26,30 @@ linspace n (a,b) = [a + fromIntegral i/fromIntegral n*(b-a) | i <- [1..n]]
 logspace n (a,b) = map (10**) $ linspace n (a,b)
 
 data Args = Args { xfile    :: FilePath
+                 , xchan    :: Channel
                  , yfile    :: Maybe FilePath
+                 , ychan    :: Channel
                  , jiffy_   :: RealTime
                  , shortlag :: RealTime
                  , longlag  :: RealTime
                  , nlags    :: Int }
             deriving (Show,Eq)
 
+opts :: Parser Args
 opts = Args
     <$> strOption ( help "File containing timestamps"
                  <> short 'x'
+                  )
+    <*> option    ( help "Channel"
+                 <> short 'X'
                   )
     <*> option    ( help "File containing timestamps"
                  <> value Nothing
                  <> reader (pure . str)
                  <> short 'y'
+                  )
+    <*> option    ( help "Channel"
+                 <> short 'Y'
                   )
     <*> option    ( help "Timestamp timebase period"
                  <> long "jiffy"
@@ -74,25 +83,30 @@ description = intercalate "\n"
     , "and its variance for the requested range of lag times."
     ]
 
-checkMonotonic :: Stamps -> IO ()
+checkMonotonic :: Monad m => Stamps -> EitherT String m ()
 checkMonotonic v =
     let f (l,t) t' | t > t'      = (t:l,t')
                    | otherwise   = (l,t')
     in case V.foldl' f ([],0) v of
             ([],_) -> return ()
-            (l,_)  -> print $ "Non-monotonic:" ++ show l
+            (l,_)  -> left $ "Non-monotonic:" ++ show l
 
-main :: IO ()
 main = do
-    args <- execParser $ info (helper <*> opts)
+    result <- runEitherT main'
+    case result of
+      Left err  -> putStrLn $ "Error: "++err
+      Right _   -> return ()
+      
+main' :: EitherT String IO ()
+main' = do
+    args <- lift $ execParser $ info (helper <*> opts)
         ( fullDesc
        <> header "Compute the correlation function of binary, discrete-time data"
        <> progDesc description
         )
 
-    let f = V.drop 1024 . V.convert -- HACK
-    a <- f <$> readStamps (xfile args)
-    b <- f <$> readStamps (fromMaybe (xfile args) (yfile args))
+    (a,metaA) <- fmapLT show $ readStamps (xfile args) (xchan args)
+    (b,metaB) <- fmapLT show $ readStamps (fromMaybe (xfile args) (yfile args)) (ychan args)
     checkMonotonic a
     checkMonotonic b
 
@@ -101,7 +115,7 @@ main = do
               $ logCorr clk (shortlag args, longlag args) (nlags args)
                         (vecFromStamps' a) (vecFromStamps' b)
 
-    forM_ pts $ \(lag, gee, bar) -> do
+    liftIO $ forM_ pts $ \(lag, gee, bar) -> do
         printf "%1.4e\t%1.8f\t%1.8e\n" lag gee bar
         hFlush stdout
 

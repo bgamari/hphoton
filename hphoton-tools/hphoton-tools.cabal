@@ -190,7 +190,8 @@ Executable correlate
   Ghc-options:       -threaded
   Build-depends:     base,
                      parallel,
-                     hphoton,
-                     hphoton-io,
                      vector-algorithms,
-                     optparse-applicative
+                     optparse-applicative,
+                     errors,
+                     hphoton,
+                     hphoton-io
