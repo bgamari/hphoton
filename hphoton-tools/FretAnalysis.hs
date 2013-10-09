@@ -183,7 +183,7 @@ readFretBins fretChannels binTime fname = do
             >-> PP.drop 1024
             >-> filterDeltas
             >-> toVector
-    let times = unwrapTimes 0xfffffffff . strobeTimes recs <$> fretChannels :: Fret (VU.Vector Time)
+    let times = unwrapTimes . strobeTimes recs <$> fretChannels :: Fret (VU.Vector Time)
         bins = fmap (fmap fromIntegral) $ binMany binTime times
     return bins
     

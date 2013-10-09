@@ -66,7 +66,7 @@ fpgaTimetagger = Format (hasExtension [".timetag"]) reader
     reader fname channel = do
       ch <- maybe (left InvalidChannel) right $ toEnum' channel
       records <- liftIO $ Fpga.readRecords fname
-      return (Fpga.unwrapTimes 0xfffffffff $ Fpga.strobeTimes records ch, [])
+      return (Fpga.unwrapTimes $ Fpga.strobeTimes records ch, [])
 
 raw :: Format
 raw = Format (hasExtension [".times", ".raw"]) reader
