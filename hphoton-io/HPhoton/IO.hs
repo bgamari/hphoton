@@ -54,7 +54,7 @@ formats :: [Format]
 formats = [fpgaTimetagger, picoharp, raw]
 
 hasExtension :: [String] -> String -> Bool
-hasExtension exts fname = any (`isPrefixOf` fname) exts
+hasExtension exts fname = any (`isSuffixOf` fname) exts
 
 toEnum' :: (Bounded a, Enum a) => Int -> Maybe a
 toEnum' n | n < minBound || n > maxBound = Nothing
