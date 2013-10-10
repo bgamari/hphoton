@@ -21,7 +21,6 @@ import           HPhoton.Types
 import           Options.Applicative
 import           System.IO
 import           Text.Printf
-import           Debug.Trace
 
 type Stamps = VU.Vector Time
 
@@ -144,7 +143,6 @@ logCorr clk (minLag, maxLag) lagsPerOctave a b =
                 lag' = fromIntegral lag * width
                 (gee, bar) = corr (realTimeToTime clk maxLag) a b lag'
                 realLag = realToFrac $ timeToRealTime clk lag'
-            in traceShow (width, lag, lag', realLag)
-               (realLag, gee, bar) : f rest ((lag+1) `div` binSz) (rebin binSz a) (rebin binSz b)
+            in (realLag, gee, bar) : f rest ((lag+1) `div` binSz) (rebin binSz a) (rebin binSz b)
     in f binResizes 1 a b
 
