@@ -22,9 +22,11 @@ decodeRecords = go BS.empty where
         | otherwise = do case Fpga.decodeRecord $ BU.unsafeTake 6 bs of
                              Just r  -> yield r >> go (BU.unsafeDrop 6 bs)
                              Nothing -> go (BU.unsafeDrop 6 bs)
+{-# INLINEABLE decodeRecords #-}
 
 encodeRecords :: (Monad m) => Pipe Record BS.ByteString m r
 encodeRecords = PP.map Fpga.encodeRecord
+{-# INLINEABLE encodeRecords #-}
 
 -- | Drop delta records that have no strobe events after them               
 filterDeltas :: (Monad m) => Pipe Record Record m r
@@ -35,3 +37,4 @@ filterDeltas = go Nothing where
                           else do maybe (return ()) yield lastDelta
                                   yield r
                                   go Nothing
+{-# INLINEABLE filterDeltas #-}
