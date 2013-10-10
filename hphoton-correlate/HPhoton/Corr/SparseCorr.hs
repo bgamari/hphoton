@@ -11,6 +11,8 @@ module HPhoton.Corr.SparseCorr ( corr
 import qualified Data.Vector.Generic as V
 import Data.Foldable (foldl')
 import Control.Monad
+import           Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
+import           Data.Vector.Fusion.Stream.Size
 
 import HPhoton.Types       
 import HPhoton.Corr.PackedVec (PackedVec(..))
@@ -42,26 +44,47 @@ unsafeVecFromStamps :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
 unsafeVecFromStamps = Binned 1 . PV.unsafePackedVec . V.map (,1) 
 {-# INLINEABLE unsafeVecFromStamps #-}
 
+data ReBinState s t a
+    = ReBinStart s
+    | ReBinHaveBin s t a
+    | ReBinDone
+
 -- | For condensing data into larger bins. This is sometimes desireable
 -- when computing longer lag times.
 rebin :: (Num t, Ord t, Integral t, V.Vector v (t,a), Num a, Eq a)
       => Int -> BinnedVec v t a -> BinnedVec v t a
 rebin n v | n <= 0 = error "Invalid rebin size"
 rebin 1 v = v
-rebin n (Binned oldWidth v) = Binned width (PV.unsafePackedVec $ V.fromList bins)
-    where width = oldWidth * fromIntegral n
-          start_bin t = floor $ realToFrac t / realToFrac width
-          bins = f (start_bin $ fst $ PV.head v) 0 $ V.toList $ getPackedVec v
-          f bin accum [] = if accum /= 0 then [(bin*width, accum)]
-                                         else []
-          f bin accum ((a,o):rest) 
-            | a <  width*bin      = error "Time went backwards. Did something overflow?"
-            | a >= width*(bin+1)  = if accum /= 0
-                                       then (bin*width, accum):f (start_bin a) o rest
-                                       else f (start_bin a) o rest
-            | otherwise           = f bin (accum+o) rest
-{-# INLINEABLE rebin #-}
-
+rebin n (Binned oldWidth v) =
+    Binned width (PV.unsafePackedVec $ V.unstream $ rebinStream width (V.stream $ getPackedVec v))
+  where
+    width = oldWidth * fromIntegral n
+    rebinStream :: (Monad m, Ord t, Num t, Integral t, Num a)
+                => t -> Stream m (t,a) -> Stream m (t,a)
+    rebinStream width (Stream stepa sa0 na) =
+        Stream step (ReBinStart sa0) (toMax na)
+      where
+        step (ReBinStart sa) = do
+          r <- stepa sa
+          return $ case r of
+            Yield (t,a) sa'  -> Skip (ReBinHaveBin sa' t a)
+            Skip sa'         -> Skip (ReBinStart sa')
+            Done             -> Done
+        step (ReBinHaveBin sa t0 a0) = do
+          r <- stepa sa
+          return $ case r of
+            Yield (t,a) sa'
+              | t < t0        -> error "SparseCorr.rebin: Time went backwards"
+              | t >= t0+width -> let t1 = (t `div` width) * width
+                                 in Yield (t0,a0) (ReBinHaveBin sa' t1 a)
+              | otherwise     -> Skip (ReBinHaveBin sa' t0 (a0+a))
+            Skip sa'          -> Skip (ReBinHaveBin sa' t0 a0)
+            Done              -> Yield (t0,a0) ReBinDone
+        step ReBinDone = return Done
+        {-# INLINE [0] step #-}
+    {-# INLINE [0] rebinStream #-}
+{-# INLINE [1] rebin #-}
+  
 corr :: (Show t, Num t, Integral t, Ord t, Real a, V.Vector v (t,a))
      => t -> BinnedVec v t a -> BinnedVec v t a -> t -> (Double, Double)
 corr longlag (Binned ta a) (Binned tb b) lag
