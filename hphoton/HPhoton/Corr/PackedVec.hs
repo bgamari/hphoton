@@ -18,20 +18,18 @@ module HPhoton.Corr.PackedVec ( Time
 import           Control.Monad.ST
 import           Data.Function               (on)
 import qualified Data.Vector.Algorithms.Heap as VA
-import qualified Data.Vector.Unboxed         as V
-import qualified Data.Vector.Generic         as G
-import Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
-import Data.Vector.Fusion.Stream.Size
+import qualified Data.Vector.Generic         as V
+import           Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
+import           Data.Vector.Fusion.Stream.Size
 import qualified Data.Vector.Fusion.Stream as S
 import           HPhoton.Types
 import           Prelude                     hiding (map, head, last)
 
 -- | An unboxed sparse vector
-newtype PackedVec i v = PVec {getPV :: V.Vector (i,v)}
-                      deriving (Show, Eq)
+newtype PackedVec v i a = PVec {getPV :: v (i,a)}
 
 -- | Construct a PackedVec, ensuring that the entries are sorted.
-packedVec :: (Ord i, V.Unbox i, V.Unbox v) => V.Vector (i,v) -> PackedVec i v
+packedVec :: (Ord i, V.Vector v (i,a)) => v (i,a) -> PackedVec v i a
 packedVec v = PVec $ runST $ do
                   v' <- V.thaw v
                   VA.sortBy (compare `on` fst) v'
@@ -39,14 +37,14 @@ packedVec v = PVec $ runST $ do
 {-# INLINE packedVec #-}
 
 -- | Construct a PackedVec assuming that the entries are already sorted.
-packedVec' :: (V.Unbox i, V.Unbox v) => V.Vector (i,v) -> PackedVec i v
+packedVec' :: (V.Vector v (i,a)) => v (i,a) -> PackedVec v i a
 packedVec' = PVec
 
-izipWith :: (Ord i, V.Unbox i, V.Unbox a, V.Unbox b, V.Unbox c)
+izipWith :: (Ord i, V.Vector v (i,a), V.Vector v (i,b), V.Vector v (i,c))
          => (i -> a -> b -> c)
-         -> PackedVec i a -> PackedVec i b -> PackedVec i c
+         -> PackedVec v i a -> PackedVec v i b -> PackedVec v i c
 izipWith f (PVec as) (PVec bs) =
-    PVec $ G.unstream $ izipStreamsWith f (G.stream as) (G.stream bs)
+    PVec $ V.unstream $ izipStreamsWith f (V.stream as) (V.stream bs)
 {-# INLINE izipWith #-}
 
 data ZipState sa sb i a b
@@ -89,20 +87,20 @@ izipStreamsWith f (Stream stepa sa0 na) (Stream stepb sb0 nb) =
     {-# INLINE [0] go #-}
 {-# INLINE [1] izipStreamsWith #-}
 
-dotStream' :: (Ord i, Eq i, Num v, V.Unbox i, V.Unbox v)
-     => V.Vector (i,v) -> V.Vector (i,v) -> v
+dotStream' :: (Ord i, Eq i, Num a, V.Vector v (i,a))
+     => v (i,a) -> v (i,a) -> a
 dotStream' as bs =
-    S.foldl' (+) 0 $ S.map snd $ izipStreamsWith (const (*)) (G.stream as) (G.stream bs)
+    S.foldl' (+) 0 $ S.map snd $ izipStreamsWith (const (*)) (V.stream as) (V.stream bs)
 {-# INLINE dotStream' #-}
 
 -- | Sparse vector dot product
-dot :: (Ord i, Num v, V.Unbox i, V.Unbox v)
-    => PackedVec i v -> PackedVec i v -> v
+dot :: (Ord i, Num a, V.Vector v (i,a))
+    => PackedVec v i a -> PackedVec v i a -> a
 dot (PVec as) (PVec bs) = dotStream' as bs
 {-# INLINE dot #-}
 
 -- | Fetch element i
-index :: (Eq i, Num v, V.Unbox i, V.Unbox v) => PackedVec i v -> i -> v
+index :: (Eq i, Num a, V.Vector v (i,a)) => PackedVec v i a -> i -> a
 index (PVec v) i =
     case V.find (\(x,_)->x==i) v of
         Just (x,y) -> y
@@ -110,30 +108,31 @@ index (PVec v) i =
 {-# INLINE index #-}
 
 -- | Shift the abscissas in a sparse vector
-shiftVec :: (Num i, V.Unbox i, V.Unbox v) => i -> PackedVec i v -> PackedVec i v
+shiftVec :: (Num i, V.Vector v (i,a)) => i -> PackedVec v i a -> PackedVec v i a
 shiftVec shift (PVec v) = PVec $ V.map (\(a,o)->(a+shift, o)) v
 {-# INLINE shiftVec #-}
 
-takeWhileIdx :: (Ord i, V.Unbox i, V.Unbox v)
-             => (i -> Bool) -> PackedVec i v -> PackedVec i v
+takeWhileIdx :: (Ord i, V.Vector v (i,a))
+             => (i -> Bool) -> PackedVec v i a -> PackedVec v i a
 takeWhileIdx f (PVec v) = PVec $ V.takeWhile (f . fst) v
 {-# INLINE takeWhileIdx #-}
 
-dropWhileIdx :: (Ord i, V.Unbox i, V.Unbox v)
-             => (i -> Bool) -> PackedVec i v -> PackedVec i v
+dropWhileIdx :: (Ord i, V.Vector v (i,a))
+             => (i -> Bool) -> PackedVec v i a -> PackedVec v i a
 dropWhileIdx f (PVec v) = PVec $ V.dropWhile (f . fst) v
 {-# INLINE dropWhileIdx #-}
 
 -- | Map operation
 -- Note that this will only map non-zero entries
-map :: (V.Unbox i, V.Unbox v, V.Unbox v') => (v -> v') -> PackedVec i v -> PackedVec i v'
+map :: (V.Vector v (i,a), V.Vector v (i,b))
+    => (a -> b) -> PackedVec v i a -> PackedVec v i b 
 map f (PVec v) = PVec $ V.map (\(x,y)->(x, f y)) v
 {-# INLINE map #-}
 
-head :: (Ord i, V.Unbox i, V.Unbox v) => PackedVec i v -> (i,v)
+head :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> (i,a)
 head (PVec v) = V.head v
 {-# INLINE head #-}
 
-last :: (Ord i, V.Unbox i, V.Unbox v) => PackedVec i v -> (i,v)
+last :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> (i,a)
 last (PVec v) = V.last v
 {-# INLINE last #-}

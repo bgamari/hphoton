@@ -8,7 +8,7 @@ module HPhoton.Corr.SparseCorr ( corr
                                , vecFromStamps, vecFromStamps'
                                ) where
 
-import qualified Data.Vector.Unboxed as V
+import qualified Data.Vector.Generic as V
 import Data.Foldable (foldl')
 import Control.Monad
 
@@ -28,22 +28,22 @@ binnedWidth (Binned t _) = t
 unBinned :: Binned t a -> a
 unBinned (Binned _ a) = a         
 
-type BinnedVec t v = Binned t (PackedVec t v)
+type BinnedVec v t a = Binned t (PackedVec v t a)
 
-vecFromStamps :: (Num t, Ord t, V.Unbox t, V.Unbox v, Num v)
-              => V.Vector t -> Binned t (PackedVec t v)
+vecFromStamps :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
+              => v t -> Binned t (PackedVec v t a)
 vecFromStamps = Binned 1 . PV.packedVec . V.map (,1) 
 {-# INLINEABLE vecFromStamps #-}
 
-vecFromStamps' :: (Num t, Ord t, V.Unbox t, V.Unbox v, Num v)
-              => V.Vector t -> Binned t (PackedVec t v)
+vecFromStamps' :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
+              => v t -> Binned t (PackedVec v t a)
 vecFromStamps' = Binned 1 . PV.packedVec' . V.map (,1) 
 {-# INLINEABLE vecFromStamps' #-}
 
 -- | For condensing data into larger bins. This is sometimes desireable
 -- when computing longer lag times.
-rebin :: (Num t, Ord t, Integral t, V.Unbox t, V.Unbox v, Num v, Eq v)
-      => Int -> BinnedVec t v -> BinnedVec t v
+rebin :: (Num t, Ord t, Integral t, V.Vector v (t,a), Num a, Eq a)
+      => Int -> BinnedVec v t a -> BinnedVec v t a
 rebin n v | n <= 0 = error "Invalid rebin size"
 rebin 1 v = v
 rebin n (Binned oldWidth (PVec v)) = Binned width (PVec $ V.fromList bins)
@@ -60,8 +60,8 @@ rebin n (Binned oldWidth (PVec v)) = Binned width (PVec $ V.fromList bins)
             | otherwise           = f bin (accum+o) rest
 {-# INLINEABLE rebin #-}
 
-corr :: (Show t, Num t, Integral t, Ord t, Real v, V.Unbox t, V.Unbox v)
-     => t -> BinnedVec t v -> BinnedVec t v -> t -> (Double, Double)
+corr :: (Show t, Num t, Integral t, Ord t, Real a, V.Vector v (t,a))
+     => t -> BinnedVec v t a -> BinnedVec v t a -> t -> (Double, Double)
 corr longlag (Binned ta a) (Binned tb b) lag
     | ta /= tb           = error "Can't correlate vectors of different bin lengths"
     | lag < ta           = error $ "Lag must be larger than bin time"
@@ -76,7 +76,7 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
     
         dot = realToFrac $ PV.dot sa sb
         ss = realToFrac $ PV.dot (PV.map (^2) sa) (PV.map (^2) sb)
-        count = realToFrac . V.sum . V.map snd . getPV
+        count = realToFrac . V.foldl' (\a (_,b)->a+b) 0 . getPV
         norm_denom = (count a / t) * (count b / t) :: Double
         g = dot / norm_denom / t
         bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
@@ -106,8 +106,8 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
 --    Channel B  |         ════════════════════────
 --  
 trimShiftData
-    :: (Ord t, Num t, Real v, V.Unbox v, V.Unbox t)
-    => t -> PackedVec t v -> PackedVec t v -> t -> (PackedVec t v, PackedVec t v)
+    :: (Ord t, Num t, Real a, V.Vector v (t,a))
+    => t -> PackedVec v t a -> PackedVec v t a -> t -> (PackedVec v t a, PackedVec v t a)
 trimShiftData longlag a b lag =
         let startT = max (fst $ PV.head a) (fst $ PV.head b)
             endT = min (fst $ PV.last a) (fst $ PV.last b)

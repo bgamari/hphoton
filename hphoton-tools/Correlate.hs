@@ -1,10 +1,13 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 import           Control.Applicative
 import           Control.Error
 import           Control.Monad           (forM_, liftM)
 import           Control.Monad.Trans
 import           Data.List
 import           Data.Monoid
-import qualified Data.Vector.Unboxed     as V
+import qualified Data.Vector.Generic     as V
+import qualified Data.Vector.Unboxed     as VU
 import           Data.Word
 import           Data.Maybe (fromMaybe)
 import           Control.Parallel.Strategies                 
@@ -18,7 +21,7 @@ import           Options.Applicative
 import           System.IO
 import           Text.Printf
 
-type Stamps = V.Vector Time
+type Stamps = VU.Vector Time
 
 log2 = logBase 2
 
@@ -122,8 +125,9 @@ main' = do
         printf "%1.4e\t%1.8f\t%1.8e\n" lag gee bar
         hFlush stdout
 
-logCorr :: Clock -> (RealTime, RealTime) -> Int
-        -> BinnedVec Time Int -> BinnedVec Time Int -> [(RealTime, Double, Double)]
+logCorr :: V.Vector v (Time, Int)
+        => Clock -> (RealTime, RealTime) -> Int
+        -> BinnedVec v Time Int -> BinnedVec v Time Int -> [(RealTime, Double, Double)]
 logCorr clk (minLag, maxLag) lagsPerOctave a b =
     let nOctaves = round $ log2 maxLag - log2 minLag
         lags = logspace (nOctaves*lagsPerOctave) (log2 minLag, log2 maxLag)
