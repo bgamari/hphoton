@@ -2,8 +2,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module HPhoton.Corr.PackedVec ( Time
-                              , PackedVec (..)
-                              , packedVec, packedVec'
+                              , PackedVec, getPackedVec
+                              , packedVec, unsafePackedVec
                               , index
                               , shiftVec
                               , map
@@ -26,7 +26,7 @@ import           HPhoton.Types
 import           Prelude                     hiding (map, head, last)
 
 -- | An unboxed sparse vector
-newtype PackedVec v i a = PVec {getPV :: v (i,a)}
+newtype PackedVec v i a = PVec {getPackedVec :: v (i,a)}
 
 -- | Construct a PackedVec, ensuring that the entries are sorted.
 packedVec :: (Ord i, V.Vector v (i,a)) => v (i,a) -> PackedVec v i a
@@ -37,8 +37,9 @@ packedVec v = PVec $ runST $ do
 {-# INLINE packedVec #-}
 
 -- | Construct a PackedVec assuming that the entries are already sorted.
-packedVec' :: (V.Vector v (i,a)) => v (i,a) -> PackedVec v i a
-packedVec' = PVec
+unsafePackedVec :: (V.Vector v (i,a)) => v (i,a) -> PackedVec v i a
+unsafePackedVec = PVec
+{-# INLINE unsafePackedVec #-}
 
 izipWith :: (Ord i, V.Vector v (i,a), V.Vector v (i,b), V.Vector v (i,c))
          => (i -> a -> b -> c)

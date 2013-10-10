@@ -5,7 +5,7 @@ module HPhoton.Corr.SparseCorr ( corr
                                , Binned(..), binnedWidth, unBinned
                                , PackedVec
                                , BinnedVec
-                               , vecFromStamps, vecFromStamps'
+                               , vecFromStamps, unsafeVecFromStamps
                                ) where
 
 import qualified Data.Vector.Generic as V
@@ -24,9 +24,11 @@ instance Functor (Binned t) where
      
 binnedWidth :: Binned t a -> t
 binnedWidth (Binned t _) = t
-           
+{-# INLINEABLE binnedWidth #-}
+
 unBinned :: Binned t a -> a
-unBinned (Binned _ a) = a         
+unBinned (Binned _ a) = a
+{-# INLINEABLE unBinned #-}
 
 type BinnedVec v t a = Binned t (PackedVec v t a)
 
@@ -35,10 +37,10 @@ vecFromStamps :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
 vecFromStamps = Binned 1 . PV.packedVec . V.map (,1) 
 {-# INLINEABLE vecFromStamps #-}
 
-vecFromStamps' :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
-              => v t -> Binned t (PackedVec v t a)
-vecFromStamps' = Binned 1 . PV.packedVec' . V.map (,1) 
-{-# INLINEABLE vecFromStamps' #-}
+unsafeVecFromStamps :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
+                    => v t -> Binned t (PackedVec v t a)
+unsafeVecFromStamps = Binned 1 . PV.unsafePackedVec . V.map (,1) 
+{-# INLINEABLE unsafeVecFromStamps #-}
 
 -- | For condensing data into larger bins. This is sometimes desireable
 -- when computing longer lag times.
@@ -46,10 +48,10 @@ rebin :: (Num t, Ord t, Integral t, V.Vector v (t,a), Num a, Eq a)
       => Int -> BinnedVec v t a -> BinnedVec v t a
 rebin n v | n <= 0 = error "Invalid rebin size"
 rebin 1 v = v
-rebin n (Binned oldWidth (PVec v)) = Binned width (PVec $ V.fromList bins)
+rebin n (Binned oldWidth v) = Binned width (PV.unsafePackedVec $ V.fromList bins)
     where width = oldWidth * fromIntegral n
           start_bin t = floor $ realToFrac t / realToFrac width
-          bins = f (start_bin $ fst $ V.head v) 0 $ V.toList v
+          bins = f (start_bin $ fst $ PV.head v) 0 $ V.toList $ getPackedVec v
           f bin accum [] = if accum /= 0 then [(bin*width, accum)]
                                          else []
           f bin accum ((a,o):rest) 
@@ -68,15 +70,15 @@ corr longlag (Binned ta a) (Binned tb b) lag
     | lag `mod` ta /= 0  = error $ "Lag ("++show lag++") must be multiple of bin time of a ("++show ta++")"
 corr longlag (Binned binWidth a) (Binned _ b) lag =
     let timespan x = (fst $ V.last x) - (fst $ V.head x)
-        ta = timespan (getPV a)
-        tb = timespan (getPV b)
+        ta = timespan (getPackedVec a)
+        tb = timespan (getPackedVec b)
         -- experiment length in bins
         t = fromIntegral (min ta tb) / realToFrac binWidth :: Double
         (sa,sb) = trimShiftData longlag a b lag
     
         dot = realToFrac $ PV.dot sa sb
         ss = realToFrac $ PV.dot (PV.map (^2) sa) (PV.map (^2) sb)
-        count = realToFrac . V.foldl' (\a (_,b)->a+b) 0 . getPV
+        count = realToFrac . V.foldl' (\a (_,b)->a+b) 0 . getPackedVec
         norm_denom = (count a / t) * (count b / t) :: Double
         g = dot / norm_denom / t
         bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
@@ -117,4 +119,4 @@ trimShiftData longlag a b lag =
                $ PV.dropWhileIdx (<  (startT + longlag))
                $ PV.shiftVec lag b
         in (a', b')
-{-# INLINEABLE trimShiftData #-}
+{-# INLINE trimShiftData #-}

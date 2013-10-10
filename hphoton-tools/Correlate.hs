@@ -13,7 +13,7 @@ import           Data.Word
 import           Data.Maybe (fromMaybe)
 import           Control.Parallel.Strategies                 
 
-import           HPhoton.Corr.PackedVec  (PackedVec (PVec))
+import           HPhoton.Corr.PackedVec  (PackedVec)
 import           HPhoton.Corr.SparseCorr
 import           HPhoton.IO
 import           HPhoton.Types
@@ -116,7 +116,7 @@ main' = do
     let clk = clockFromJiffy $ jiffy_ args
     let pts = withStrategy (parList rdeepseq)
               $ logCorr clk (shortlag args, longlag args) (nlags args)
-                        (vecFromStamps' a) (vecFromStamps' b)
+                        (unsafeVecFromStamps a) (unsafeVecFromStamps b)
 
     liftIO $ forM_ pts $ \(lag, gee, bar) -> do
         printf "%1.4e\t%1.8f\t%1.8e\n" lag gee bar
