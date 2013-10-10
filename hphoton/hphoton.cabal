@@ -72,7 +72,6 @@ test-suite Main
                      data-accessor,
                      Chart >=1.0,
                      chart-histogram,
-                     fclabels,
                      QuickCheck,
                      test-framework,
                      test-framework-quickcheck2,

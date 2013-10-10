@@ -3,7 +3,6 @@ module HPhoton.Bin.Tests (tests) where
 import HPhoton.Types
 import HPhoton.Bin
 
-import Data.Label
 import qualified Data.Vector.Unboxed as V
   
 import Test.Framework.Providers.QuickCheck2 (testProperty)

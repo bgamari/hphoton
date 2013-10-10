@@ -3,7 +3,6 @@ module HPhoton.BurstIdent.Bayes.Tests (tests) where
 import HPhoton.Types
 import HPhoton.BurstIdent.Bayes
   
-import Data.Label
 import qualified Data.Vector.Unboxed as V
   
 import Test.QuickCheck.Modifiers
