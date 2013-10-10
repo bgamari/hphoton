@@ -184,14 +184,3 @@ Executable analyze-many
                      aeson,
                      process,
                      parallel-io
-
-Executable correlate
-  Main-is:           Correlate.hs
-  Ghc-options:       -threaded
-  Build-depends:     base,
-                     parallel,
-                     vector-algorithms,
-                     optparse-applicative,
-                     errors,
-                     hphoton,
-                     hphoton-io

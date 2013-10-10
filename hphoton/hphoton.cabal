@@ -22,8 +22,6 @@ Library
                      HPhoton.Types,
                      HPhoton.Unwrap,
                      HPhoton.Utils,
-                     HPhoton.Corr.SparseCorr,
-                     HPhoton.Corr.PackedVec,
                      Graphics.Rendering.Chart.Simple.Histogram
 
   Build-depends:     base,
