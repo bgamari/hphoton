@@ -2,13 +2,17 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module HPhoton.Corr.PackedVec ( Time
-                              , PackedVec (PVec)
+                              , PackedVec (..)
                               , packedVec, packedVec'
                               , index
                               , shiftVec
                               , map
                               , dot
                               , izipWith
+                              , dropWhileIdx
+                              , takeWhileIdx
+                              , head
+                              , last
                               ) where
 
 import           Control.Monad.ST
@@ -20,10 +24,10 @@ import Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
 import Data.Vector.Fusion.Stream.Size
 import qualified Data.Vector.Fusion.Stream as S
 import           HPhoton.Types
-import           Prelude                     hiding (map)
+import           Prelude                     hiding (map, head, last)
 
 -- | An unboxed sparse vector
-newtype PackedVec i v = PVec (V.Vector (i,v))
+newtype PackedVec i v = PVec {getPV :: V.Vector (i,v)}
                       deriving (Show, Eq)
 
 -- | Construct a PackedVec, ensuring that the entries are sorted.
@@ -110,15 +114,15 @@ shiftVec :: (Num i, V.Unbox i, V.Unbox v) => i -> PackedVec i v -> PackedVec i v
 shiftVec shift (PVec v) = PVec $ V.map (\(a,o)->(a+shift, o)) v
 {-# INLINE shiftVec #-}
 
--- | Zero elements until index i
-dropUntil :: (Ord i, V.Unbox i, V.Unbox v) => i -> PackedVec i v -> PackedVec i v
-dropUntil i (PVec v) = PVec $ V.dropWhile (\(a,o)->a < i) v
-{-# INLINE dropUntil #-}
+takeWhileIdx :: (Ord i, V.Unbox i, V.Unbox v)
+             => (i -> Bool) -> PackedVec i v -> PackedVec i v
+takeWhileIdx f (PVec v) = PVec $ V.takeWhile (f . fst) v
+{-# INLINE takeWhileIdx #-}
 
--- | Zero elements after index i
-takeUntil :: (Ord i, V.Unbox i, V.Unbox v) => i -> PackedVec i v -> PackedVec i v
-takeUntil i (PVec v) = PVec $ V.takeWhile (\(a,o)->a < i) v
-{-# INLINE takeUntil #-}
+dropWhileIdx :: (Ord i, V.Unbox i, V.Unbox v)
+             => (i -> Bool) -> PackedVec i v -> PackedVec i v
+dropWhileIdx f (PVec v) = PVec $ V.dropWhile (f . fst) v
+{-# INLINE dropWhileIdx #-}
 
 -- | Map operation
 -- Note that this will only map non-zero entries
@@ -126,3 +130,10 @@ map :: (V.Unbox i, V.Unbox v, V.Unbox v') => (v -> v') -> PackedVec i v -> Packe
 map f (PVec v) = PVec $ V.map (\(x,y)->(x, f y)) v
 {-# INLINE map #-}
 
+head :: (Ord i, V.Unbox i, V.Unbox v) => PackedVec i v -> (i,v)
+head (PVec v) = V.head v
+{-# INLINE head #-}
+
+last :: (Ord i, V.Unbox i, V.Unbox v) => PackedVec i v -> (i,v)
+last (PVec v) = V.last v
+{-# INLINE last #-}

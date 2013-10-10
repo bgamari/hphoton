@@ -20,10 +20,11 @@ import           Text.Printf
 
 type Stamps = V.Vector Time
 
-log10 = logBase 10
+log2 = logBase 2
+
 linspace, logspace :: Int -> (Double, Double) -> [Double]
 linspace n (a,b) = [a + fromIntegral i/fromIntegral n*(b-a) | i <- [1..n]]
-logspace n (a,b) = map (10**) $ linspace n (a,b)
+logspace n (a,b) = map (2**) $ linspace n (a,b)
 
 data Args = Args { xfile    :: FilePath
                  , xchan    :: Channel
@@ -71,7 +72,7 @@ opts = Args
                  <> value 1
                  <> metavar "TIME"
                   )
-    <*> option    ( help "Number of lags to compute per decade"
+    <*> option    ( help "Number of lags to compute per octave"
                  <> long "nbins"
                  <> short 'n'
                  <> value 20
@@ -123,11 +124,10 @@ main' = do
 
 logCorr :: Clock -> (RealTime, RealTime) -> Int
         -> BinnedVec Time Int -> BinnedVec Time Int -> [(RealTime, Double, Double)]
-logCorr clk (minLag, maxLag) lagsPerDecade a b =
-    let nDecades = round $ log10 maxLag - log10 minLag
-        lags = logspace (nDecades*lagsPerDecade) (log10 minLag, log10 maxLag)
-        initialBinSize = 1 -- TODO
-        binResizes = initialBinSize:tail (cycle $ replicate (lagsPerDecade-1) 1 ++ [10])
+logCorr clk (minLag, maxLag) lagsPerOctave a b =
+    let nOctaves = round $ log2 maxLag - log2 minLag
+        lags = logspace (nOctaves*lagsPerOctave) (log2 minLag, log2 maxLag)
+        binResizes = replicate 16 1 ++ (cycle $ replicate (lagsPerOctave-1) 1 ++ [2])
         f [] _ _ = []
         f ((lag,binSz):rest) a b =
             let a' = rebin binSz a
