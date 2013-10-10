@@ -37,9 +37,21 @@ prop_dot_mag x =
         mag2 = V.sum $ V.map (^2) $ V.map snd xs
     in printTestCase ("initial="++show mag1++" final="++show mag2) (mag1==mag2)
 
+prop_dense_dot_mag :: (V.Unbox v, Num v, Eq v, Show v)
+                   => V.Vector v -> V.Vector v -> Property
+prop_dense_dot_mag xs ys =
+    let mag1 = dot (PVec $ V.indexed xs) (PVec $ V.indexed ys)
+        mag2 = V.sum $ V.zipWith (*) xs ys
+    in printTestCase ("initial="++show mag1++" final="++show mag2) (mag1==mag2)
+
+instance (V.Unbox v, Arbitrary v) => Arbitrary (V.Vector v) where
+    arbitrary = sized $ \n->V.replicateM n arbitrary
+
 tests =
     [ testProperty "Dot product magnitude"
                    (prop_dot_mag :: PackedVec Int Int -> Property)
+    , testProperty "Dense dot product magnitude"
+                   (prop_dense_dot_mag :: V.Vector Int -> V.Vector Int -> Property)
     , testProperty "Dot product shift invariant"
                    (prop_dot_shift_invar :: Int -> PackedVec Int Int -> PackedVec Int Int -> Property)
     , testProperty "Shift/unshift is identity"
