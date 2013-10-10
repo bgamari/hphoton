@@ -7,7 +7,7 @@ module HPhoton.Corr.PackedVec ( Time
                               , index
                               , shiftVec
                               , map
-                              , dot
+                              , dot, dotSqr
                               , izipWith
                               , dropWhileIdx
                               , takeWhileIdx
@@ -89,10 +89,28 @@ izipStreamsWith f (Stream stepa sa0 na) (Stream stepb sb0 nb) =
 {-# INLINE [1] izipStreamsWith #-}
 
 dotStream' :: (Ord i, Eq i, Num a, V.Vector v (i,a))
-     => v (i,a) -> v (i,a) -> a
+           => v (i,a) -> v (i,a) -> a
 dotStream' as bs =
     S.foldl' (+) 0 $ S.map snd $ izipStreamsWith (const (*)) (V.stream as) (V.stream bs)
 {-# INLINE dotStream' #-}
+
+-- | Strict pair
+data Pair a b = Pair !a !b
+
+dotSqrStream' :: (Ord i, Eq i, Num a, V.Vector v (i,a))
+              => v (i,a) -> v (i,a) -> (a,a)
+dotSqrStream' as bs =
+    pairToTuple
+    $ S.foldl' (\(Pair a b) (c,d) -> Pair (a+c) (b+d)) (Pair 0 0)
+    $ S.map snd
+    $ izipStreamsWith (const $ \a b->(a*b, a^2 * b^2)) (V.stream as) (V.stream bs)
+  where pairToTuple (Pair a b) = (a, b)
+{-# INLINE dotSqrStream' #-}
+    
+dotSqr :: (Ord i, Num a, V.Vector v (i,a))
+       => PackedVec v i a -> PackedVec v i a -> (a,a)
+dotSqr (PVec as) (PVec bs) = dotSqrStream' as bs
+{-# INLINE dotSqr #-}
 
 -- | Sparse vector dot product
 dot :: (Ord i, Num a, V.Vector v (i,a))

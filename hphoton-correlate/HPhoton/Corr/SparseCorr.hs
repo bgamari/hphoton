@@ -99,8 +99,7 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
         t = fromIntegral (min ta tb) / realToFrac binWidth :: Double
         (sa,sb) = trimShiftData longlag a b lag
     
-        dot = realToFrac $ PV.dot sa sb
-        ss = realToFrac $ PV.dot (PV.map (^2) sa) (PV.map (^2) sb)
+        (dot,ss) = case PV.dotSqr sa sb of (a,b) -> (realToFrac a, realToFrac b)
         count = realToFrac . V.foldl' (\a (_,b)->a+b) 0 . getPackedVec
         norm_denom = (count a / t) * (count b / t) :: Double
         g = dot / norm_denom / t
