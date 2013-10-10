@@ -140,13 +140,11 @@ logCorr clk (minLag, maxLag) lagsPerOctave a b =
           -> [(RealTime, Double, Double)]
         f [] _ _ _ = []
         f (binSz:rest) lag a b =
-            let a' = rebin binSz a
-                b' = rebin binSz b
-                width = binnedWidth a'
+            let width = binnedWidth a
                 lag' = fromIntegral lag * width
-                (gee, bar) = corr (realTimeToTime clk maxLag) a' b' lag'
+                (gee, bar) = corr (realTimeToTime clk maxLag) a b lag'
                 realLag = realToFrac $ timeToRealTime clk lag'
             in traceShow (width, lag, lag', realLag)
-               (realLag, gee, bar) : f rest ((lag+1) `div` binSz) a' b'
+               (realLag, gee, bar) : f rest ((lag+1) `div` binSz) (rebin binSz a) (rebin binSz b)
     in f binResizes 1 a b
 
