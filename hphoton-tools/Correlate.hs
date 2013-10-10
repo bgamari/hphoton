@@ -5,6 +5,7 @@ import           Control.Error
 import           Control.Monad           (forM_, liftM)
 import           Control.Monad.Trans
 import           Data.List
+import           Data.Function (on)
 import           Data.Monoid
 import qualified Data.Vector.Generic     as V
 import qualified Data.Vector.Unboxed     as VU
@@ -20,14 +21,11 @@ import           HPhoton.Types
 import           Options.Applicative
 import           System.IO
 import           Text.Printf
+import           Debug.Trace
 
 type Stamps = VU.Vector Time
 
 log2 = logBase 2
-
-linspace, logspace :: Int -> (Double, Double) -> [Double]
-linspace n (a,b) = [a + fromIntegral i/fromIntegral n*(b-a) | i <- [1..n]]
-logspace n (a,b) = map (2**) $ linspace n (a,b)
 
 data Args = Args { xfile    :: FilePath
                  , xchan    :: Channel
@@ -129,16 +127,26 @@ logCorr :: V.Vector v (Time, Int)
         => Clock -> (RealTime, RealTime) -> Int
         -> BinnedVec v Time Int -> BinnedVec v Time Int -> [(RealTime, Double, Double)]
 logCorr clk (minLag, maxLag) lagsPerOctave a b =
-    let nOctaves = round $ log2 maxLag - log2 minLag
-        lags = logspace (nOctaves*lagsPerOctave) (log2 minLag, log2 maxLag)
-        binResizes = replicate 16 1 ++ (cycle $ replicate (lagsPerOctave-1) 1 ++ [2])
-        f [] _ _ = []
-        f ((lag,binSz):rest) a b =
+    let nOctaves = ceiling $ log2 maxLag - log2 minLag
+        m = 2**(1 / realToFrac lagsPerOctave)
+        lags = map (realTimeToTime clk) 
+               $ [minLag * m^i | i <- [0..lagsPerOctave*nOctaves-1]]
+        binResizes = take (nOctaves * lagsPerOctave)
+                   $ replicate (2*lagsPerOctave) 1
+                  ++ cycle (take lagsPerOctave $ 2:repeat 1)
+        f :: V.Vector v (Time, Int)
+          => [Int] -> Int -- ^ Measured in bins
+          -> BinnedVec v Time Int -> BinnedVec v Time Int
+          -> [(RealTime, Double, Double)]
+        f [] _ _ _ = []
+        f (binSz:rest) lag a b =
             let a' = rebin binSz a
                 b' = rebin binSz b
                 width = binnedWidth a'
-                lag' = realTimeToTime clk lag `quot` width * width
+                lag' = fromIntegral lag * width
                 (gee, bar) = corr (realTimeToTime clk maxLag) a' b' lag'
-            in (lag, gee, bar) : f rest a' b'
-    in f (zip lags binResizes) a b
+                realLag = realToFrac $ timeToRealTime clk lag'
+            in traceShow (width, lag, lag', realLag)
+               (realLag, gee, bar) : f rest ((lag+1) `div` binSz) a' b'
+    in f binResizes 1 a b
 
