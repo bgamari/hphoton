@@ -8,6 +8,7 @@ module HPhoton.Corr.PackedVec ( Time
                               , shiftVec
                               , map
                               , dot
+                              , izipWith
                               ) where
 
 import           Control.Monad.ST
@@ -42,6 +43,7 @@ izipWith :: (Ord i, V.Unbox i, V.Unbox a, V.Unbox b, V.Unbox c)
          -> PackedVec i a -> PackedVec i b -> PackedVec i c
 izipWith f (PVec as) (PVec bs) =
     PVec $ G.unstream $ izipStreamsWith f (G.stream as) (G.stream bs)
+{-# INLINE izipWith #-}
 
 data ZipState sa sb i a b
     = ZipStart sa sb

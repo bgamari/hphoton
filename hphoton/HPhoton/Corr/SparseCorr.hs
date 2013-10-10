@@ -44,6 +44,7 @@ vecFromStamps' = Binned 1 . PV.packedVec' . V.map (,1)
 shiftedDot :: (Ord t, Num t, Num v, V.Unbox t, V.Unbox v)
            => t -> PackedVec t v -> PackedVec t v -> v
 shiftedDot shift a b = PV.dot a (PV.shiftVec shift b)
+{-# INLINEABLE shiftedDot #-}
 
 -- | Shifted sparse squared dot product
 shiftedDot2 :: (Ord t, Num t, Num v, V.Unbox t, V.Unbox v)
@@ -51,6 +52,7 @@ shiftedDot2 :: (Ord t, Num t, Num v, V.Unbox t, V.Unbox v)
 shiftedDot2 shift a b =
     let sqr = PV.map (^2)
     in PV.dot (sqr a) (sqr $ PV.shiftVec shift b)
+{-# INLINEABLE shiftedDot2 #-}
 
 -- | For condensing data into larger bins. This is sometimes desireable
 -- when computing longer lag times.
@@ -90,7 +92,8 @@ corr' width (PVec a) (PVec b) lag
             norm_denom = (count a / t) * (count b / t) :: Double
             g = dot / norm_denom / t
             bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
-        in (g, sqrt bar2)
+        in (g, sqrt bar2)    
+{-# INLINEABLE corr' #-}
 
 corr :: (Show t, Num t, Integral t, Ord t, Real v, V.Unbox t, V.Unbox v)
      => t -> BinnedVec t v -> BinnedVec t v -> t -> (Double, Double)
@@ -134,3 +137,4 @@ trimData longlag (PVec a) (PVec b) lag =
             b' = V.dropWhile (\(a,o) -> a < (startT + longlag - lag)) b
             b'' = V.takeWhile (\(a,o) -> a <= (endT - lag)) b'
         in (PVec a', PVec b'')
+{-# INLINEABLE trimData #-}
