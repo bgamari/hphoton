@@ -41,3 +41,20 @@ Executable correlate
                      errors,
                      hphoton,
                      hphoton-io
+
+test-suite Main
+  Hs-source-dirs:    .,tests
+  Main-is:           Test.hs
+  Type:              exitcode-stdio-1.0
+  Build-depends:     base,
+                     ghc-prim,
+                     vector-algorithms,
+                     random-fu,
+                     vector,
+                     mwc-random,
+                     QuickCheck,
+                     test-framework,
+                     test-framework-quickcheck2,
+                     test-framework-hunit,
+                     HUnit,
+                     hphoton
