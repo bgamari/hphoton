@@ -1,0 +1,129 @@
+---
+title: Correlation functions of fluorescence intensity trajectories
+author: Ben Gamari
+---
+
+Fluctuation correlation spectroscopy (FCS) enables study of (weakly)
+stationary systems in bulk through examination of the temporal
+intensity correlation function between two fluorescence intensity
+trajectories $I_a$ and $I_b$,
+
+\begin{equation}
+  G(\tau) = \frac{\langle I_a(t) I_b(t) \rangle}{\langle I_a(t) \rangle \, \langle I_b(t) \rangle} 
+\end{equation}
+
+FCS experiments demand high photon counts (typically greater than
+$10^8$) at moderate count rates (between 1 kHz and 100 kHz) acquired
+with high temporal resolution. This implies a sparsity which many
+naive analysis methods are ill-prepared to handle. While $G(\tau)$ can
+be calcuated from the Fourier transform of the power spectrum of
+$I(t)$ with a computational cost of $N \log N$, this technique is far
+more suitable for dense data. For the purposes of a fluorescence
+experiment, far better efficiency can be achieved by a direct
+evaluation of the expectations seen in Eq. 1.
+
+## Boundary conditions
+
+As the duration of a real-world experiment is finite, treatment of
+boundaries must be considered. Let us consider an experiment resulting
+in photons arrivals between $t=0$ to $t=T$. We can treat these
+boundaries in three distinct ways:
+
+  * dark boundary conditions: $I(t) = 0$ for $t < 0$ and $t > T$
+  * periodic boundary conditions
+      * standard: $I(t+T) = I(t)$
+      * even-odd: $I(t+T) = I(T-t)$
+  * extended boundary conditions: described below
+
+The simplest of these is dark boundary conditions although this
+typically produces severe artifacts in the resulting correlation
+function.
+
+Periodic boundary conditions are also simple although have difficulty
+with non-stationary processes.
+
+Under extended boundary conditions, the data is truncated such that a
+fixed-sized subset appears in the expectation summation for each
+lag. This avoids the difficulties of patching together different
+regions of non-stationary processes as well as the need to clamp
+values in unobserved regions of the experiment.
+
+To put it concretely, if we wish to calculate $G(\tau)$ for $\tau \in
+[0, \tau_\mathrm{max}]$, we examine the subset of intensity points
+satisfying $t < T - \tau_\mathrm{max}$. Since proper experimental
+design requires that $T \gg \tau_\mathrm{max}$, at most a negligible
+fraction of the data is discarded at each lag.
+
+## Correlating timestamp observations
+
+In the case of photon timestamping experiments, we measure the
+continuous intensity $I(t)$ indirectly through a series of photon
+counts, $\mu_k$, integrated over a sampling time $t_s$,
+
+\begin{equation}
+\mu_k = \int_{t_s k}^{t_s (k+1)} I(t) ~ dt
+\end{equation}
+
+In the case of raw timestamp data with no additional binning, $t_s$ is
+given by the period of the timestamp clock. As most timetagging
+hardware can only register one photon per channel per clock tick,
+$\mu_k$ is either 0 or 1.
+
+The correlation function in this discrete case, $\tilde G$, is given
+by,
+
+\begin{equation}
+\tilde G(k) = \frac{1}{N} \sum_{i=1}^N \mu_i \mu_{i+k} \label{GTilde}
+\end{equation}
+
+We note that we have an approximate estimator of our true correlation
+function, $G$. Intuitively, we can consider this estimator to be an
+average over pair-wise correlations in intensities within the bins
+under consideration.  Under an assumption of stationarity, we can
+relate this approximation to $G$ \cite{Schatzel1993} (neglecting
+normalization for the sake of clarity),
+
+\begin{align*}
+  \tilde G(k) &= \int_0^{t_s} \int_0^{t_s} G(k t_s + t + t') ~ dt ~ dt' \nonumber \\
+         &= \int_0^{t_s} \int_{-t'}^{t_s-t'} G(k t_s + t) ~ dt ~ dt' \nonumber \\
+         &= \int_{-t_s}^{t_s} G(k t_s + t) (t_s - |t|) ~ dt
+\end{align*}
+
+We note that our approximation has given rise to a factor $(t_s - |t|)$. This
+factor, known in the literature as the ``triangular averaging'' factor,
+contributes a positive error to our estimate of $G$ with large values of $t_s$. 
+
+For optimal signal-to-noise, the sample time used by the correlator should be
+adjusted proportionally to the lag being computed.\cite{Schatzel1993} This,
+however, must be weighted against the increased triangular error induced by
+larger bin sizes.  It is generally accepted that a value of $\tau / t_s \ge 8$
+is a reasonable compromise, allowing for high signal-to-noise while maintaining
+low error due to triangular averaging\cite{Schatzel1990}.
+
+## Calculation of standard deviation
+
+Knowledge of the uncertainty on a correlation function is crucial to proper
+data analysis. While there exist several techniques for computing the standard
+deviation of a correlation function\cite{Koppel1974}\cite{Wohland2001}, the
+simplest is to compute a variance over a sample of several correlations derived
+from different regions on the same data.
+
+## Implementation
+
+For the purposes of implementation, it is useful to note the striking
+resemblence between \eqref{GTilde} and a conventional inner product between a
+vector $\vec\mu$ and itself with its components shifted (which we will denote
+by $\vec\mu^{+\Delta t}$). This notion of a ``shifted dot-product'' serves as the
+basis for our optimized correlator implementation.
+
+Due to the sparse nature of FCS photon data, we use a sparse vector
+representation, `PackedVec`. A vector's entries are encoded by their
+index (e.g. bin start time, $t_i$) and value (e.g. bin counts,
+$\mu_{t_i}$), with zero-valued entries omitted from the
+representation.
+
+\begin{equation}
+  \vec\mu \cdot \vec\mu^{+\Delta t} = \sum_{i,j} \mu_{t_i} \mu_{t_j} \delta(t_i - t_j - \Delta t)
+\end{equation}
+
+
