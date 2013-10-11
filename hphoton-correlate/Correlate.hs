@@ -125,5 +125,5 @@ main' = do
                            (unsafeVecFromStamps a) (unsafeVecFromStamps b)
 
     liftIO $ forM_ pts $ \(lag, gee, bar) -> do
-        printf "%1.4e\t%1.8f\t%1.8e\n" (timeToRealTime clk lag) gee bar
+        printf "%1.4e\t%1.8f\t%1.8e\n" (timeToRealTime clk lag) gee (bar^2)
         hFlush stdout
