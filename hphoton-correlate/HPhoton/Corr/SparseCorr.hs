@@ -101,15 +101,15 @@ corr longlag (Binned ta a) (Binned tb b) lag
   | lag `mod` ta /= 0  = Left "Lag must be multiple of bin time"
 corr longlag (Binned binWidth a) (Binned _ b) lag =
     let timespan x = (fst $ V.last x) - (fst $ V.head x)
-        ta = timespan (getPackedVec a)
-        tb = timespan (getPackedVec b)
+        ta = timespan (getPackedVec sa)
+        tb = timespan (getPackedVec sb)
         -- experiment length in bins
         t = fromIntegral (min ta tb) / realToFrac binWidth :: Double
         (sa,sb) = trimShiftData longlag a b lag
     
         (dot,ss) = case PV.dotSqr sa sb of (a,b) -> (realToFrac a, realToFrac b)
         count = realToFrac . PV.sum
-        norm_denom = (count a / t) * (count b / t) :: Double
+        norm_denom = (count sa / t) * (count sb / t) :: Double
         g = dot / norm_denom / t
         bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
     in Right (g, sqrt bar2)
