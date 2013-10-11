@@ -118,35 +118,12 @@ main' = do
     checkMonotonic b
 
     let clk = clockFromJiffy $ jiffy_ args
-    let pts = withStrategy (parList rdeepseq)
-              $ logCorr clk (shortlag args, longlag args) (nlags args)
-                        (unsafeVecFromStamps a) (unsafeVecFromStamps b)
+    let pts = let short = realTimeToTime clk (shortlag args)
+                  long = realTimeToTime clk (longlag args)
+              in withStrategy (parList rdeepseq)
+                 $ logCorr (short, long) (nlags args)
+                           (unsafeVecFromStamps a) (unsafeVecFromStamps b)
 
     liftIO $ forM_ pts $ \(lag, gee, bar) -> do
-        printf "%1.4e\t%1.8f\t%1.8e\n" lag gee bar
+        printf "%1.4e\t%1.8f\t%1.8e\n" (timeToRealTime clk lag) gee bar
         hFlush stdout
-
-logCorr :: V.Vector v (Time, Int)
-        => Clock -> (RealTime, RealTime) -> Int
-        -> BinnedVec v Time Int -> BinnedVec v Time Int -> [(RealTime, Double, Double)]
-logCorr clk (minLag, maxLag) lagsPerOctave a b =
-    let nOctaves = ceiling $ log2 maxLag - log2 minLag
-        m = 2**(1 / realToFrac lagsPerOctave)
-        lags = map (realTimeToTime clk) 
-               $ [minLag * m^i | i <- [0..lagsPerOctave*nOctaves-1]]
-        binResizes = take (nOctaves * lagsPerOctave)
-                   $ replicate (2*lagsPerOctave) 1
-                  ++ cycle (take lagsPerOctave $ 2:repeat 1)
-        f :: V.Vector v (Time, Int)
-          => [Int] -> Int -- ^ Measured in bins
-          -> BinnedVec v Time Int -> BinnedVec v Time Int
-          -> [(RealTime, Double, Double)]
-        f [] _ _ _ = []
-        f (binSz:rest) lag a b =
-            let width = binnedWidth a
-                lag' = fromIntegral lag * width
-                (gee, bar) = corr (realTimeToTime clk maxLag) a b lag'
-                realLag = realToFrac $ timeToRealTime clk lag'
-            in seq (gee `seq` bar) $ (realLag, gee, bar) : f rest ((lag+1) `div` binSz) (rebin binSz a) (rebin binSz b)
-    in f binResizes 1 a b
-

@@ -6,6 +6,7 @@ module HPhoton.Corr.SparseCorr ( corr
                                , PackedVec
                                , BinnedVec
                                , vecFromStamps, unsafeVecFromStamps
+                               , logCorr
                                ) where
 
 import qualified Data.Vector.Generic as V
@@ -143,3 +144,26 @@ trimShiftData longlag a b lag =
                $ PV.shiftVec lag b
         in (a', b')
 {-# INLINE trimShiftData #-}
+
+-- | Multi-tau correlation
+logCorr :: (V.Vector v (t, Int), Show t, Integral t)
+        => (t, t)                -- ^ Minimum and maximum lags
+        -> Int                   -- ^ Number of lags per octave
+        -> BinnedVec v t Int     -- ^ First vector
+        -> BinnedVec v t Int     -- ^ Second (shifted) vector
+        -> [(t, Double, Double)] -- ^ Correlation function samples
+logCorr (minLag, maxLag) lagsPerOctave a b =
+    let binResizes = replicate (2*lagsPerOctave) 1
+                  ++ cycle (take lagsPerOctave $ 2:repeat 1)
+
+        f (binSz:rest) lag a b
+          | lag' > maxLag     = []
+          | otherwise         =
+            let (gee, bar) = corr maxLag a b lag'
+            in seq (gee `seq` bar)
+               $ (lag', gee, bar)
+               : f rest ((lag+1) `div` fromIntegral binSz) (rebin binSz a) (rebin binSz b)
+          where
+            lag' = fromIntegral lag * binnedWidth a
+    in f binResizes 1 a b
+{-# INLINE logCorr #-}
