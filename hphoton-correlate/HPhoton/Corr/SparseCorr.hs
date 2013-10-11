@@ -152,7 +152,7 @@ trimShiftData longlag a b lag =
 {-# INLINE trimShiftData #-}
 
 -- | Multi-tau correlation
-logCorr :: (V.Vector v (t, Int), Show t, Integral t)
+logCorr :: (V.Vector v (t, Int), Integral t)
         => (t, t)                -- ^ Minimum and maximum lags
         -> Int                   -- ^ Number of lags per octave
         -> BinnedVec v t Int     -- ^ First vector
