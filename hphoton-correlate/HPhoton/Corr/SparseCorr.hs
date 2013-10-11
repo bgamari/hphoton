@@ -56,9 +56,11 @@ rebin :: (Num t, Ord t, Integral t, V.Vector v (t,a), Num a, Eq a)
 rebin n v | n <= 0 = error "Invalid rebin size"
 rebin 1 v = v
 rebin n (Binned oldWidth v) =
-    Binned width (PV.unsafePackedVec $ V.unstream $ rebinStream width (V.stream $ getPackedVec v))
+    Binned width (PV.unsafePackedVec $ V.unstream
+                  $ rebinStream width $ V.stream $ getPackedVec v)
   where
     width = oldWidth * fromIntegral n
+    binStart width t = (t `div` width) * width
     rebinStream :: (Monad m, Ord t, Num t, Integral t, Num a)
                 => t -> Stream m (t,a) -> Stream m (t,a)
     rebinStream width (Stream stepa sa0 na) =
@@ -67,7 +69,7 @@ rebin n (Binned oldWidth v) =
         step (ReBinStart sa) = do
           r <- stepa sa
           return $ case r of
-            Yield (t,a) sa'  -> Skip (ReBinHaveBin sa' t a)
+            Yield (t,a) sa'  -> Skip (ReBinHaveBin sa' (binStart width t) a)
             Skip sa'         -> Skip (ReBinStart sa')
             Done             -> Done
         step (ReBinHaveBin sa t0 a0) = do
@@ -75,8 +77,7 @@ rebin n (Binned oldWidth v) =
           return $ case r of
             Yield (t,a) sa'
               | t < t0        -> error "SparseCorr.rebin: Time went backwards"
-              | t >= t0+width -> let t1 = (t `div` width) * width
-                                 in Yield (t0,a0) (ReBinHaveBin sa' t1 a)
+              | t >= t0+width -> Yield (t0,a0) (ReBinHaveBin sa' (binStart width t) a)
               | otherwise     -> Skip (ReBinHaveBin sa' t0 (a0+a))
             Skip sa'          -> Skip (ReBinHaveBin sa' t0 a0)
             Done              -> Yield (t0,a0) ReBinDone
