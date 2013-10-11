@@ -9,7 +9,7 @@ intensity correlation function between two fluorescence intensity
 trajectories $I_a$ and $I_b$,
 
 \begin{equation}
-  G(\tau) = \frac{\langle I_a(t) I_b(t) \rangle}{\langle I_a(t) \rangle \, \langle I_b(t) \rangle} 
+  G(\tau) = \frac{\langle I_a(t) I_b(t+\tau) \rangle}{\langle I_a(t) \rangle \, \langle I_b(t) \rangle} 
 \end{equation}
 
 FCS experiments demand high photon counts (typically greater than
@@ -58,7 +58,7 @@ fraction of the data is discarded at each lag.
 
 In the case of photon timestamping experiments, we measure the
 continuous intensity $I(t)$ indirectly through a series of photon
-counts, $\mu_k$, integrated over a sampling time $t_s$,
+counts, $\mu_k$, integrated over a sampling time $\Delta t$,
 
 \begin{equation}
 \mu_k = \int_{t_s k}^{t_s (k+1)} I(t) ~ dt
@@ -113,7 +113,7 @@ from different regions on the same data.
 For the purposes of implementation, it is useful to note the striking
 resemblence between \eqref{GTilde} and a conventional inner product between a
 vector $\vec\mu$ and itself with its components shifted (which we will denote
-by $\vec\mu^{+\Delta t}$). This notion of a ``shifted dot-product'' serves as the
+by $\vec\mu^{+\tau}$). This notion of a ``shifted dot-product'' serves as the
 basis for our optimized correlator implementation.
 
 Due to the sparse nature of FCS photon data, we use a sparse vector
@@ -123,7 +123,7 @@ $\mu_{t_i}$), with zero-valued entries omitted from the
 representation.
 
 \begin{equation}
-  \vec\mu \cdot \vec\mu^{+\Delta t} = \sum_{i,j} \mu_{t_i} \mu_{t_j} \delta(t_i - t_j - \Delta t)
+  \vec\mu \cdot \vec\mu^{+\Delta t} = \sum_{i,j} \mu_{t_i} \mu_{t_j} \delta(t_i - t_j - \tau)
 \end{equation}
 
 
