@@ -86,14 +86,19 @@ rebin n (Binned oldWidth v) =
         {-# INLINE [0] step #-}
     {-# INLINE [0] rebinStream #-}
 {-# INLINE [1] rebin #-}
-  
-corr :: (Show t, Num t, Integral t, Ord t, Real a, V.Vector v (t,a))
-     => t -> BinnedVec v t a -> BinnedVec v t a -> t -> (Double, Double)
+
+-- | Compute the value of the cross-correlation function between two vectors
+corr :: (Num t, Integral t, Ord t, Real a, V.Vector v (t,a))
+     => t                 -- ^ Largest expected lag
+     -> BinnedVec v t a   -- ^ first vector
+     -> BinnedVec v t a   -- ^ second (shifted) vector
+     -> t                 -- ^ Lag to compute
+     -> Either String (Double, Double)
 corr longlag (Binned ta a) (Binned tb b) lag
-  | ta /= tb           = error $ "Can't correlate vectors of different bin lengths"
-  | lag < ta           = error $ "Lag must be larger than bin time"
-  | lag > longlag      = error $ "Lag must be less than longlag"
-  | lag `mod` ta /= 0  = error $ "Lag ("++show lag++") must be multiple of bin time of a ("++show ta++")"
+  | ta /= tb           = Left "Can't correlate vectors of different bin lengths"
+  | lag < ta           = Left "Lag must be larger than bin time"
+  | lag > longlag      = Left "Lag must be less than longlag"
+  | lag `mod` ta /= 0  = Left "Lag must be multiple of bin time"
 corr longlag (Binned binWidth a) (Binned _ b) lag =
     let timespan x = (fst $ V.last x) - (fst $ V.head x)
         ta = timespan (getPackedVec a)
@@ -107,7 +112,7 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
         norm_denom = (count a / t) * (count b / t) :: Double
         g = dot / norm_denom / t
         bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
-    in (g, sqrt bar2)
+    in Right (g, sqrt bar2)
 {-# INLINE corr #-}
 
 -- | Here we try to ensure that the zone is sized such that the same amount
@@ -160,7 +165,8 @@ logCorr (minLag, maxLag) lagsPerOctave a b =
         f (binSz:rest) lag a b
           | lag' > maxLag     = []
           | otherwise         =
-            let (gee, bar) = corr maxLag a b lag'
+            let (gee, bar) = either (\err->error $ "logCorr: Something went wrong: "++err) id
+                             $ corr maxLag a b lag'
             in seq (gee `seq` bar)
                $ (lag', gee, bar)
                : f rest ((lag+1) `div` fromIntegral binSz) (rebin binSz a) (rebin binSz b)
