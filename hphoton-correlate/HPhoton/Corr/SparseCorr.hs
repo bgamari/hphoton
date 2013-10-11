@@ -90,9 +90,10 @@ rebin n (Binned oldWidth v) =
 corr :: (Show t, Num t, Integral t, Ord t, Real a, V.Vector v (t,a))
      => t -> BinnedVec v t a -> BinnedVec v t a -> t -> (Double, Double)
 corr longlag (Binned ta a) (Binned tb b) lag
-    | ta /= tb           = error "Can't correlate vectors of different bin lengths"
-    | lag < ta           = error $ "Lag must be larger than bin time"
-    | lag `mod` ta /= 0  = error $ "Lag ("++show lag++") must be multiple of bin time of a ("++show ta++")"
+  | ta /= tb           = error $ "Can't correlate vectors of different bin lengths"
+  | lag < ta           = error $ "Lag must be larger than bin time"
+  | lag > longlag      = error $ "Lag must be less than longlag"
+  | lag `mod` ta /= 0  = error $ "Lag ("++show lag++") must be multiple of bin time of a ("++show ta++")"
 corr longlag (Binned binWidth a) (Binned _ b) lag =
     let timespan x = (fst $ V.last x) - (fst $ V.head x)
         ta = timespan (getPackedVec a)
