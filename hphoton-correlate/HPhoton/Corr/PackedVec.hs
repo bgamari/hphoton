@@ -15,6 +15,7 @@ module HPhoton.Corr.PackedVec ( Time
                               , takeWhileIdx
                               , head
                               , last
+                              , sum
                               ) where
 
 import           Control.Monad.ST
@@ -25,7 +26,7 @@ import           Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
 import           Data.Vector.Fusion.Stream.Size
 import qualified Data.Vector.Fusion.Stream as S
 import           HPhoton.Types
-import           Prelude                     hiding (map, head, last)
+import           Prelude                     hiding (map, head, last, sum)
 
 -- | An unboxed sparse vector
 newtype PackedVec v i a = PVec {getPackedVec :: v (i,a)}
@@ -160,3 +161,7 @@ head (PVec v) = V.head v
 last :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> (i,a)
 last (PVec v) = V.last v
 {-# INLINE last #-}
+
+sum :: (Num a, V.Vector v (i,a)) => PackedVec v i a -> a
+sum (PVec v) = V.foldl' (\accum (_,a)->accum+a) 0 v
+{-# INLINE sum #-}
