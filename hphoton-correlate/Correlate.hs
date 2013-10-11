@@ -109,7 +109,11 @@ main' = do
         )
 
     (a,metaA) <- fmapLT show $ readStamps (xfile args) (xchan args)
-    (b,metaB) <- fmapLT show $ readStamps (fromMaybe (xfile args) (yfile args)) (ychan args)
+    (b,metaB) <- case yfile args of
+                   Nothing
+                     | xchan args == ychan args -> return (a,metaA)
+                     | otherwise                -> fmapLT show $ readStamps (xfile args) (xchan args)
+                   Just f  -> fmapLT show $ readStamps f (ychan args)
     checkMonotonic a
     checkMonotonic b
 
@@ -143,6 +147,6 @@ logCorr clk (minLag, maxLag) lagsPerOctave a b =
                 lag' = fromIntegral lag * width
                 (gee, bar) = corr (realTimeToTime clk maxLag) a b lag'
                 realLag = realToFrac $ timeToRealTime clk lag'
-            in (realLag, gee, bar) : f rest ((lag+1) `div` binSz) (rebin binSz a) (rebin binSz b)
+            in seq (gee `seq` bar) $ (realLag, gee, bar) : f rest ((lag+1) `div` binSz) (rebin binSz a) (rebin binSz b)
     in f binResizes 1 a b
 
