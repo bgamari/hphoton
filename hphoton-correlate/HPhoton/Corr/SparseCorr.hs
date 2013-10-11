@@ -107,7 +107,7 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
         g = dot / norm_denom / t
         bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
     in (g, sqrt bar2)
-{-# INLINEABLE corr #-}
+{-# INLINE corr #-}
 
 -- | Here we try to ensure that the zone is sized such that the same amount
 -- of data is used in the correlation over various lags. This requires that
