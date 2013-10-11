@@ -11,7 +11,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     HPhoton.IO.RawTimestamps, HPhoton.IO
-  build-depends:       base >=4.6 && <4.7,
+  build-depends:       base >=4.6 && <4.8,
                        transformers >=0.3 && <1.0,
                        errors >=1.4 && <1.5,
                        vector >=0.10 && <0.11,

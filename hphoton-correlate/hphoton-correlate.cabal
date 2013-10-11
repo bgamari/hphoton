@@ -19,11 +19,11 @@ cabal-version:       >=1.10
 library
   exposed-modules:     HPhoton.Corr.PackedVec, HPhoton.Corr.SparseCorr
   other-extensions:    FlexibleContexts, BangPatterns, FlexibleInstances, TupleSections
-  build-depends:       base >=4.6 && <4.7,
+  build-depends:       base >=4.6 && <4.8,
                        errors >=1.4 && <1.5,
                        vector >=0.10 && <0.11,
                        parallel >=3.2 && <3.3,
-                       optparse-applicative >=0.5 && <0.6,
+                       optparse-applicative >=0.5 && <1.0,
                        vector-algorithms >=0.5 && <0.6,
                        hphoton
   default-language:    Haskell2010
