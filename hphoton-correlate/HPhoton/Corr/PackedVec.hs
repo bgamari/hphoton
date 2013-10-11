@@ -94,35 +94,23 @@ izipStreamsWith f (Stream stepa sa0 na) (Stream stepb sb0 nb) =
     {-# INLINE [0] go #-}
 {-# INLINE [1] izipStreamsWith #-}
 
-dotStream' :: (Ord i, Eq i, Num a, V.Vector v (i,a))
-           => v (i,a) -> v (i,a) -> a
-dotStream' as bs =
-    S.foldl' (+) 0 $ S.map snd $ izipStreamsWith (const (*)) (V.stream as) (V.stream bs)
-{-# INLINE dotStream' #-}
+dot :: (Ord i, Eq i, Num a, V.Vector v (i,a))
+    => PackedVec v i a -> PackedVec v i a -> a
+dot as bs = sum $ izipWith (const (*)) as bs
+{-# INLINE dot #-}
 
 -- | Strict pair
 data Pair a b = Pair !a !b
 
-dotSqrStream' :: (Ord i, Eq i, Num a, V.Vector v (i,a))
-              => v (i,a) -> v (i,a) -> (a,a)
-dotSqrStream' as bs =
+dotSqr :: (Ord i, Eq i, Num a, V.Vector v (i,a))
+       => PackedVec v i a -> PackedVec v i a -> (a,a)
+dotSqr (PVec as) (PVec bs) =
     pairToTuple
     $ S.foldl' (\(Pair a b) (c,d) -> Pair (a+c) (b+d)) (Pair 0 0)
     $ S.map snd
-    $ izipStreamsWith (const $ \a b->(a*b, a^2 * b^2)) (V.stream as) (V.stream bs)
+    $ izipStreamsWith (\_ a b->(a*b, a^2 * b^2)) (V.stream as) (V.stream bs)
   where pairToTuple (Pair a b) = (a, b)
-{-# INLINE dotSqrStream' #-}
-    
-dotSqr :: (Ord i, Num a, V.Vector v (i,a))
-       => PackedVec v i a -> PackedVec v i a -> (a,a)
-dotSqr (PVec as) (PVec bs) = dotSqrStream' as bs
 {-# INLINE dotSqr #-}
-
--- | Sparse vector dot product
-dot :: (Ord i, Num a, V.Vector v (i,a))
-    => PackedVec v i a -> PackedVec v i a -> a
-dot (PVec as) (PVec bs) = dotStream' as bs
-{-# INLINE dot #-}
 
 -- | Fetch element i
 index :: (Eq i, Num a, V.Vector v (i,a)) => PackedVec v i a -> i -> a
