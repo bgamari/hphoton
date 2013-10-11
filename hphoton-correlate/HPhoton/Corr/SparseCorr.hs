@@ -108,7 +108,7 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
         (sa,sb) = trimShiftData longlag a b lag
     
         (dot,ss) = case PV.dotSqr sa sb of (a,b) -> (realToFrac a, realToFrac b)
-        count = realToFrac . V.foldl' (\a (_,b)->a+b) 0 . getPackedVec
+        count = realToFrac . PV.sum
         norm_denom = (count a / t) * (count b / t) :: Double
         g = dot / norm_denom / t
         bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
