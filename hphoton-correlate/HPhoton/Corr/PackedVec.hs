@@ -1,5 +1,7 @@
 {-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE UndecidableInstances     #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module HPhoton.Corr.PackedVec ( Time
                               , PackedVec, getPackedVec
@@ -27,6 +29,9 @@ import           Prelude                     hiding (map, head, last)
 
 -- | An unboxed sparse vector
 newtype PackedVec v i a = PVec {getPackedVec :: v (i,a)}
+
+deriving instance (Show (v (i,a))) => Show (PackedVec v i a)
+deriving instance (Eq (v (i,a))) => Eq (PackedVec v i a)
 
 -- | Construct a PackedVec, ensuring that the entries are sorted.
 packedVec :: (Ord i, V.Vector v (i,a)) => v (i,a) -> PackedVec v i a
