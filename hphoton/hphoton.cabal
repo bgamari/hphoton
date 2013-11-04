@@ -40,7 +40,6 @@ Library
                      binary,
                      vector-mmap,
                      statistics,
-                     data-accessor,
                      Chart >=1.0,
                      Chart-cairo >=1.0,
                      chart-histogram,
