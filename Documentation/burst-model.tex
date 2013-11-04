@@ -1,5 +1,6 @@
 \documentclass{article}
 \usepackage{amsmath}
+\usepackage{graphicx}
 
 \title{Simple Bayesian burst finding}
 \author{Ben Gamari}
@@ -9,6 +10,14 @@
 
 \begin{document}
 \maketitle
+
+One of the challenges in a diffusive single-molecule fluorescence
+experiment is determining whether a given photon was due to
+fluorescence or simple background. Here we examine a simple technique
+for inferring the source of a photon. While the technique is
+significantly less complex than changepoint
+methods\cite{watkins2005,ensign2010}, it seems to be quite effective
+in practice.
 
 The algorithm makes use of the property of temporal locality of
 bursts, e.g. a burst photon at time $t$ means a photon at time $t +
@@ -37,12 +46,14 @@ we can compute a Bayes factor $\beta$,
 which represents the certainty of the model in one hypothesis over the
 other. With reasonable settings of parameters $\lburst, \lbg$, the
 Bayes factor is extremely sensitive to the temporal locality of our
-bursts. The final inferred values of $B_i$ are decided by simple
-thresholding of $\beta_i$. A reasonable threshold is 2.
+bursts ({\it e.g.} with reasonable parameters $\beta$ may be of order
+$10^{10}$ during a burst and $10^{-10}$ otherwise). The final inferred
+values of $B_i$ are decided by simple thresholding of $\beta_i$. A
+reasonable threshold is 2.
 
 \begin{figure}
 \centering
-\includegraphics[scale=0.35]{burst-model.pdf}
+\includegraphics[scale=0.35]{burst-model-factor-graph.pdf}
 \caption{The factor graph representation of the Bayesian burst-finding
 algorithm. Here, $\tau$ denotes a photon inter-arrival time. $B_i$ is
 a boolean variable indicating whether photon $i$ is due to a
@@ -62,5 +73,10 @@ where $P(\tau \vert \lambda)$ is given by the standard exponential
 distribution, giving the distribution over interarrival times of a
 homogenous Poisson process,
 \[ P(\tau \vert \lambda) = \lambda e^{-\tau \lambda} \]
+
+\appendix
+\section{References}
+\bibliographystyle{plain}
+\bibliography{burst-model.bib}
 
 \end{document}
