@@ -2,7 +2,7 @@
 \usepackage{amsmath}
 \usepackage{graphicx}
 
-\title{Simple Bayesian burst finding}
+\title{Simple Bayesian burst-finding}
 \author{Ben Gamari}
 
 \newcommand{\lburst}{\ensuremath{\lambda_\mathrm{Burst}}}
@@ -25,17 +25,20 @@ bursts, e.g. a burst photon at time $t$ means a photon at time $t +
 when the characteristic diffusion time of the sample specimen is 
 longer than the expected photon interarrival time.
 
-The general idea behind the model is to examine a photon $i$ in
-conjunction with the $N$ photons preceding and succeeding it. By
-examining the interarrival times between these photons, we can infer
-from which of two distributions, background or burst, the window of
-photons was drawn.
+The general idea behind the model is to examine the arrival times of a
+photon $i$ in conjunction with the $N$ photons preceding and
+succeeding it assuming that each photon was due to one of two Poisson
+processes (known as ``background'' and ``burst''). By examining the
+interarrival times between these photons, we can infer from which of
+two distributions, background or burst, the window of photons was
+drawn.
 
 The model likelihood for a photon $j$ is given by,
 \begin{equation}
-  L_j = \prod_{i=j-N}^{j+N} \sum_{s\in\{\mathrm{Burst}, \mathrm{BG}\}} P(\tau_i \vert \lambda_s) P(B_i = s)
+  L_j = \prod_{i=j-N}^{j+N} \sum_{s\in\{\mathrm{Burst}, \mathrm{BG}\}} P(\tau_i \vert \lambda_s)\, P(B_i = s)
 \end{equation}
-This can be evaluated independently for each photon.
+where $B_i$ identifies the source process of the $i$th photon.
+Conveniently, this can be evaluated independently for each photon.
 
 Under this model, we can test the two hypotheses $B_i =
 \mathrm{Burst}$ and $B_i = \mathrm{BG}$ for each photon. Specifically,
@@ -44,12 +47,12 @@ we can compute a Bayes factor $\beta$,
   \beta_i = \frac{P(\tau_i \vert \lburst)}{P(\tau_i \vert \lbg)}
 \end{equation}
 which represents the certainty of the model in one hypothesis over the
-other. With reasonable settings of parameters $\lburst, \lbg$, the
-Bayes factor is extremely sensitive to the temporal locality of our
-bursts ({\it e.g.} with reasonable parameters $\beta$ may be of order
-$10^{10}$ during a burst and $10^{-10}$ otherwise). The final inferred
-values of $B_i$ are decided by simple thresholding of $\beta_i$. A
-reasonable threshold is 2.
+other. With reasonable settings of rate parameters $\lburst$ and
+$\lbg$, the Bayes factor is extremely sensitive to the temporal
+locality of our bursts ({\it e.g.} with reasonable parameters $\beta$
+may be of order $10^{10}$ during a burst and $10^{-10}$
+otherwise). The final inferred values of $B_i$ are decided by simple
+thresholding of $\beta_i$. A reasonable threshold is 2.
 
 \begin{figure}
 \centering
@@ -69,10 +72,14 @@ $\tau_{i+2} ... \tau_{i+N-1}$ have been omitted for consiseness.}
     \end{array}
   \right.
 \end{equation}
-where $P(\tau \vert \lambda)$ is given by the standard exponential
+
+Here $P(\tau \vert \lambda)$ is given by the standard exponential
 distribution, giving the distribution over interarrival times of a
 homogenous Poisson process,
 \[ P(\tau \vert \lambda) = \lambda e^{-\tau \lambda} \]
+We should acknowledge that for diffusing molecules the Poisson assumption
+holds quite poorly. Thankfully, when $\lbg \ll \lburst$ the difference
+is clear enough that the model continues to be quite effective.
 
 \appendix
 \section{References}
