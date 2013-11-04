@@ -15,13 +15,13 @@ cabal-version:       >=1.10
 library
   exposed-modules:     HPhoton.IO.Picoquant, HPhoton.IO.Picoquant.Types, HPhoton.IO.Picoquant.Interactive, HPhoton.IO.Picoquant.PT2
   other-extensions:    DeriveGeneric, DeriveDataTypeable, TemplateHaskell
-  build-depends:       base >=4.6 && <4.8, binary >=0.7 && <0.8, bytestring >=0.10 && <0.11, vector >=0.10 && <0.11, lens >=3.9 && <3.10,
+  build-depends:       base >=4.6 && <4.8, binary >=0.7 && <0.8, bytestring >=0.10 && <0.11, vector >=0.10 && <0.11, lens >=3.9 && <4.0,
                        data-binary-ieee754
   default-language:    Haskell2010
 
 executable picoquant-export-histogram
   main-is:             ExportHistogram.hs
-  build-depends:       base >=4.6 && <4.8, binary >=0.7 && <0.8, bytestring >=0.10 && <0.11, vector >=0.10 && <0.11, lens >=3.9 && <3.10,
+  build-depends:       base >=4.6 && <4.8, binary >=0.7 && <0.8, bytestring >=0.10 && <0.11, vector >=0.10 && <0.11, lens >=3.9 && <4.0,
                        data-binary-ieee754, optparse-applicative, cassava
   default-language:    Haskell2010
   
