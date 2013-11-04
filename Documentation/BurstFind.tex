@@ -45,27 +45,8 @@ bursts. The final inferred values of $B_i$ are decided by simple
 thresholding of $\beta_i$. A reasonable threshold is 2.
 
 \begin{figure}
-\begin{dot2tex}[dot,options=-tmath]
-graph factorGraph {
-  {rank="same"; 
-    mN [label="\tau_{i-N}"];
-    mEll [label="...", shape="plaintext"];
-    m1 [label="\tau_{i-1}"];
-    0  [label="\tau_i"];
-    p1 [label="\tau_{i+1}"];
-    pEll [label="...", shape="plaintext"];
-    pN [label="\tau_{i+N}"];
-  }
-  b  [label="B_i"];
-  mN -- b [label="\phi(\tau_{i-N, B_i})"];
-  mEll -- b [style="invis"];
-  m1 -- b [label="\phi(\tau_{i-1, B_i})"];
-  0 -- b;
-  p1 -- b;
-  pEll -- b [style="invis"];
-  pN -- b;
-}
-\end{dot2tex}
+\centering
+\includegraphics[scale=0.35]{burst-model.pdf}
 \caption{The factor graph representation of the Bayesian burst-finding
 algorithm. Here, $\tau$ denotes a photon inter-arrival time. $B_i$ is
 a boolean variable indicating whether photon $i$ is due to a
