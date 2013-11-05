@@ -26,7 +26,7 @@ generateAxisData' nbins (min,max) =
        grids = []
        labels = []
 
-chart :: (Ord x, Show x, RealFrac x, PlotValue x) => Int -> V.Vector x -> Layout1 x Int
+chart :: (Ord x, Show x, RealFrac x, PlotValue x) => Int -> V.Vector x -> Layout x Int
 chart _ xs | V.length xs < 2 = error "Can't histogram (nearly) empty list"
 chart nbins xs = layout
         where (min,max) = minMax $ V.toList xs
@@ -34,8 +34,8 @@ chart nbins xs = layout
                      $ plot_hist_range .~ Just (min,max)
                      $ plot_hist_bins  .~ nbins
                      $ defaultPlotHist
-              layout = layout1_plots .~ [Left $ histToPlot hist]
-                     $ (layout1_bottom_axis .> laxis_generate) .~
+              layout = layout_plots .~ [histToPlot hist]
+                     $ (layout_x_axis .> laxis_generate) .~
                            const (generateAxisData' nbins (min,max))
                      $ def
 
