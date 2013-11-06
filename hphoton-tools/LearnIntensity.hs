@@ -26,7 +26,7 @@ main = do
              $ plot_hist_values  .~ (V.fromList $ map realToFrac bins :: V.Vector Double)
              $ plot_hist_range   .~ Just (0, 150)
              $ defaultPlotHist
-        layout = layout1_plots   .~ [Left $ histToPlot hist]
+        layout = layout_plots   .~ [histToPlot hist]
                $ def
 
     putStrLn "hi"

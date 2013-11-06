@@ -401,9 +401,9 @@ layoutThese f titles xs =
     where --makeLayout :: String -> a -> StackedLayout y
           makeLayout title x =
               StackedLayout
-              $ layout1_title .~ title
-              $ layout1_left_axis . laxis_override .~ (axis_viewport .~ vmap (0,150))
-              $ layout1_plots .~ [Left $ f x]
+              $ layout_title .~ title
+              $ layout_y_axis . laxis_override .~ (axis_viewport .~ vmap (0,150))
+              $ layout_plots .~ [f x]
               $ def
 
 plotBinTimeseries :: [a] -> Plot Int a
@@ -435,11 +435,11 @@ layoutFret title eBins e fretEs fits =
                 $ defaultFloatPlotHist
         unitAxis = scaledAxis def (0,1) :: AxisFn Double
     in toRenderable
-       $ layout1_plots .~ ([Left eHist]++zipWith (\p color->Left $ fit p color)
+       $ layout_plots .~ ([]++zipWith (\p color->fit p color)
                                                fits (colors $ length fits))
-       $ layout1_bottom_axis . laxis_title    .~ "Proximity Ratio"
-       $ layout1_bottom_axis . laxis_generate .~ unitAxis
-       $ layout1_left_axis   . laxis_title    .~ "Occurrences"
+       $ layout_x_axis . laxis_title    .~ "Proximity Ratio"
+       $ layout_x_axis . laxis_generate .~ unitAxis
+       $ layout_y_axis . laxis_title    .~ "Occurrences"
        $ def
 
 colors :: Int -> [AlphaColour Double]
@@ -459,7 +459,7 @@ layoutCountingHist title maxBins names colours bins =
             -- $ plot_hist_bins .~ maxBins
             $ defaultPlotHist                
     in toRenderable
-       $ layout1_plots .~ map Left (F.toList $ plot <$> names <*> colours <*> bins)
-       $ layout1_bottom_axis . laxis_title .~ "counts"
-       $ layout1_left_axis   . laxis_title .~ "occurrences"
+       $ layout_plots .~ (F.toList $ plot <$> names <*> colours <*> bins)
+       $ layout_x_axis . laxis_title .~ "counts"
+       $ layout_y_axis . laxis_title .~ "occurrences"
        $ def

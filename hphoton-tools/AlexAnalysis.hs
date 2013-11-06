@@ -369,9 +369,9 @@ layoutThese f titles xs =
     where --makeLayout :: String -> a -> StackedLayout y
           makeLayout title x =
               StackedLayout
-              $ layout1_title .~ title
-              $ layout1_left_axis . laxis_override .~ (axis_viewport .~ vmap (0,150))
-              $ layout1_plots .~ [Left $ f x]
+              $ layout_title .~ title
+              $ layout_y_axis . laxis_override .~ (axis_viewport .~ vmap (0,150))
+              $ layout_plots .~ [f x]
               $ def
 
 plotBinTimeseries :: [a] -> Plot Int a
@@ -414,18 +414,18 @@ layoutSE title eBins s e fretEs fits =
         unitAxis = scaledAxis def (0,1) :: AxisFn Double
         layouts = 
           [ StackedLayout
-            $ layout1_title .~ title
-            $ layout1_plots .~ [Left pts]
-            $ layout1_bottom_axis . laxis_generate .~ unitAxis
-            $ layout1_left_axis   . laxis_generate .~ unitAxis
-            $ layout1_left_axis   . laxis_title .~ "Stoiciometry"
+            $ layout_title .~ title
+            $ layout_plots .~ [pts]
+            $ layout_x_axis . laxis_generate .~ unitAxis
+            $ layout_y_axis . laxis_generate .~ unitAxis
+            $ layout_y_axis . laxis_title .~ "Stoiciometry"
             $ def
           , StackedLayout
-            $ layout1_plots .~ ([Left eHist]++zipWith (\p color->Left $ fit p color)
-                                                      fits (colors $ length fits))
-            $ layout1_bottom_axis . laxis_title .~ "Proximity Ratio"
-            $ layout1_bottom_axis . laxis_generate .~ unitAxis
-            $ layout1_left_axis   . laxis_title .~ "Occurrences"
+            $ layout_plots .~ ([eHist]++zipWith (\p color->fit p color)
+                                                     fits (colors $ length fits))
+            $ layout_x_axis . laxis_title .~ "Proximity Ratio"
+            $ layout_x_axis . laxis_generate .~ unitAxis
+            $ layout_y_axis . laxis_title .~ "Occurrences"
             $ def
           ]
     in renderStackedLayouts $ def & slayouts_layouts .~ layouts

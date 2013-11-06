@@ -75,11 +75,11 @@ functionPlot n (a,b) f =
             $ plot_lines_style .> line_color .~ opaque red
             $ def
 
-plotFit :: V.Vector Sample -> (Double,Double) -> [Double->Double] -> Layout1 Double Double
+plotFit :: V.Vector Sample -> (Double,Double) -> [Double->Double] -> Layout Double Double
 plotFit samples (a,b) fits =
-    layout1_plots .~ [ Left $ histPlot (a,b) samples ]
-                     ++ map (Left . functionPlot 1000 (a,b)) fits
-    $ layout1_left_axis . laxis_generate .~ autoScaledLogAxis def
+    layout_plots .~ [ histPlot (a,b) samples ]
+                     ++ map (functionPlot 1000 (a,b)) fits
+    $ layout_y_axis . laxis_generate .~ autoScaledLogAxis def
     $ def
 
 plotParamSample :: V.Vector Sample -> Maybe ComponentParams -> IO ()
@@ -114,7 +114,7 @@ main = do
 plotRecords :: V.Vector Time -> ComponentParams -> Renderable ()
 plotRecords times params = renderStackedLayouts $
     slayouts_layouts .~ 
-        [ StackedLayout $ layout1_plots .~ [Left bins] $ def
+        [ StackedLayout $ layout_plots .~ [bins] $ def
         , StackedLayout oddsPlots
         ]
     $ def
@@ -136,8 +136,8 @@ plotRecords times params = renderStackedLayouts $
                     $ plot_points_style .~ plusses 1 0.1 (opaque color)
                     $ def
                     :: Plot RealTime Double
-          oddsPlots = layout1_plots .~ [ Left $ photons (\odds->odds > 0 && odds < 2) green
-                                       , Left $ photons (\odds->odds > 1 && odds < 2) blue
-                                       , Left $ photons (\odds->odds > 2) red
-                                       ]
+          oddsPlots = layout_plots .~ [ photons (\odds->odds > 0 && odds < 2) green
+                                      , photons (\odds->odds > 1 && odds < 2) blue
+                                      , photons (\odds->odds > 2) red
+                                      ]
                       $ def
