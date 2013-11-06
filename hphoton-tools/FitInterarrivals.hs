@@ -65,13 +65,13 @@ fitArgs = FitArgs
                 )
     <*> option  ( long "model" <> short 'm'
                <> metavar "MODEL" <> value Nothing
-               <> reader (fmap Just . auto)
+               <> reader (fmap Just . pure)
                <> help "Model file"
                 )
     <*> argument pure ( metavar "FILE" <> help "Input file" )
-    <*> option  ( long "output" <> short 'o'
-               <> metavar "FILE" <> help "Output model to file"
-                )
+    <*> strOption  ( long "output" <> short 'o'
+                  <> metavar "FILE" <> help "Output model to file"
+                   )
     <*> option  ( long "channel" <> short 'c'
                <> value 0 <> metavar "N"
                <> help "Channel to fit"
