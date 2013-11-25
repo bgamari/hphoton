@@ -32,7 +32,7 @@ burstFind = BurstFind
     <*> option ( long "burst-rate" <> short 'B' <> value 4000
               <> help "Burst count rate (Hz)" )
     <*> option ( long "clockrate" <> short 'c' <> value (round (128e6 :: Double))
-              <> help "Clock period (s)" )
+              <> help "Timetag clock frequency (Hz)" )
     <*> option ( long "window" <> short 'w' <> value 10
               <> help "Model window size" )
     <*> option ( long "min-length" <> short 'l' <> value 10
@@ -45,7 +45,8 @@ main = do
     let opts = info (helper <*> burstFind)
                     ( fullDesc <> progDesc "Bayesian fluorescence burst identification" )
     args <- execParser opts
-    let realRateToTau rate = round $ realToFrac (clockrate args) / rate
+    let clk = clockFromFreq $ clockrate args
+        realRateToTau rate = realTimeToTime clk (1 / rate)
         mp = ModelParams { mpWindow = window args
                          , mpProbB = 0.05
                          , mpTauBg = realRateToTau $ bg_rate args
@@ -53,7 +54,6 @@ main = do
                          }
 
     d <- readRecords (fname args)
-    let clk = clockFromFreq $ clockrate args
     let fret = Fret { fretA = strobeTimes d Ch0, fretD = strobeTimes d Ch1 }
         times = combineChannels [fretA fret, fretD fret]
 
