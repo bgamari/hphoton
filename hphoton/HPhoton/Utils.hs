@@ -35,7 +35,7 @@ combineChannels chs =
 
 invertSpans :: (Time,Time) -> [Span] -> [Span]
 invertSpans (start,end) ((a,b):rest)
-  | start >= a && b > end   = invertSpans (b, end) rest            
+  | start >= a && b > end   = invertSpans (b, end) rest
   | start >= a && b <= end  = invertSpans (start, end) rest
   | start < a               = (start, a) : invertSpans (b, end) rest
   | b > end                 = []
@@ -53,7 +53,7 @@ spansPhotons spans ts = evalState (mapM f spans) ts
                            let (a,b) = V.span (<end) $ snd $ V.span (<start) ts
                            put b
                            return a
- 
+
 -- | 'spansCounts spans ts' is the number of photons in each span.
 -- | Identity: 'spansCounts spans ts == map V.length $ spansPhotons spans ts'
 spansCounts :: [Span] -> V.Vector Time -> [Int]
@@ -67,7 +67,7 @@ spansCounts spans ts = f spans ts 0
         f [] ts n                = []
 
 subtractSpans :: [Span] -> [Span] -> [Span]
-subtractSpans [] _       = []  
+subtractSpans [] _       = []
 subtractSpans abs []     = abs
 subtractSpans ((a,b):abs) ((x,y):xys)
   | x<=a && y>a && y<=b  = subtractSpans ((y,b):abs) xys
