@@ -33,13 +33,12 @@ interarrival times between these photons, we can infer from which of
 two distributions, background or burst, the window of photons was
 drawn.
 
-The model probability of a photon $j$ begin due to source $s$ (either
+The probability of a photon $j$ begin due to source $s$ (either
 $\mathrm{Burst}$ or $\mathrm{BG}$) is given by
 \begin{equation}
-  L_j(s) = \prod_{i=j-N}^{j+N} \sum_{s\in\{\mathrm{Burst}, \mathrm{BG}\}} P(\tau_i \vert \lambda_s)\, P(B_i = s)
+  L_j(s) = \prod_{i=j-N}^{j+N} P(\tau_i \vert \lambda_s)\, P(B_i = s)
 \end{equation}
 where $B_i$ identifies the source process of the $i$th photon.
-Conveniently, this can be evaluated independently for each photon.
 
 Under this model, we can test the two hypotheses $B_i =
 \mathrm{Burst}$ and $B_i = \mathrm{BG}$ for each photon. Specifically,
@@ -48,7 +47,8 @@ we can compute a Bayes factor $\beta$,
   \beta_i = \frac{L_j(s=\mathrm{Burst})}{L_j(s=\mathrm{BG})}
 \end{equation}
 which represents the certainty of the model in one hypothesis over the
-other. With reasonable settings of rate parameters $\lburst$ and
+other. Conveniently, this can be evaluated independently for each
+photon.  With reasonable settings of rate parameters $\lburst$ and
 $\lbg$, the Bayes factor is extremely sensitive to the temporal
 locality of our bursts ({\it e.g.} with reasonable parameters $\beta$
 may be of order $10^{10}$ during a burst and $10^{-10}$
