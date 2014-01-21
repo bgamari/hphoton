@@ -45,6 +45,6 @@ main = do
     phd <- runGet getPhdHistogram <$> LBS.readFile (fileName o)
     forM_ (phd ^. phdCurves) $ \(hdr, bins) -> do
       LBS.writeFile (maybe (fileName o++".txt") id $ output o)
-        $ Csv.encodeWith encodeOpts $ V.toList $ V.zip (binStarts hdr) bins
+        $ Csv.encodeWith encodeOpts $ V.zip (binStarts hdr) bins
     
 
