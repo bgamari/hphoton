@@ -56,6 +56,9 @@ import           Statistics.LinearRegression
 
 import           Options.Applicative hiding ((&))
 
+fileOpts :: FileOptions
+fileOpts = FileOptions (500,500) SVG
+
 type Rate = Double
 type Gamma = Double
 
@@ -250,12 +253,12 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                                  ]) bgCountMoments
             rows [ ["Number of background bins", show $ VB.length bgBins] ]
 
-    liftIO $ renderableToSVGFile
+    liftIO $ renderableToFile fileOpts
         (layoutSE fname (nbins p) (VB.toList $ fmap stoiciometry bins)
                                   (VB.toList $ fmap proxRatio bins)
                                   (VB.toList $ fmap proxRatio bins)
                                   [])
-        640 480 (fname++"-uncorrected.svg")
+        (fname++"-uncorrected.svg")
     tellLog 20
         $ let ((muS,sigS), (muE,sigE)) =
                            (\(s,e)->(meanVariance s, meanVariance e))
@@ -319,7 +322,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                $ fretBins
         shotSigma2 = shotNoiseEVar (1/nInv) mu
 
-    liftIO $ renderableToSVGFile
+    liftIO $ renderableToFile fileOpts
         (layoutSE fname (nbins p) (VB.toList s)
                                   (VB.toList e)
                                   (VB.toList $ fmap (fretEff gamma') fretBins)
@@ -329,7 +332,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                   --, ("shot-limited", Gaussian (mu, shotSigma2))
                   ]
         )
-        640 480 (outputRoot++"-se.svg")
+        (outputRoot++"-se.svg")
 
     tellLog 2 $ H.section $ do
         H.h2 "Corrected FRET efficiency"
@@ -345,9 +348,10 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                   resamp = jackknife varianceUnbiased (V.convert e)
               in "Bootstrap variance = "++show bootstrap
 
-    liftIO $ renderableToSVGFile
+    liftIO $ renderableToFile fileOpts
         (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA $ VB.toList bins)
-        500 500 (outputRoot++"-bins.svg")
+        (outputRoot++"-bins.svg")
+    return ()
 
 meanHtml x = "〈"++x++"〉"
 varHtml x = meanHtml $ x++"² − "++meanHtml x++"²"

@@ -53,6 +53,9 @@ import           Statistics.Resampling
 
 import           Options.Applicative hiding ((&))
 
+fileOpts :: FileOptions
+fileOpts = FileOptions (500, 500) SVG    
+
 type Rate = Double
 
 data FretAnalysis = FretAnalysis { clockrate :: Freq
@@ -186,14 +189,14 @@ readFretBins fretChannels binTime fname = do
     let times = unwrapTimes . strobeTimes recs <$> fretChannels :: Fret (VU.Vector Time)
         bins = fmap (fmap fromIntegral) $ binMany binTime times
     return bins
-    
+
 getFretBins :: FilePath -> Fret Channel -> Time -> FilePath -> HtmlLogT IO (VB.Vector (Fret Double))
 getFretBins outputRoot fretChannels binTime fname = do
     bins <- liftIO $ readFretBins fretChannels binTime fname
-    liftIO $ renderableToSVGFile
+    liftIO $ renderableToFile fileOpts
         (layoutThese plotBinTimeseries (Fret "Acceptor" "Donor")
          $ unflipFrets $ take 10000 $ VB.toList bins)
-        500 500 (outputRoot++"-bins.svg")
+        (outputRoot++"-bins.svg")
     return bins
 
 summarizeCountStatistics :: Monad m => VB.Vector (Fret Double) -> VB.Vector (Fret Double) -> HtmlLogT m ()
@@ -244,7 +247,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     liftIO $ let names = Fret "acceptor" "donor"
                  colours = flip withOpacity 0.5 <$> Fret red green
                  layout = layoutCountingHist fname 100 names colours (fmap V.fromList $ unflipFrets $ V.toList fgBins)
-             in renderableToSVGFile layout 640 480 (outputRoot++"-pch.svg")
+             in renderableToFile fileOpts layout (outputRoot++"-pch.svg")
     tellLog 15 $ H.section $ do
         H.h2 "Photon Counting Histogram"
         H.img H.! HA.src (H.toValue $ fname++"-pch.svg")
@@ -253,9 +256,9 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     summarizeCountStatistics bgBins fgBins
 
     liftIO $ let e = fmap proximityRatio fgBins
-             in renderableToSVGFile
+             in renderableToFile fileOpts
                 (layoutFret fname (nbins p) (V.toList e) (V.toList e) [])
-                640 480 (outputRoot++"-uncorrected.svg")
+                (outputRoot++"-uncorrected.svg")
 
     let bgRate = mean . VU.fromList <$> unflipFrets (VB.toList bgBins)
     (dOnlyBins, fretBins) <- case dOnlyFile p of
@@ -331,7 +334,8 @@ fitFretHistogram p outputRoot title nComps gamma bins = do
                    Nothing -> []
 
     liftIO $ let layout = layoutFret title (nbins p) fretEffs fretEffs fits
-             in renderableToSVGFile layout 640 480 (outputRoot++"-se.svg")
+             in renderableToFile fileOpts layout (outputRoot++"-se.svg")
+    return ()
 
 analyzeBins :: FretAnalysis -> FilePath -> String
             -> Fret Double -> VB.Vector (Fret Double) -> VB.Vector (Fret Double) -> HtmlLogT IO ()

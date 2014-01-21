@@ -88,8 +88,10 @@ plotParamSample samples paramSample = do
                   Nothing -> []
                   Just s -> let dist x = sum $ map (\(w,p)->w * realToFrac (prob p x)) $ VB.toList s
                             in [dist]
-  renderableToPDFFile (toRenderable $ plotFit samples (1e-7,longTime) fits)
-                      640 480 "all.pdf"
+  renderableToFile (FileOptions (640,480) PDF)
+                   (toRenderable $ plotFit samples (1e-7,longTime) fits)
+                   "all.pdf"
+  return ()
 
 main = do
     let opts = info (helper <*> plotArgs) (fullDesc <> progDesc "Fit photon interarrival times")
@@ -107,7 +109,7 @@ main = do
         Just f  -> (Just . VB.fromList . read) <$> readFile f
 
     --let times = strobeTimes recs (argsChannel pargs)
-    --renderableToPDFFile (plotRecords times params) 1000 500 "hello.pdf"
+    --renderableToFile fileOpts (plotRecords times params) (FileOptions (1000,500) PDF) "hello.pdf"
 
     plotParamSample samples params
 
