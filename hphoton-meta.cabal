@@ -1,0 +1,19 @@
+name:                hphoton-meta
+version:             0.1.0.0
+-- synopsis:            
+-- description:         
+homepage:            http://github.com/bgamari/hphoton
+license:             BSD3
+license-file:        LICENSE
+author:              Ben Gamari
+maintainer:          bgamari.foss@gmail.com
+build-type:          Simple
+extra-source-files:  README.mkd, README.mkd~
+cabal-version:       >=1.10
+
+library
+  build-depends:       hphoton,
+                       hphoton-fpga-timetagger,
+                       hphoton-picoquant,
+                       hphoton-tools
+  default-language:    Haskell2010
