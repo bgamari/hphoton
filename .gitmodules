@@ -13,6 +13,3 @@
 [submodule "pipes-vector"]
 	path = pipes-vector
 	url = git@github.com:bgamari/pipes-vector.git
-[submodule "haskell-chart"]
-	path = haskell-chart
-	url = git://github.com/bgamari/haskell-chart.git
