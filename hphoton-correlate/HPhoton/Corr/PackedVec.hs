@@ -34,19 +34,21 @@ newtype PackedVec v i a = PVec {getPackedVec :: v (i,a)}
 deriving instance (Show (v (i,a))) => Show (PackedVec v i a)
 deriving instance (Eq (v (i,a))) => Eq (PackedVec v i a)
 
--- | Construct a PackedVec, ensuring that the entries are sorted.
-packedVec :: (Ord i, V.Vector v (i,a)) => v (i,a) -> Either String (PackedVec v i a)
+-- | Construct a PackedVec, ensuring that the entries are sorted. Empty vectors
+-- are represented by @Nothing@.
+packedVec :: (Ord i, V.Vector v (i,a)) => v (i,a) -> Maybe (PackedVec v i a)
 packedVec v = unsafePackedVec $ runST $ do
                   v' <- V.thaw v
                   VA.sortBy (compare `on` fst) v'
                   V.freeze v'
 {-# INLINE packedVec #-}
 
--- | Construct a PackedVec assuming that the entries are already sorted.
-unsafePackedVec :: (V.Vector v (i,a)) => v (i,a) -> Either String (PackedVec v i a)
+-- | Construct a PackedVec assuming that the entries are already sorted. Empty
+-- vectors are represented by @Nothing@.
+unsafePackedVec :: (V.Vector v (i,a)) => v (i,a) -> Maybe (PackedVec v i a)
 unsafePackedVec v
-  | V.null v  = Left "packedVec: Attempted to construct empty vector"
-  | otherwise = Right $ PVec v
+  | V.null v  = Nothing
+  | otherwise = Just (PVec v)
 {-# INLINE unsafePackedVec #-}
 
 izipWith :: (Ord i, V.Vector v (i,a), V.Vector v (i,b), V.Vector v (i,c))
@@ -128,13 +130,13 @@ shiftVec shift (PVec v) = PVec $ V.map (\(a,o)->(a+shift, o)) v
 {-# INLINE shiftVec #-}
 
 takeWhileIdx :: (Ord i, V.Vector v (i,a))
-             => (i -> Bool) -> PackedVec v i a -> PackedVec v i a
-takeWhileIdx f (PVec v) = PVec $ V.takeWhile (f . fst) v
+             => (i -> Bool) -> PackedVec v i a -> Maybe (PackedVec v i a)
+takeWhileIdx f (PVec v) = unsafePackedVec $ V.takeWhile (f . fst) v
 {-# INLINE takeWhileIdx #-}
 
 dropWhileIdx :: (Ord i, V.Vector v (i,a))
-             => (i -> Bool) -> PackedVec v i a -> PackedVec v i a
-dropWhileIdx f (PVec v) = PVec $ V.dropWhile (f . fst) v
+             => (i -> Bool) -> PackedVec v i a -> Maybe (PackedVec v i a)
+dropWhileIdx f (PVec v) = unsafePackedVec $ V.dropWhile (f . fst) v
 {-# INLINE dropWhileIdx #-}
 
 -- | Map operation

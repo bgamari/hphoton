@@ -120,15 +120,13 @@ main' = do
     let clk = clockFromJiffy $ jiffy_ args
     let pts = let short = realTimeToTime clk (shortlag args)
                   long = realTimeToTime clk (longlag args)
+                  maybeError = fromMaybe (error "Empty vector")
               in withStrategy (parList rdeepseq)
                  $ logCorr (short, long) (nlags args)
-                           (errorEither $ unsafeVecFromStamps a)
-                           (errorEither $ unsafeVecFromStamps b)
+                           (maybeError $ unsafeVecFromStamps a)
+                           (maybeError $ unsafeVecFromStamps b)
 
     liftIO $ forM_ pts $ \(lag, gee, bar) -> do
         printf "%1.4e\t%1.8f\t%1.8e\n" (timeToRealTime clk lag) gee (bar^2)
         hFlush stdout
 
-errorEither :: Either String r -> r
-errorEither (Left l) = error l
-errorEither (Right r) = r

@@ -37,12 +37,12 @@ unBinned (Binned _ a) = a
 type BinnedVec v t a = Binned t (PackedVec v t a)
 
 vecFromStamps :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
-              => v t -> Either String (Binned t (PackedVec v t a))
+              => v t -> Maybe (Binned t (PackedVec v t a))
 vecFromStamps v = Binned 1 <$> PV.packedVec (V.map (,1) v)
 {-# INLINEABLE vecFromStamps #-}
 
 unsafeVecFromStamps :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
-                    => v t -> Either String (Binned t (PackedVec v t a))
+                    => v t -> Maybe (Binned t (PackedVec v t a))
 unsafeVecFromStamps v = Binned 1 <$> PV.unsafePackedVec (V.map (,1) v)
 {-# INLINEABLE unsafeVecFromStamps #-}
 
@@ -61,8 +61,8 @@ rebin n (Binned oldWidth v) =
     case PV.unsafePackedVec $ V.unstream
          $ rebinStream width
          $ V.stream $ getPackedVec v of
-      Left _   -> error "rebinStream broken length invariant"
-      Right v' -> Binned width v'
+      Nothing -> error "rebinStream broken length invariant"
+      Just v' -> Binned width v'
   where
     width = oldWidth * fromIntegral n
     binStart width t = (t `div` width) * width
@@ -150,10 +150,13 @@ trimShiftData
 trimShiftData longlag a b lag =
         let startT = max (PV.startIdx a) (PV.startIdx b)
             endT = min (PV.endIdx a) (PV.endIdx b)
-            a' = PV.takeWhileIdx (<= endT)
-               $ PV.dropWhileIdx (<  (startT + longlag)) a
-            b' = PV.takeWhileIdx (<= endT)
-               $ PV.dropWhileIdx (<  (startT + longlag))
+            a' = maybe (error "a empty") id
+               $   PV.takeWhileIdx (<= endT)
+               <=< PV.dropWhileIdx (<  (startT + longlag))
+               $   a
+            b' = maybe (error "b empty") id
+               $ PV.takeWhileIdx (<= endT)
+               <=< PV.dropWhileIdx (<  (startT + longlag))
                $ PV.shiftVec lag b
         in (a', b')
 {-# INLINE trimShiftData #-}
