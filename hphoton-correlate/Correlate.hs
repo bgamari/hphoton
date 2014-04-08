@@ -33,7 +33,9 @@ data Args = Args { xfile    :: FilePath
                  , jiffy_   :: Maybe RealTime
                  , shortlag :: RealTime
                  , longlag  :: RealTime
-                 , nlags    :: Int }
+                 , nlags    :: Int
+                 , verbose  :: Bool
+                 }
             deriving (Show,Eq)
 
 opts :: Parser Args
@@ -78,6 +80,11 @@ opts = Args
                  <> short 'n'
                  <> value 20
                   )
+    <*> switch    ( help "Enable verbose output"
+                 <> short 'v'
+                 <> long "verbose"
+                  )
+
 description = intercalate "\n"
     [ "Corr efficiently computes correlation functions for single-dimensional"
     , "discrete-time, binary data (e.g. photon counts)."
@@ -126,9 +133,10 @@ main' = do
         | otherwise -> right ja
 
     checkMonotonic a
-    liftIO $ putStrLn $ "x: "++show (V.length a)++" timestamps"
     checkMonotonic b
-    liftIO $ putStrLn $ "y: "++show (V.length b)++" timestamps"
+    when (verbose args) $ do
+        liftIO $ putStrLn $ "x: "++show (V.length a)++" timestamps"
+        liftIO $ putStrLn $ "y: "++show (V.length b)++" timestamps"
 
     let clk = clockFromJiffy jiffy'
         expDur = duration [a,b]
