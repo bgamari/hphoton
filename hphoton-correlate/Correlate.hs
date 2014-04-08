@@ -30,7 +30,7 @@ data Args = Args { xfile    :: FilePath
                  , xchan    :: Channel
                  , yfile    :: Maybe FilePath
                  , ychan    :: Channel
-                 , jiffy_   :: RealTime
+                 , jiffy_   :: Maybe RealTime
                  , shortlag :: RealTime
                  , longlag  :: RealTime
                  , nlags    :: Int }
@@ -54,10 +54,11 @@ opts = Args
                  <> short 'Y'
                  <> value 0
                   )
-    <*> option    ( help "Timestamp timebase period"
+    <*> option    ( help "Override timestamp timebase period"
                  <> long "jiffy"
                  <> short 'j'
-                 <> value (1/4e12)
+                 <> reader (pure . auto)
+                 <> value Nothing
                  <> metavar "TIME"
                   )
     <*> option    ( help "Minimum lag to compute"
@@ -114,12 +115,22 @@ main' = do
                      | xchan args == ychan args -> return (a,metaA)
                      | otherwise                -> fmapLT show $ readStamps (xfile args) (xchan args)
                    Just f  -> fmapLT show $ readStamps f (ychan args)
+
+    jiffy' <- case (jiffy_ args, lookupMetadata _Jiffy metaA, lookupMetadata _Jiffy metaB) of
+      (Just j, _, _)           -> return j
+      (_ , Nothing, Nothing)   -> left "Could't infer jiffy. Specify manually with --jiffy"
+      (_ , Just ja, Nothing)   -> right ja
+      (_ , Nothing, Just jb)   -> right jb
+      (_ , Just ja, Just jb)
+        | ja /= jb  -> left "Incompatible jiffys"
+        | otherwise -> right ja
+
     checkMonotonic a
     liftIO $ putStrLn $ "x: "++show (V.length a)++" timestamps"
     checkMonotonic b
     liftIO $ putStrLn $ "y: "++show (V.length b)++" timestamps"
 
-    let clk = clockFromJiffy $ jiffy_ args
+    let clk = clockFromJiffy jiffy'
         expDur = duration [a,b]
     when (10 * realTimeToTime clk (longlag args) > expDur)
       $ left "--long-lag is too long for data set"
