@@ -81,9 +81,9 @@ description = intercalate "\n"
     [ "Corr efficiently computes correlation functions for single-dimensional"
     , "discrete-time, binary data (e.g. photon counts)."
     , ""
-    , "It takes as input two files of timestamps (unsigned 64-bit binary integers)"
+    , "It takes as input two files of timestamps (in a number of supported formats)"
     , "and produces an ASCII file containing an estimate of the correlation function"
-    , "and its variance for the requested range of lag times."
+    , "and its variance over the requested range of lag times."
     ]
 
 checkMonotonic :: Monad m => Stamps -> EitherT String m ()
