@@ -1,11 +1,10 @@
 module HPhoton.IO ( ReadError(..)
-                  , Metadata(..)
+                  , module HPhoton.IO.Metadata
                   , Channel
                   , readStamps
                   ) where
 
 import Data.List
-import Data.Time.Clock
 import qualified Data.Vector.Storable as VS
 import qualified Data.Vector.Unboxed as VU
 import Control.Exception.Base (IOException)
@@ -13,19 +12,17 @@ import Control.Monad.Trans.Class
 import Control.Monad.IO.Class
 import Control.Error
 import Control.Applicative
+import Control.Lens
 import HPhoton.Types
 import qualified HPhoton.IO.RawTimestamps as Raw
 import qualified HPhoton.IO.FpgaTimetagger as Fpga
+import HPhoton.IO.Metadata
 
 data ReadError = ReadIOException IOException
                | ParseError String
                | InvalidChannel
                | UnrecognizedFormat
                deriving (Show)
-
-data Metadata = Jiffy Double
-              | CreationTime UTCTime
-              deriving (Show)
 
 type Channel = Int
 
