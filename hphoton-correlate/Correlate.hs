@@ -2,7 +2,7 @@
 
 import           Control.Applicative
 import           Control.Error
-import           Control.Monad           (forM_, liftM)
+import           Control.Monad           (forM_, liftM, when)
 import           Control.Monad.Trans
 import           Data.List
 import           Data.Function (on)
@@ -115,9 +115,18 @@ main' = do
                      | otherwise                -> fmapLT show $ readStamps (xfile args) (xchan args)
                    Just f  -> fmapLT show $ readStamps f (ychan args)
     checkMonotonic a
+    liftIO $ putStrLn $ "x: "++show (V.length a)++" timestamps"
     checkMonotonic b
+    liftIO $ putStrLn $ "y: "++show (V.length b)++" timestamps"
 
     let clk = clockFromJiffy $ jiffy_ args
+        expDur = duration [a,b]
+    when (10 * realTimeToTime clk (longlag args) > expDur)
+      $ left "--long-lag is too long for data set"
+    when (realTimeToTime clk (shortlag args) < 10)
+      $ left "--short-lag is too short for data set"
+
+
     let pts = let short = realTimeToTime clk (shortlag args)
                   long = realTimeToTime clk (longlag args)
                   maybeError = fromMaybe (error "Empty vector")
