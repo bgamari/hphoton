@@ -13,7 +13,7 @@ module HPhoton.Corr.PackedVec ( Time
                               , izipWith
                               , dropWhileIdx
                               , takeWhileIdx
-                              , head, last
+                              , startIdx, endIdx
                               , extent
                               , sum
                               ) where
@@ -144,13 +144,13 @@ map :: (V.Vector v (i,a), V.Vector v (i,b))
 map f (PVec v) = PVec $ V.map (\(x,y)->(x, f y)) v
 {-# INLINE map #-}
 
-head :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> (i,a)
-head (PVec v) = V.head v
-{-# INLINE head #-}
+startIdx :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> i
+startIdx (PVec v) = fst $ V.head v
+{-# INLINE startIdx #-}
 
-last :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> (i,a)
-last (PVec v) = V.last v
-{-# INLINE last #-}
+endIdx :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> i
+endIdx (PVec v) = fst $ V.last v
+{-# INLINE endIdx #-}
 
 sum :: (Num a, V.Vector v (i,a)) => PackedVec v i a -> a
 sum (PVec v) = V.foldl' (\accum (_,a)->accum+a) 0 v

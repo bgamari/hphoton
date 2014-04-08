@@ -148,8 +148,8 @@ trimShiftData
     :: (Ord t, Num t, Real a, V.Vector v (t,a))
     => t -> PackedVec v t a -> PackedVec v t a -> t -> (PackedVec v t a, PackedVec v t a)
 trimShiftData longlag a b lag =
-        let startT = max (fst $ PV.head a) (fst $ PV.head b)
-            endT = min (fst $ PV.last a) (fst $ PV.last b)
+        let startT = max (PV.startIdx a) (PV.startIdx b)
+            endT = min (PV.endIdx a) (PV.endIdx b)
             a' = PV.takeWhileIdx (<= endT)
                $ PV.dropWhileIdx (<  (startT + longlag)) a
             b' = PV.takeWhileIdx (<= endT)
