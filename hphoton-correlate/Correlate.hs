@@ -141,9 +141,9 @@ main' = do
     let clk = clockFromJiffy jiffy'
         expDur = duration [a,b]
     when (10 * realTimeToTime clk (longlag args) > expDur)
-      $ left "--long-lag is too long for data set"
+      $ left "--max-lag is too long for data set"
     when (realTimeToTime clk (shortlag args) < 10)
-      $ left "--short-lag is too short for data set"
+      $ left "--min-lag is too short for data set"
 
 
     let pts = let short = realTimeToTime clk (shortlag args)
