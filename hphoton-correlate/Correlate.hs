@@ -122,8 +122,13 @@ main' = do
                   long = realTimeToTime clk (longlag args)
               in withStrategy (parList rdeepseq)
                  $ logCorr (short, long) (nlags args)
-                           (unsafeVecFromStamps a) (unsafeVecFromStamps b)
+                           (errorEither $ unsafeVecFromStamps a)
+                           (errorEither $ unsafeVecFromStamps b)
 
     liftIO $ forM_ pts $ \(lag, gee, bar) -> do
         printf "%1.4e\t%1.8f\t%1.8e\n" (timeToRealTime clk lag) gee (bar^2)
         hFlush stdout
+
+errorEither :: Either String r -> r
+errorEither (Left l) = error l
+errorEither (Right r) = r
