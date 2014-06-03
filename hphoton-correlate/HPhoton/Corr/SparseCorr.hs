@@ -11,6 +11,7 @@ module HPhoton.Corr.SparseCorr ( corr
 
 import qualified Data.Vector.Generic as V
 import Data.Foldable (foldl')
+import Control.Applicative ((<$>))
 import Control.Monad
 import           Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
 import           Data.Vector.Fusion.Stream.Size
@@ -36,13 +37,13 @@ unBinned (Binned _ a) = a
 type BinnedVec v t a = Binned t (PackedVec v t a)
 
 vecFromStamps :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
-              => v t -> Binned t (PackedVec v t a)
-vecFromStamps = Binned 1 . PV.packedVec . V.map (,1) 
+              => v t -> Maybe (Binned t (PackedVec v t a))
+vecFromStamps v = Binned 1 <$> PV.packedVec (V.map (,1) v)
 {-# INLINEABLE vecFromStamps #-}
 
 unsafeVecFromStamps :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
-                    => v t -> Binned t (PackedVec v t a)
-unsafeVecFromStamps = Binned 1 . PV.unsafePackedVec . V.map (,1) 
+                    => v t -> Maybe (Binned t (PackedVec v t a))
+unsafeVecFromStamps v = Binned 1 <$> PV.unsafePackedVec (V.map (,1) v)
 {-# INLINEABLE unsafeVecFromStamps #-}
 
 data ReBinState s t a
@@ -57,8 +58,11 @@ rebin :: (Num t, Ord t, Integral t, V.Vector v (t,a), Num a, Eq a)
 rebin n v | n <= 0 = error "Invalid rebin size"
 rebin 1 v = v
 rebin n (Binned oldWidth v) =
-    Binned width (PV.unsafePackedVec $ V.unstream
-                  $ rebinStream width $ V.stream $ getPackedVec v)
+    case PV.unsafePackedVec $ V.unstream
+         $ rebinStream width
+         $ V.stream $ getPackedVec v of
+      Nothing -> error "rebinStream broken length invariant"
+      Just v' -> Binned width v'
   where
     width = oldWidth * fromIntegral n
     binStart width t = (t `div` width) * width
@@ -95,17 +99,17 @@ corr :: (Num t, Integral t, Ord t, Real a, V.Vector v (t,a))
      -> t                 -- ^ Lag to compute
      -> Either String (Double, Double)
 corr longlag (Binned ta a) (Binned tb b) lag
-  | ta /= tb           = Left "Can't correlate vectors of different bin lengths"
-  | lag < ta           = Left "Lag must be larger than bin time"
-  | lag > longlag      = Left "Lag must be less than longlag"
-  | lag `mod` ta /= 0  = Left "Lag must be multiple of bin time"
+  | ta /= tb                = Left "Can't correlate vectors of different bin widths"
+  | lag < ta                = Left "Lag must be larger than bin time"
+  | lag > longlag           = Left "Lag must be less than longlag"
+  | lag `mod` ta /= 0       = Left "Lag must be multiple of bin time"
 corr longlag (Binned binWidth a) (Binned _ b) lag =
-    let timespan x = (fst $ V.last x) - (fst $ V.head x)
-        ta = timespan (getPackedVec sa)
-        tb = timespan (getPackedVec sb)
+    let (sa,sb) = trimShiftData longlag a b lag
+        ta = timespan sa
+        tb = timespan sb
+
         -- experiment length in bins
         t = fromIntegral (min ta tb) / realToFrac binWidth :: Double
-        (sa,sb) = trimShiftData longlag a b lag
     
         (dot,ss) = case PV.dotSqr sa sb of (a,b) -> (realToFrac a, realToFrac b)
         count = realToFrac . PV.sum
@@ -113,6 +117,9 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
         g = dot / norm_denom / t
         bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
     in Right (g, sqrt bar2)
+  where
+    timespan :: (Num t, V.Vector v (t,a)) => PackedVec v t a -> t
+    timespan pv = case PV.extent pv of (a,b) -> b - a
 {-# INLINE corr #-}
 
 -- | Here we try to ensure that the zone is sized such that the same amount
@@ -141,12 +148,15 @@ trimShiftData
     :: (Ord t, Num t, Real a, V.Vector v (t,a))
     => t -> PackedVec v t a -> PackedVec v t a -> t -> (PackedVec v t a, PackedVec v t a)
 trimShiftData longlag a b lag =
-        let startT = max (fst $ PV.head a) (fst $ PV.head b)
-            endT = min (fst $ PV.last a) (fst $ PV.last b)
-            a' = PV.takeWhileIdx (<= endT)
-               $ PV.dropWhileIdx (<  (startT + longlag)) a
-            b' = PV.takeWhileIdx (<= endT)
-               $ PV.dropWhileIdx (<  (startT + longlag))
+        let startT = max (PV.startIdx a) (PV.startIdx b)
+            endT = min (PV.endIdx a) (PV.endIdx b)
+            a' = maybe (error "a empty") id
+               $   PV.takeWhileIdx (<= endT)
+               <=< PV.dropWhileIdx (<  (startT + longlag))
+               $   a
+            b' = maybe (error "b empty") id
+               $ PV.takeWhileIdx (<= endT)
+               <=< PV.dropWhileIdx (<  (startT + longlag))
                $ PV.shiftVec lag b
         in (a', b')
 {-# INLINE trimShiftData #-}

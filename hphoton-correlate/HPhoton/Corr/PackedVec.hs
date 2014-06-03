@@ -13,8 +13,8 @@ module HPhoton.Corr.PackedVec ( Time
                               , izipWith
                               , dropWhileIdx
                               , takeWhileIdx
-                              , head
-                              , last
+                              , startIdx, endIdx
+                              , extent
                               , sum
                               ) where
 
@@ -28,23 +28,27 @@ import qualified Data.Vector.Fusion.Stream as S
 import           HPhoton.Types
 import           Prelude                     hiding (map, head, last, sum)
 
--- | An unboxed sparse vector
+-- | A non-empty sparse vector
 newtype PackedVec v i a = PVec {getPackedVec :: v (i,a)}
 
 deriving instance (Show (v (i,a))) => Show (PackedVec v i a)
 deriving instance (Eq (v (i,a))) => Eq (PackedVec v i a)
 
--- | Construct a PackedVec, ensuring that the entries are sorted.
-packedVec :: (Ord i, V.Vector v (i,a)) => v (i,a) -> PackedVec v i a
-packedVec v = PVec $ runST $ do
+-- | Construct a PackedVec, ensuring that the entries are sorted. Empty vectors
+-- are represented by @Nothing@.
+packedVec :: (Ord i, V.Vector v (i,a)) => v (i,a) -> Maybe (PackedVec v i a)
+packedVec v = unsafePackedVec $ runST $ do
                   v' <- V.thaw v
                   VA.sortBy (compare `on` fst) v'
                   V.freeze v'
 {-# INLINE packedVec #-}
 
--- | Construct a PackedVec assuming that the entries are already sorted.
-unsafePackedVec :: (V.Vector v (i,a)) => v (i,a) -> PackedVec v i a
-unsafePackedVec = PVec
+-- | Construct a PackedVec assuming that the entries are already sorted. Empty
+-- vectors are represented by @Nothing@.
+unsafePackedVec :: (V.Vector v (i,a)) => v (i,a) -> Maybe (PackedVec v i a)
+unsafePackedVec v
+  | V.null v  = Nothing
+  | otherwise = Just (PVec v)
 {-# INLINE unsafePackedVec #-}
 
 izipWith :: (Ord i, V.Vector v (i,a), V.Vector v (i,b), V.Vector v (i,c))
@@ -126,13 +130,13 @@ shiftVec shift (PVec v) = PVec $ V.map (\(a,o)->(a+shift, o)) v
 {-# INLINE shiftVec #-}
 
 takeWhileIdx :: (Ord i, V.Vector v (i,a))
-             => (i -> Bool) -> PackedVec v i a -> PackedVec v i a
-takeWhileIdx f (PVec v) = PVec $ V.takeWhile (f . fst) v
+             => (i -> Bool) -> PackedVec v i a -> Maybe (PackedVec v i a)
+takeWhileIdx f (PVec v) = unsafePackedVec $ V.takeWhile (f . fst) v
 {-# INLINE takeWhileIdx #-}
 
 dropWhileIdx :: (Ord i, V.Vector v (i,a))
-             => (i -> Bool) -> PackedVec v i a -> PackedVec v i a
-dropWhileIdx f (PVec v) = PVec $ V.dropWhile (f . fst) v
+             => (i -> Bool) -> PackedVec v i a -> Maybe (PackedVec v i a)
+dropWhileIdx f (PVec v) = unsafePackedVec $ V.dropWhile (f . fst) v
 {-# INLINE dropWhileIdx #-}
 
 -- | Map operation
@@ -142,14 +146,20 @@ map :: (V.Vector v (i,a), V.Vector v (i,b))
 map f (PVec v) = PVec $ V.map (\(x,y)->(x, f y)) v
 {-# INLINE map #-}
 
-head :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> (i,a)
-head (PVec v) = V.head v
-{-# INLINE head #-}
+startIdx :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> i
+startIdx (PVec v) = fst $ V.head v
+{-# INLINE startIdx #-}
 
-last :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> (i,a)
-last (PVec v) = V.last v
-{-# INLINE last #-}
+endIdx :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> i
+endIdx (PVec v) = fst $ V.last v
+{-# INLINE endIdx #-}
 
 sum :: (Num a, V.Vector v (i,a)) => PackedVec v i a -> a
 sum (PVec v) = V.foldl' (\accum (_,a)->accum+a) 0 v
 {-# INLINE sum #-}
+
+-- | The range of indicies covered by the vector
+extent :: (Num i, V.Vector v (i,a)) => PackedVec v i a -> (i,i)
+extent (PVec v) = (fst $ V.head v, fst $ V.last v)
+{-# INLINE extent #-}
+

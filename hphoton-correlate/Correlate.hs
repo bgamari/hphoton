@@ -2,7 +2,7 @@
 
 import           Control.Applicative
 import           Control.Error
-import           Control.Monad           (forM_, liftM)
+import           Control.Monad           (forM_, liftM, when)
 import           Control.Monad.Trans
 import           Data.List
 import           Data.Function (on)
@@ -30,10 +30,12 @@ data Args = Args { xfile    :: FilePath
                  , xchan    :: Channel
                  , yfile    :: Maybe FilePath
                  , ychan    :: Channel
-                 , jiffy_   :: RealTime
+                 , jiffy_   :: Maybe RealTime
                  , shortlag :: RealTime
                  , longlag  :: RealTime
-                 , nlags    :: Int }
+                 , nlags    :: Int
+                 , verbose  :: Bool
+                 }
             deriving (Show,Eq)
 
 opts :: Parser Args
@@ -54,10 +56,11 @@ opts = Args
                  <> short 'Y'
                  <> value 0
                   )
-    <*> option    ( help "Timestamp timebase period"
+    <*> option    ( help "Override timestamp timebase period"
                  <> long "jiffy"
                  <> short 'j'
-                 <> value (1/4e12)
+                 <> reader (pure . auto)
+                 <> value Nothing
                  <> metavar "TIME"
                   )
     <*> option    ( help "Minimum lag to compute"
@@ -77,13 +80,18 @@ opts = Args
                  <> short 'n'
                  <> value 20
                   )
+    <*> switch    ( help "Enable verbose output"
+                 <> short 'v'
+                 <> long "verbose"
+                  )
+
 description = intercalate "\n"
     [ "Corr efficiently computes correlation functions for single-dimensional"
     , "discrete-time, binary data (e.g. photon counts)."
     , ""
-    , "It takes as input two files of timestamps (unsigned 64-bit binary integers)"
+    , "It takes as input two files of timestamps (in a number of supported formats)"
     , "and produces an ASCII file containing an estimate of the correlation function"
-    , "and its variance for the requested range of lag times."
+    , "and its variance over the requested range of lag times."
     ]
 
 checkMonotonic :: Monad m => Stamps -> EitherT String m ()
@@ -114,16 +122,39 @@ main' = do
                      | xchan args == ychan args -> return (a,metaA)
                      | otherwise                -> fmapLT show $ readStamps (xfile args) (xchan args)
                    Just f  -> fmapLT show $ readStamps f (ychan args)
+
+    jiffy' <- case (jiffy_ args, lookupMetadata _Jiffy metaA, lookupMetadata _Jiffy metaB) of
+      (Just j, _, _)           -> return j
+      (_ , Nothing, Nothing)   -> left "Could't infer jiffy. Specify manually with --jiffy"
+      (_ , Just ja, Nothing)   -> right ja
+      (_ , Nothing, Just jb)   -> right jb
+      (_ , Just ja, Just jb)
+        | ja /= jb  -> left "Incompatible jiffys"
+        | otherwise -> right ja
+
     checkMonotonic a
     checkMonotonic b
+    when (verbose args) $ do
+        liftIO $ putStrLn $ "x: "++show (V.length a)++" timestamps"
+        liftIO $ putStrLn $ "y: "++show (V.length b)++" timestamps"
 
-    let clk = clockFromJiffy $ jiffy_ args
+    let clk = clockFromJiffy jiffy'
+        expDur = duration [a,b]
+    when (10 * realTimeToTime clk (longlag args) > expDur)
+      $ left "--long-lag is too long for data set"
+    when (realTimeToTime clk (shortlag args) < 10)
+      $ left "--short-lag is too short for data set"
+
+
     let pts = let short = realTimeToTime clk (shortlag args)
                   long = realTimeToTime clk (longlag args)
+                  maybeError = fromMaybe (error "Empty vector")
               in withStrategy (parList rdeepseq)
                  $ logCorr (short, long) (nlags args)
-                           (unsafeVecFromStamps a) (unsafeVecFromStamps b)
+                           (maybeError $ unsafeVecFromStamps a)
+                           (maybeError $ unsafeVecFromStamps b)
 
     liftIO $ forM_ pts $ \(lag, gee, bar) -> do
         printf "%1.4e\t%1.8f\t%1.8e\n" (timeToRealTime clk lag) gee (bar^2)
         hFlush stdout
+
