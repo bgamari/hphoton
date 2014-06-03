@@ -1,10 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module HPhoton.IO.FpgaTimetagger.Metadata (getMetadata) where
+module HPhoton.IO.FpgaTimetagger.Metadata
+  ( getMetadata
+  , TimetagMetadata(..)
+  ) where
 
 import           Prelude hiding (readFile)
 
 import           Control.Applicative
+import           Control.Error
 import           Control.Monad
 import           Data.Monoid ((<>))
                  
@@ -51,7 +55,7 @@ readIso8601 v =
 metadataForFile f | ".meta" `isSuffixOf` f  = f
                   | otherwise               = f<>".meta"
 
-getMetadata :: FilePath -> IO (Maybe TimetagMetadata)
+getMetadata :: FilePath -> EitherT String IO TimetagMetadata
 getMetadata f = do
-    a <- readFile $ metadataForFile f            
-    return $ decode a
+    a <- fmapLT show $ tryIO $ readFile $ metadataForFile f
+    hoistEither $ eitherDecode a

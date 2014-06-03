@@ -29,6 +29,7 @@ Library
                      old-locale,
                      bytestring,
                      aeson,
+                     errors,
                      hphoton,
                      binary,
                      vector-binary-instances,
