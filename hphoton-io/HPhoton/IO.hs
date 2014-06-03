@@ -63,7 +63,12 @@ fpgaTimetagger = Format (hasExtension [".timetag"]) reader
     reader fname channel = do
       ch <- maybe (left InvalidChannel) right $ toEnum' channel
       records <- liftIO $ Fpga.readRecords fname
-      return (Fpga.unwrapTimes $ Fpga.strobeTimes records ch, [])
+      mdata <- either (const []) convertMeta <$> lift (runEitherT $ Fpga.getMetadata fname)
+      return (Fpga.unwrapTimes $ Fpga.strobeTimes records ch, mdata)
+    convertMeta m =
+      [
+        Jiffy $ 1 / realToFrac (Fpga.ttClockrate m)
+      ]
 
 raw :: Format
 raw = Format (hasExtension [".times", ".raw"]) reader
