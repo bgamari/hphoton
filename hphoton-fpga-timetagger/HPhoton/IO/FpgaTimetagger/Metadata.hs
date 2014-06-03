@@ -19,7 +19,7 @@ import           Data.Time.Format (parseTime)
 import           Data.Time.LocalTime (LocalTime)
 import           System.Locale (defaultTimeLocale)
        
-type Freq = Int
+type Freq = Int  -- ^ in Hertz
 
 data TimetagMetadata = TimetagMeta { ttDescription :: Text
                                    , ttInstrument :: Text
