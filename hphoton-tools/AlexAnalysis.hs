@@ -49,6 +49,7 @@ import           Data.Colour.Names
 
 import           Numeric.SpecFunctions (logFactorial)
 import           Numeric.Log hiding (sum)
+import           Statistics.Types
 import           Statistics.Sample
 import           Statistics.Resampling
 import           Statistics.Resampling.Bootstrap
@@ -344,8 +345,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
             H.li $ H.toHtml $ "Shot-noise variance = "++showFFloat (Just 4) shotSigma2 ""
             H.li $ H.toHtml $
               let e = fmap (fretEff gamma') fretBins
-                  bootstrap = bootstrapBCA 0.9 (V.convert e) [varianceUnbiased] [Resample resamp]
-                  resamp = jackknife varianceUnbiased (V.convert e)
+                  bootstrap = bootstrapBCA 0.9 (V.convert e) [VarianceUnbiased] [Resample resamp]
+                  resamp = jackknife VarianceUnbiased (V.convert e)
               in "Bootstrap variance = "++show bootstrap
 
     liftIO $ renderableToFile fileOpts
