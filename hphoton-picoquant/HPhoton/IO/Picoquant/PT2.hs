@@ -14,14 +14,14 @@ import Control.Applicative
 import GHC.Generics (Generic)
 import Control.Lens
 import qualified Data.ByteString.Lazy as LBS
-  
+
 data PT2 = PT2 { _pt2TextHdr    :: TextHdr
                , _pt2BinaryHdr  :: BinaryHdr
                , _pt2THdr       :: THdr
                , _pt2Records    :: LBS.ByteString
                }
          deriving (Show, Read, Eq, Ord, Typeable, Generic)
-makeLenses ''PT2     
+makeLenses ''PT2
 
 getPT2 :: Get PT2
 getPT2 = do

@@ -74,7 +74,7 @@ data Parameter = Parameter { _paramStart  :: Float
                            , _paramEnd    :: Float
                            }
                deriving (Show, Read, Eq, Ord, Typeable, Generic)
-makeLenses ''Parameter     
+makeLenses ''Parameter
 
 getParameter :: Get Parameter
 getParameter =
@@ -86,7 +86,7 @@ data DisplayCurve = DisplayCurve { _displayCurveMapTo   :: Word32
                                  , _displayCurveShow    :: Bool
                                  }
                   deriving (Show, Read, Eq, Ord, Typeable, Generic)
-makeLenses ''DisplayCurve     
+makeLenses ''DisplayCurve
 
 getDisplayCurve :: Get DisplayCurve
 getDisplayCurve =
@@ -175,7 +175,7 @@ data RouterChannel = RouterChannel { _routerInputType     :: RouterInputType
                                    , _routerCfdZeroCross  :: Word32
                                    }
                    deriving (Show, Read, Eq, Ord, Typeable, Generic)
-makeLenses ''RouterChannel     
+makeLenses ''RouterChannel
 
 getRouterChannel :: Get RouterChannel
 getRouterChannel =
@@ -212,6 +212,8 @@ getBoardHdr =
              <*> V.replicateM 4 getRouterChannel
 
 data THdr = THdr { _tExtDevices    :: Word32
+                 ,  tReserved1     :: Word32
+                 ,  tReserved2     :: Word32
                  , _tInpRate0      :: Word32
                  , _tInpRate1      :: Word32
                  , _tStopAfter     :: Word32
@@ -223,8 +225,10 @@ data THdr = THdr { _tExtDevices    :: Word32
 makeLenses ''THdr
 
 getTHdr :: Get THdr
-getTHdr = 
-    THdr <$> getWord32le           
+getTHdr =
+    THdr <$> getWord32le
+         <*> getWord32le
+         <*> getWord32le
          <*> getWord32le
          <*> getWord32le
          <*> getWord32le
