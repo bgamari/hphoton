@@ -27,15 +27,19 @@ import Foreign.Storable
 import Foreign.ForeignPtr (castForeignPtr)
 import Foreign.Ptr (castPtr, Ptr)
 
-data T3Record = Event { _dTime :: Word16
+type Channel = Word8
+type DTime = Word16
+
+data T3Record = Event { _dTime :: DTime
                       , _nSync :: Word16
-                      , _channel :: Word8
+                      , _channel :: Channel
                       }
               | Overflow { _nSync :: Word16 }
               | Marker { _markers :: Word16
                        , _nSync :: Word16
                        }
               deriving (Show, Read, Eq, Ord)
+makeLenses ''T3Record
 
 instance Storable T3Record where
     sizeOf _ = 4
