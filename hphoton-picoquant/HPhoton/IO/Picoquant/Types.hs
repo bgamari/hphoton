@@ -52,7 +52,16 @@ instance Enum MeasurementMode where
     toEnum _               = error "Unknown measurement mode"
 
 data SubMode = Oscilloscope | Integration | TRES
-             deriving (Show, Read, Eq, Ord, Enum, Bounded, Typeable, Generic)
+             deriving (Show, Read, Eq, Ord, Bounded, Typeable, Generic)
+
+instance Enum SubMode where
+    fromEnum Oscilloscope  = 0
+    fromEnum Integration   = 1
+    fromEnum TRES          = 2
+    toEnum 0               = Oscilloscope
+    toEnum 1               = Integration
+    toEnum 2               = TRES
+    toEnum _               = error "Unknown sub-mode"
 
 data Range = BaseResolution | ResX2 | Resx4 | ResX8 | ResX16 | ResX32 | ResX64 | ResX128
            deriving (Show, Read, Eq, Ord, Enum, Bounded, Typeable, Generic)
