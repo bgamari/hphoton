@@ -17,6 +17,7 @@ library
                        HPhoton.IO.Picoquant.Types
                        HPhoton.IO.Picoquant.Interactive
                        HPhoton.IO.Picoquant.PT2
+                       HPhoton.IO.Picoquant.PT3
   other-extensions:    DeriveGeneric
                        DeriveDataTypeable
                        TemplateHaskell
