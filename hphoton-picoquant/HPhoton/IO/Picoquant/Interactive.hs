@@ -42,6 +42,7 @@ data CurveHdr = CurveHdr { _curveIndex           :: Word32
                          , _curveInpRate1        :: Word32
                          , _curveHistCountRate   :: Word32
                          , _curveIntegralCount   :: Word64
+                         ,  curveReserved        :: Word32
                          , _curveDataOffset      :: Word32
                          , _curveRouterModelCode :: Word32
                          , _curveRouterEnabled   :: Bool
@@ -77,6 +78,7 @@ getCurveHdr =
              <*> getWord32le
              <*> getWord32le
              <*> getWord64le
+             <*> getWord32le
              <*> getWord32le
              <*> getWord32le
              <*> getEnum getWord32le
