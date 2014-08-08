@@ -2,6 +2,7 @@
 module HPhoton.IO.Picoquant.Types where
 
 import Data.Word
+import Data.Int
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.IEEE754
@@ -140,15 +141,16 @@ getBinaryHdr = do
               <*> getWord32le
               <*> getByteString 20
 
-data CfdChannel = CfdChannel { _cfdZeroCross   :: Word32
-                             , _cfdLevel       :: Word32
+data CfdChannel = CfdChannel { _cfdZeroCross   :: Int32
+                             , _cfdLevel       :: Int32
                              }
                 deriving (Show, Read, Eq, Ord, Typeable, Generic)
 makeLenses ''CfdChannel
 
 getCfdChannel :: Get CfdChannel
 getCfdChannel =
-    CfdChannel <$> getWord32le <*> getWord32le
+    CfdChannel <$> fromIntegral `fmap` getWord32le
+               <*> fromIntegral `fmap` getWord32le
 
 data RouterInputType = RouterInputCustom | RouterInputNIM | RouterInputTTL
                      deriving (Show, Read, Eq, Ord, Bounded, Enum, Typeable, Generic)
