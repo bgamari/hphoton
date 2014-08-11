@@ -9,6 +9,7 @@ import           Data.Traversable as T
 import           System.FilePath (takeExtension)
 
 import           Options.Applicative
+import qualified Options.Applicative.Help as Help
 import           Control.Lens hiding (argument)
 import           Data.Binary
 import           Data.Binary.Get
@@ -55,32 +56,40 @@ histogram inPath out channel = do
         $ Csv.encodeWith encodeOpts
         $ V.toList $ either error id hist
 
+histogramOpts :: Parser (IO ())
+histogramOpts =
+    histogram <$> argument str ( help "Input file"
+                              <> metavar "FILE"
+                               )
+              <*> option ( help "Output file"
+                        <> metavar "FILE"
+                        <> short 'o'
+                        <> long "output"
+                        <> value Nothing
+                        <> reader (pure . Just)
+                         )
+              <*> option ( help "Channel number"
+                        <> metavar "N"
+                        <> short 'c'
+                        <> long "channel"
+                        <> value 1
+                         )
+
+helpOpts :: Parser (IO ())
+helpOpts =
+    pure $ print $ Help.helpText $ Help.parserHelp (prefs idm) opts
+
 opts :: Parser (IO ())
 opts =
-    subparser $
-      ( command "histogram" $ info
-          (histogram <$> argument str ( help "Input file"
-                                     <> metavar "FILE"
-                                      )
-                     <*> option ( help "Output file"
-                               <> metavar "FILE"
-                               <> short 'o'
-                               <> long "output"
-                               <> value Nothing
-                               <> reader (pure . Just)
-                                )
-                     <*> option ( help "Channel number"
-                               <> metavar "N"
-                               <> short 'c'
-                               <> long "channel"
-                               <> value 1
-                                ))
-          (progDesc "Export a histogram")
-      )
+    subparser
+      $ command "histogram" (info histogramOpts (progDesc "Export a histogram"))
+     <> command "help" (info helpOpts (progDesc "Display this help message"))
 
 main = do
-    o <- execParser (info opts idm)
-    o
+    action <- execParser $ info opts
+                         $ fullDesc
+                        <> progDesc "Export data from various Picoquant formats"
+    action
 
 readPhdHistogram :: LBS.ByteString -> Channel -> Either String Histogram
 readPhdHistogram input ch = do
