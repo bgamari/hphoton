@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Control.Lens hiding (each)
+import           Control.Lens hiding (each, argument)
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import           Data.List (partition, intercalate, zipWith4)
@@ -81,33 +81,39 @@ data AlexAnalysis = AlexAnalysis { clockrate :: Freq
 
 alexAnalysis :: Parser AlexAnalysis
 alexAnalysis = AlexAnalysis
-    <$> option ( long "clockrate" <> short 'c'
+    <$> option auto
+               ( long "clockrate" <> short 'c'
               <> value (round $ (128e6::Double))
               <> metavar "FREQ"
               <> help "Timetagger clockrate (Hz)"
                )
-    <*> arguments1 Just ( help "Input files" <> action "file" )
-    <*> option ( long "bin-width" <> short 'w'
+    <*> many (argument Just ( help "Input files" <> action "file" ))
+    <*> option auto
+               ( long "bin-width" <> short 'w'
               <> value 1e-3
               <> metavar "TIME"
               <> help "Width of temporal bins"
                )
-    <*> option ( long "burst-size" <> short 's'
+    <*> option auto
+               ( long "burst-size" <> short 's'
               <> value 500
               <> metavar "N"
               <> help "Minimum burst rate in Hz"
                )
-    <*> option ( long "fret-thresh" <> short 'f'
+    <*> option auto
+               ( long "fret-thresh" <> short 'f'
               <> value 10
               <> metavar "N"
               <> help "Minimum number of photons in Dexc channels to include bin in FRET histogram"
                )
-    <*> option ( long "nbins" <> short 'n'
+    <*> option auto
+               ( long "nbins" <> short 'n'
               <> value 50
               <> metavar "N"
               <> help "Number of bins in the FRET efficiency histogram"
                )
-    <*> option ( long "initial-time" <> short 'i'
+    <*> option auto
+               ( long "initial-time" <> short 'i'
               <> value 10e-6
               <> metavar "TIME"
               <> help "Initial time of bin to drop"
@@ -115,29 +121,31 @@ alexAnalysis = AlexAnalysis
     <*> switch ( long "use-cache" <> short 'C'
               <> help "Use trimmed delta cache"
                )
-    <*> nullOption ( long "gamma" <> short 'g'
-                  <> value (Just 1)
-                  <> reader (\s->if s == "auto"
-                                 then pure $ Nothing
-                                 else fmap Just $ auto s
-                            )
-                  <> metavar "[N]"
-                  <> help "Gamma correct resulting histogram. If 'auto' is given, gamma will be estimated from the slope of the Donor-Acceptor population."
-                   )
-    <*> option ( long "crosstalk" <> short 't'
+    <*> option (\s->if s == "auto"
+                        then pure $ Nothing
+                        else fmap Just $ auto s
+               )
+               ( long "gamma" <> short 'g'
+              <> value (Just 1)
+              <> metavar "[N]"
+              <> help "Gamma correct resulting histogram. If 'auto' is given, gamma will be estimated from the slope of the Donor-Acceptor population."
+               )
+    <*> option (\s->if s == "auto"
+                       then pure Nothing
+                       else Just <$> auto s
+               )
+               ( long "crosstalk" <> short 't'
               <> value (Just 0)
-              <> reader (\s->if s == "auto"
-                             then pure Nothing
-                             else Just <$> auto s
-                        )
               <> metavar "[N]"
               <> help "Use crosstalk correction"
                )
-    <*> option ( long "d-only-thresh" <> short 'D'
+    <*> option auto
+               ( long "d-only-thresh" <> short 'D'
               <> value 0.85 <> metavar "S"
               <> help "Stoiciometry threshold for identification of donor-only population"
                )
-    <*> option ( long "a-only-thresh" <> short 'A'
+    <*> option auto
+               ( long "a-only-thresh" <> short 'A'
               <> value 0.20 <> metavar "S"
               <> help "Stoiciometry threshold for identification of acceptor-only population"
                )
