@@ -9,7 +9,6 @@ import Data.Time.Clock
 
 data Metadata = Jiffy Double
               | CreationTime UTCTime
-              deriving (Show)
 makePrisms ''Metadata
 
 lookupMetadata :: (Prism' Metadata a) -> [Metadata] -> Maybe a
