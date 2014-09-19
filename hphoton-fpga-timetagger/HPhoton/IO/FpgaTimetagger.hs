@@ -53,8 +53,10 @@ data Channel = Ch0 | Ch1 | Ch2 | Ch3 deriving (Show, Eq, Enum, Bounded)
 
 -- | A timetagger event record
 newtype Record = Record Word64 deriving (Eq)
-makeIso ''Record
         
+record :: Iso' Word64 Record
+record = iso Record (\(Record r)->r)
+
 instance Show Record where
   show r = "mkRecord" 
              ++" "++views recType show r
