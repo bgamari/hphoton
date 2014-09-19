@@ -9,16 +9,16 @@ module HPhoton.IO.FpgaTimetagger
     , recChannel, recChannels
     , recLost, recWrap
     , recTimeMask
-               
+
       -- * Encoding and decoding records
     , readRecords, readRecords'
     , decodeRecords, decodeRecord
     , encodeRecord
-    
+
       -- * Utilities
     , strobeTimes
     , unwrapTimes
-      
+
       -- * Metadata
     , module HPhoton.IO.FpgaTimetagger.Metadata
     ) where
@@ -32,7 +32,7 @@ import           Data.List (foldl')
 import           HPhoton.Types
 import           Foreign.Storable
 import           Foreign.Ptr
-  
+
 import           Control.Applicative ((<$>))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Unsafe as BSU
@@ -53,18 +53,18 @@ data Channel = Ch0 | Ch1 | Ch2 | Ch3 deriving (Show, Eq, Enum, Bounded)
 
 -- | A timetagger event record
 newtype Record = Record Word64 deriving (Eq)
-        
+
 record :: Iso' Word64 Record
 record = iso Record (\(Record r)->r)
 
 instance Show Record where
-  show r = "mkRecord" 
+  show r = "mkRecord"
              ++" "++views recType show r
              ++" "++views recTime show r
              ++" "++show (recChannels r)
              ++" "++views recWrap show r
              ++" "++views recLost show r
-  
+
 zeroRecord = Record 0
 
 -- | Is the record a delta record
@@ -77,7 +77,7 @@ recStrobe = recDelta . iso not not
 
 -- | The type of a record
 data RecType = Delta | Strobe deriving (Show, Eq, Enum, Bounded)
-                                              
+
 -- | The type of a record
 recType :: Lens' Record RecType
 recType = recDelta . iso to from
@@ -85,7 +85,7 @@ recType = recDelta . iso to from
         to False    = Strobe
         from Delta  = True
         from Strobe = False
-              
+
 -- | The wrap bit of a record
 recWrap :: Lens' Record Bool
 recWrap = from record . bitAt 46
@@ -131,7 +131,7 @@ readRecords fname = G.drop 1024 <$> readRecords' fname
 -- file
 readRecords' :: FilePath -> IO (Vector Record)
 readRecords' fname = decodeRecords <$> BS.readFile fname
-    
+
 -- | Decode records from a bytestring
 decodeRecords :: BS.ByteString -> Vector Record
 decodeRecords = G.unfoldr f
@@ -139,7 +139,7 @@ decodeRecords = G.unfoldr f
                | otherwise         = case decodeRecord bs of
                                          Just r  -> Just (r, BS.drop 6 bs)
                                          Nothing -> f (BS.drop 6 bs)
-    
+
 -- | Decode a single record from a bytestring
 decodeRecord :: BS.ByteString -> Maybe Record
 decodeRecord bs
@@ -158,7 +158,7 @@ decodeRecord bs
 encodeRecord :: Record -> BS.ByteString
 encodeRecord (Record r) =
     BS.pack [ fromIntegral (r `shiftR` (8*i)) | i <- [5,4..0] ]
-    
+
 -- | Fix timing wraparounds
 unwrapTimes :: Vector Time -> Vector Time
 unwrapTimes = Unwrap.unwrapTimes recTimeMask
@@ -170,4 +170,3 @@ strobeRecords recs ch = G.filter (\r->r^.recStrobe && r^.recChannel ch) recs
 -- | Return all of the strobe event times for a given channel
 strobeTimes :: Vector Record -> Channel -> Vector Time
 strobeTimes recs ch = G.map (view recTime) $ strobeRecords recs ch
-
