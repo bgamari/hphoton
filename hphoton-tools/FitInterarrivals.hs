@@ -44,43 +44,50 @@ data FitArgs = FitArgs { chain_length     :: Int
 
 fitArgs :: Parser FitArgs
 fitArgs = FitArgs
-    <$> option  ( long "chain-length" <> short 'l'
+    <$> option  auto
+                ( long "chain-length" <> short 'l'
                <> metavar "N" <> value 100
                <> help "Length of Markov chain"
                 )
-    <*> option  ( long "num-chains" <> short 'n'
+    <*> option  auto
+                ( long "num-chains" <> short 'n'
                <> metavar "N" <> value 8
                <> help "Number of chains to run"
                 )
-    <*> option  ( long "sample-every" <> short 's'
+    <*> option  auto
+                ( long "sample-every" <> short 's'
                <> metavar "N" <> value 5
                <> help "Number of steps to skip between sampling parameters (default=5)"
                 )
-    <*> option  ( long "burnin-length" <> short 'b'
+    <*> option  auto
+                ( long "burnin-length" <> short 'b'
                <> metavar "N" <> value 40
                <> help "Number of steps to allow chain to burn-in for (default=40)"
                 )
     <*> switch  ( long "all-chains" <> short 'a'
                <> help "Show statistics from all chains"
                 )
-    <*> option  ( long "model" <> short 'm'
+    <*> option  (pure . Just)
+                ( long "model" <> short 'm'
                <> metavar "MODEL" <> value Nothing
-               <> reader (fmap Just . pure)
                <> help "Model file"
                 )
     <*> argument pure ( metavar "FILE" <> help "Input file" )
     <*> strOption  ( long "output" <> short 'o'
                   <> metavar "FILE" <> help "Output model to file"
                    )
-    <*> option  ( long "channel" <> short 'c'
+    <*> option  auto
+                ( long "channel" <> short 'c'
                <> value 0 <> metavar "N"
                <> help "Channel to fit"
                 )
-    <*> option  ( long "clockrate"
+    <*> option  auto
+                ( long "clockrate"
                <> metavar "FREQ" <> value 128e6
                <> help "Instrument clockrate (default=128 MHz)"
                 )
-    <*> option  ( long "short-cutoff"
+    <*> option  auto
+                ( long "short-cutoff"
                <> metavar "TIME" <> value 1e-6
                <> help "Discard interarrival times smaller than TIME"
                 )
@@ -222,6 +229,7 @@ statusWorker chains = do
 
 main = do
   fargs <- execParser parserInfo
+  {-
   recs <- readRecords $ file fargs
   let jiffy = 1 / clockrate fargs
       samples = V.filter (>short_cutoff fargs)
@@ -229,6 +237,8 @@ main = do
                 $ timesToInterarrivals
                 $ strobeTimes recs (argsChannel fargs)
              :: V.Vector Sample
+  -}
+  samples <- V.fromList . map read . lines <$> readFile (file fargs)
 
   params <- VB.fromList <$> case model fargs of
       Nothing -> return initial
@@ -257,6 +267,8 @@ main = do
   when (length (output fargs) > 0)
       $ withFile (output fargs) WriteMode $ \f->do
           hPrint f $ VB.toList paramSample
+  
+  writeFile "hi" $ unlines $ map (\t->show t++"\t"++show (modelProb paramSample t)) [1..1000]
 
 -- | Parameter samples of a chain
 type Chain = [ComponentParams]
