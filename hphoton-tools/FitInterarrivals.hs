@@ -5,7 +5,7 @@ import qualified Data.Vector as VB
 import qualified Data.Vector.Unboxed as V
 import           Control.Applicative
 import           Control.Monad
-import           Control.Monad.Trans.Writer                 
+import           Control.Monad.Trans.Writer
 import           Data.Random
 import           Data.Random.Distribution.Beta
 import           Data.Random.Distribution.Categorical
@@ -17,7 +17,7 @@ import           Statistics.Sample (meanVariance)
 import           Data.List (transpose)
 
 import           Data.IORef
-import           Control.Concurrent                 
+import           Control.Concurrent
 import           Control.Concurrent.ParallelIO
 import           HPhoton.IO.FpgaTimetagger
 import           HPhoton.Utils
@@ -164,12 +164,12 @@ helpMsg = unlines
 argsChannel :: FitArgs -> Channel
 argsChannel (FitArgs {channel=ch}) =
     case ch of
-        0         -> Ch0        
+        0         -> Ch0
         1         -> Ch1
         2         -> Ch2
         3         -> Ch3
         otherwise -> error "Invalid channel"
-        
+
 initial :: [(Weight, Exponential)]
 initial = [ (0.7, Exp 50)
           --, (0.1, FixedExp 445e3 0.77)
@@ -244,7 +244,7 @@ main = do
       Nothing -> return initial
       Just f  -> read <$> readFile f
 
-  scoreVars <- forM [1..number_chains fargs] $ \i->do 
+  scoreVars <- forM [1..number_chains fargs] $ \i->do
       var <- newIORef Waiting
       return (i, var)
   when (verbose fargs) $ void $ forkIO $ statusWorker scoreVars
@@ -255,10 +255,10 @@ main = do
       forM_ (zip [1..] chains) $ \(i,chain)->do
           printf "\n\nChain %d\n" (i::Int)
           putStr $ execWriter $ showChainStats chain
-  
+
   putStr "\n\nAll chains\n"
   putStr $ execWriter $ showChainStats $ concat chains
-  
+
   let paramSample = last $ last chains -- TODO: Correctly average
   let mlScore = maxLikelihoodScore paramSample samples
   printf "Score: %1.2e\n" (ln mlScore)
@@ -267,7 +267,7 @@ main = do
   when (length (output fargs) > 0)
       $ withFile (output fargs) WriteMode $ \f->do
           hPrint f $ VB.toList paramSample
-  
+
   writeFile "hi" $ unlines $ map (\t->show t++"\t"++show (modelProb paramSample t)) [1..1000]
 
 -- | Parameter samples of a chain
@@ -310,4 +310,3 @@ replicateM' n f a = do (a',b) <- f n a
 takeEvery :: Int -> [a] -> [a]
 takeEvery n xs | length xs < n = []
                | otherwise     = head xs : takeEvery n (drop n xs)
-          
