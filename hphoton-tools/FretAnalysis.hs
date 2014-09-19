@@ -54,7 +54,7 @@ import           Statistics.Resampling
 import           Options.Applicative hiding ((&))
 
 fileOpts :: FileOptions
-fileOpts = FileOptions (500, 500) SVG    
+fileOpts = FileOptions (500, 500) SVG
 
 type Rate = Double
 
@@ -208,7 +208,7 @@ getFretBins outputRoot fretChannels binTime fname = do
     return bins
 
 summarizeCountStatistics :: Monad m => VB.Vector (Fret Double) -> VB.Vector (Fret Double) -> HtmlLogT m ()
-summarizeCountStatistics bgBins fgBins = do                         
+summarizeCountStatistics bgBins fgBins = do
     let fgCountMoments = foldMap' (fmap M.sample) fgBins
         bgCountMoments = foldMap' (fmap M.sample) bgBins
     tellLog 10 $ H.section $ do
@@ -276,7 +276,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                          <$> readFretBins fretChannels (realTimeToTime clk (binWidth p)) dOnly
                        let dOnlyBgRate = mean . VU.fromList <$> unflipFrets (V.toList dOnlyBg)
                            dOnlyFgCorrected = fmap (\a->(-) <$> a <*> dOnlyBgRate) dOnlyFg
-                    
+
                        (_, fretBins) <- liftIO $ partitionDOnly (dOnlyCriterion p) fgBins
                        return (dOnlyFg, fretBins)
     analyzeBins p outputRoot fname bgRate dOnlyBins fretBins
@@ -469,7 +469,7 @@ layoutCountingHist title maxBins names colours bins =
             $ plot_hist_fill_style .~ solidFillStyle color
             $ plot_hist_line_style .~ solidLine 1 color
             -- $ plot_hist_bins .~ maxBins
-            $ defaultPlotHist                
+            $ defaultPlotHist
     in toRenderable
        $ layout_plots .~ (F.toList $ plot <$> names <*> colours <*> bins)
        $ layout_x_axis . laxis_title .~ "counts"

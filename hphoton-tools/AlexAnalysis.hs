@@ -425,7 +425,7 @@ layoutSE title eBins s e fretEs fits =
                 $ plot_hist_range .~ Just (0,1)
                 $ defaultFloatPlotHist
         unitAxis = scaledAxis def (0,1) :: AxisFn Double
-        layouts = 
+        layouts =
           [ StackedLayout
             $ layout_title .~ title
             $ layout_plots .~ [pts]
