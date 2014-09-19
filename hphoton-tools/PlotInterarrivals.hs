@@ -9,7 +9,7 @@ import           Options.Applicative
 import           Data.Colour
 import           Data.Colour.Names
 import           Control.Lens hiding (argument)
-import           Data.Default                 
+import           Data.Default
 import           Graphics.Rendering.Chart
 import           Graphics.Rendering.Chart.Backend.Cairo
 import           Graphics.Rendering.Chart.Plot.Histogram
@@ -43,16 +43,21 @@ argsChannel (PlotArgs {channel=ch}) =
 
 plotArgs = PlotArgs
     <$> argument Just ( help "Input file" <> action "file" )
-    <*> option ( long "model" <> short 'm' <> action "file"
-              <> value Nothing <> reader (pure . Just))
-    <*> option ( long "output" <> short 'o' <> action "file"
+    <*> option (pure . Just)
+               ( long "model" <> short 'm' <> action "file"
+              <> value Nothing)
+    <*> option auto
+              ( long "output" <> short 'o' <> action "file"
              <> help "Output file"
                )
-    <*> option ( long "channel" <> short 'c' <> help "Channel to fit" <> value 0)
-    <*> option ( long "clockrate" <> short 'c' <> value 128e6 <> metavar "FREQ"
+    <*> option auto
+               ( long "channel" <> short 'c' <> help "Channel to fit" <> value 0)
+    <*> option auto
+               ( long "clockrate" <> short 'c' <> value 128e6 <> metavar "FREQ"
               <> help "Timetagger clockrate (Hz)"
                )
-    <*> option ( long "short-cutoff" <> short 's'
+    <*> option auto
+               ( long "short-cutoff" <> short 's'
               <> value 1e-6
               <> metavar "TIME"
               <> help "Discard interarrival times smaller than TIME (default=1 us)"
@@ -115,7 +120,7 @@ main = do
 
 plotRecords :: V.Vector Time -> ComponentParams -> Renderable ()
 plotRecords times params = renderStackedLayouts $
-    slayouts_layouts .~ 
+    slayouts_layouts .~
         [ StackedLayout $ layout_plots .~ [bins] $ def
         , StackedLayout oddsPlots
         ]
