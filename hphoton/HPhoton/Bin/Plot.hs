@@ -6,6 +6,7 @@ module HPhoton.Bin.Plot ( plotBins
 import Data.Traversable
 import qualified Data.Vector.Unboxed as V
 import Control.Lens
+import Data.Default
 import Graphics.Rendering.Chart
 import Data.Colour
 import Data.Colour.Names
@@ -26,7 +27,7 @@ plotBins' bins label color =
   let points = plot_points_title .~ label
              $ plot_points_style .~ plusses 1 0.1 (opaque color)
              $ plot_points_values .~ V.toList bins
-             $ defaultPlotPoints
+             $ def
   in toPlot points
 
 plotFretEff' :: Fret (V.Vector (RealTime, Int)) -> Gamma -> Plot RealTime ProxRatio
@@ -36,7 +37,7 @@ plotFretEff' bins gamma =
   in toPlot $ plot_points_title .~ "FRET Efficiency"
             $ plot_points_style .~ plusses 1 0.1 (opaque black)
             $ plot_points_values .~ V.toList fretEffs
-            $ defaultPlotPoints
+            $ def
 
 plotFretEff :: Clock -> Fret (V.Vector Time) -> RealTime -> Gamma -> Plot RealTime FretEff
 plotFretEff clk times binWidth =

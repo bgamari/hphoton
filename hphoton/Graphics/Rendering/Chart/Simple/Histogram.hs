@@ -41,4 +41,4 @@ chart nbins xs = layout
 
 simpleHist :: FilePath -> Int -> V.Vector Double -> IO ()
 simpleHist fname nbins xs =
-  renderableToPNGFile (toRenderable $ chart nbins xs) 640 480 fname >> return ()
+  renderableToFile def fname (toRenderable $ chart nbins xs) >> return ()
