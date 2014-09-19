@@ -11,7 +11,7 @@ import qualified Data.Vector.Generic     as V
 import qualified Data.Vector.Unboxed     as VU
 import           Data.Word
 import           Data.Maybe (fromMaybe)
-import           Control.Parallel.Strategies                 
+import           Control.Parallel.Strategies
 
 import           HPhoton.Corr.PackedVec  (PackedVec)
 import           HPhoton.Corr.SparseCorr
@@ -43,39 +43,44 @@ opts = Args
     <$> strOption ( help "File containing timestamps"
                  <> short 'x'
                   )
-    <*> option    ( help "Channel"
+    <*> option    auto
+                  ( help "Channel"
                  <> short 'X'
                  <> value 0
                   )
-    <*> option    ( help "File containing timestamps"
+    <*> option    (pure . Just)
+                  ( help "File containing timestamps"
                  <> value Nothing
-                 <> reader (pure . str)
                  <> short 'y'
                   )
-    <*> option    ( help "Channel"
+    <*> option    auto
+                  ( help "Channel"
                  <> short 'Y'
                  <> value 0
                   )
-    <*> option    ( help "Override timestamp timebase period"
+    <*> option    (\s->Just <$> auto s)
+                  ( help "Override timestamp timebase period"
                  <> long "jiffy"
                  <> short 'j'
-                 <> reader (pure . auto)
                  <> value Nothing
                  <> metavar "TIME"
                   )
-    <*> option    ( help "Minimum lag to compute"
+    <*> option    auto
+                  ( help "Minimum lag to compute"
                  <> long "min-lag"
                  <> short 'l'
                  <> value 1e-6
                  <> metavar "TIME"
                   )
-    <*> option    ( help "Maximum lag to computer"
+    <*> option    auto
+                  ( help "Maximum lag to computer"
                  <> long "max-lag"
                  <> short 'L'
                  <> value 1
                  <> metavar "TIME"
                   )
-    <*> option    ( help "Number of lags to compute per octave"
+    <*> option    auto
+                  ( help "Number of lags to compute per octave"
                  <> long "nbins"
                  <> short 'n'
                  <> value 20
@@ -107,7 +112,7 @@ main = do
     case result of
       Left err  -> putStrLn $ "Error: "++err
       Right _   -> return ()
-      
+
 main' :: EitherT String IO ()
 main' = do
     args <- lift $ execParser $ info (helper <*> opts)
