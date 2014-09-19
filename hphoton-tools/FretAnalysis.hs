@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import           Control.Lens
+import           Control.Lens hiding (argument)
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import           Data.List (partition, intercalate, zipWith4)
@@ -75,60 +75,66 @@ data FretAnalysis = FretAnalysis { clockrate :: Freq
 
 fretAnalysis :: Parser FretAnalysis
 fretAnalysis = FretAnalysis
-    <$> option ( long "clockrate" <> short 'c'
+    <$> option auto
+               ( long "clockrate" <> short 'c'
               <> value (round $ (128e6::Double))
               <> metavar "FREQ"
               <> help "Timetagger clockrate (Hz)"
                )
-    <*> arguments1 Just ( help "Input files" <> action "file" )
-    <*> option ( long "bin-width" <> short 'w'
+    <*> many (argument Just ( help "Input files" <> action "file" ))
+    <*> option auto
+               ( long "bin-width" <> short 'w'
               <> value 1e-3
               <> metavar "TIME"
               <> help "Width of temporal bins"
                )
-    <*> option ( long "burst-size" <> short 's'
+    <*> option auto
+               ( long "burst-size" <> short 's'
               <> value 500
               <> metavar "N"
               <> help "Minimum burst rate in counts per bin"
                )
-    <*> option ( long "upper-thresh" <> short 'u'
+    <*> option auto
+               ( long "upper-thresh" <> short 'u'
               <> value Nothing
               <> metavar "N"
               <> help "Throw out bins with greater than N photons"
                )
-    <*> option ( long "nbins" <> short 'n'
+    <*> option auto
+               ( long "nbins" <> short 'n'
               <> value 50
               <> metavar "N"
               <> help "Number of bins in the FRET efficiency histogram"
                )
-    <*> nullOption ( long "donly-file" <> short 'D'
-                  <> value Nothing
-                  <> reader (pure . Just)
-                  <> help "Donor only file to use for gamma and crosstalk estimation; uses donor-only population of current file by default"
-                   )
-    <*> nullOption ( long "gamma" <> short 'g'
-                  <> value (Just 1)
-                  <> reader (\s->if s == "auto"
-                                 then pure $ Nothing
-                                 else fmap Just $ auto s
-                            )
-                  <> metavar "[N]"
-                  <> help "Gamma correct resulting histogram. If 'auto' is given, gamma will be estimated from the slope of the Donor-Acceptor population."
-                   )
-    <*> option ( long "crosstalk" <> short 't'
+    <*> option (pure . Just)
+               ( long "donly-file" <> short 'D'
+              <> value Nothing
+              <> help "Donor only file to use for gamma and crosstalk estimation; uses donor-only population of current file by default"
+               )
+    <*> option (\s->if s == "auto"
+                       then pure $ Nothing
+                       else fmap Just $ auto s
+               )
+               ( long "gamma" <> short 'g'
+              <> value (Just 1)
+              <> metavar "[N]"
+              <> help "Gamma correct resulting histogram. If 'auto' is given, gamma will be estimated from the slope of the Donor-Acceptor population."
+               )
+    <*> option (\s->if s == "auto"
+                       then pure Nothing
+                       else Just <$> auto s
+               )
+               ( long "crosstalk" <> short 't'
               <> value (Just 0)
-              <> reader (\s->if s == "auto"
-                             then pure Nothing
-                             else Just <$> auto s
-                        )
               <> metavar "[E]"
               <> help "Use crosstalk correction"
                )
     <*> strOption ( long "output" <> short 'o'
-              <> value "." <> metavar "DIR"
-              <> help "Directory in which to place output files"
-               )
-    <*> option ( long "fit-comps" <> short 'f'
+                 <> value "." <> metavar "DIR"
+                 <> help "Directory in which to place output files"
+                  )
+    <*> option auto
+               ( long "fit-comps" <> short 'f'
               <> value 1 <> metavar "N"
               <> help "Number of Beta fit components"
                )
@@ -137,12 +143,14 @@ fretAnalysis = FretAnalysis
 dOnlyPartitioning :: Parser DOnlyPartitioning
 dOnlyPartitioning = eThresh <|> fitOdds
   where eThresh = EThresh
-            <$> option ( long "donly-thresh" <> short 'd'
+            <$> option auto
+                       ( long "donly-thresh" <> short 'd'
                       <> value 0.2 <> metavar "E"
                       <> help "FRET efficiency cut-off for donor-only population"
                        )
         fitOdds = FitOdds
-            <$> option ( long "donly-fit-comps"
+            <$> option auto
+                       ( long "donly-fit-comps"
                       <> value 2 <> metavar "O"
                       <> help "Number of components to fit"
                        )
