@@ -21,8 +21,7 @@ Library
                      HPhoton.BurstIdent.BinThreshold
                      HPhoton.Types,
                      HPhoton.Unwrap,
-                     HPhoton.Utils,
-                     Graphics.Rendering.Chart.Simple.Histogram
+                     HPhoton.Utils
 
   Build-depends:     base,
                      directory,
