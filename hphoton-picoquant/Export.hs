@@ -61,14 +61,15 @@ histogramOpts =
     histogram <$> argument str ( help "Input file"
                               <> metavar "FILE"
                                )
-              <*> option ( help "Output file"
+              <*> option (pure . Just)
+                         ( help "Output file"
                         <> metavar "FILE"
                         <> short 'o'
                         <> long "output"
                         <> value Nothing
-                        <> reader (pure . Just)
                          )
-              <*> option ( help "Channel number"
+              <*> option auto
+                         ( help "Channel number"
                         <> metavar "N"
                         <> short 'c'
                         <> long "channel"
@@ -77,7 +78,7 @@ histogramOpts =
 
 helpOpts :: Parser (IO ())
 helpOpts =
-    pure $ print $ Help.helpText $ Help.parserHelp (prefs idm) opts
+    pure $ print $ Help.parserHelp (prefs idm) opts
 
 opts :: Parser (IO ())
 opts =
