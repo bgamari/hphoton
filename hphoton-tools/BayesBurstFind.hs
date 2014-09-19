@@ -27,17 +27,23 @@ data BurstFind = BurstFind { fname :: FilePath
 burstFind :: Parser BurstFind
 burstFind = BurstFind
     <$> argument Just ( help "Input file" <> action "file" )
-    <*> option ( long "bg-rate" <> short 'b' <> value 1000
+    <*> option auto
+               ( long "bg-rate" <> short 'b' <> value 1000
               <> help "Background count rate (Hz)" )
-    <*> option ( long "burst-rate" <> short 'B' <> value 4000
+    <*> option auto
+               ( long "burst-rate" <> short 'B' <> value 4000
               <> help "Burst count rate (Hz)" )
-    <*> option ( long "clockrate" <> short 'c' <> value (round (128e6 :: Double))
+    <*> option auto
+               ( long "clockrate" <> short 'c' <> value (round (128e6 :: Double))
               <> help "Timetag clock frequency (Hz)" )
-    <*> option ( long "window" <> short 'w' <> value 10
+    <*> option auto
+               ( long "window" <> short 'w' <> value 10
               <> help "Model window size" )
-    <*> option ( long "min-length" <> short 'l' <> value 10
+    <*> option auto
+               ( long "min-length" <> short 'l' <> value 10
               <> help "Minimum burst length" )
-    <*> option ( long "odds-thresh" <> short 'o' <> value 2
+    <*> option auto
+               ( long "odds-thresh" <> short 'o' <> value 2
               <> help "Acceptance threshold on the Bayes factor" )
 
 main :: IO ()
