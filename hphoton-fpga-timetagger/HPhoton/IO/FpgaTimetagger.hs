@@ -32,8 +32,11 @@ import           Data.List (foldl')
 import           HPhoton.Types
 import           Foreign.Storable
 import           Foreign.Ptr
-
 import           Control.Applicative ((<$>))
+
+import           Data.Binary
+import           Data.Binary.Get (getByteString)
+import           Data.Binary.Put (putByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Unsafe as BSU
 import           Data.Storable.Endian
@@ -158,6 +161,11 @@ decodeRecord bs
 encodeRecord :: Record -> BS.ByteString
 encodeRecord (Record r) =
     BS.pack [ fromIntegral (r `shiftR` (8*i)) | i <- [5,4..0] ]
+
+instance Binary Record where
+  get = do r <- decodeRecord <$> getByteString 6
+           maybe (fail "Parse error") return r
+  put = putByteString . encodeRecord
 
 -- | Fix timing wraparounds
 unwrapTimes :: Vector Time -> Vector Time
