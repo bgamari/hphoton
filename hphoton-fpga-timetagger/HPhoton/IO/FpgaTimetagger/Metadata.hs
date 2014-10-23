@@ -11,7 +11,7 @@ import           Control.Applicative
 import           Control.Error
 import           Control.Monad
 import           Data.Monoid ((<>))
-                 
+
 import           Data.Aeson
 import           Data.ByteString.Lazy (readFile)
 import           Data.List (isSuffixOf   )
@@ -19,10 +19,9 @@ import           Data.Map (Map)
 import           Data.Text (Text, pack, unpack)
 import qualified Data.Text.IO as TIO
 
-import           Data.Time.Format (parseTime)
+import           Data.Time.Format (parseTime, defaultTimeLocale)
 import           Data.Time.LocalTime (LocalTime)
-import           System.Locale (defaultTimeLocale)
-       
+
 type Freq = Int  -- ^ in Hertz
 
 data TimetagMetadata = TimetagMeta { ttDescription :: Text
@@ -33,7 +32,7 @@ data TimetagMetadata = TimetagMeta { ttDescription :: Text
                                    , ttClockrate :: Freq
                                    }
                        deriving (Show, Eq)
-                       
+
 instance FromJSON TimetagMetadata where
   parseJSON (Object v) = TimetagMeta <$>
                          v .: "description" <*>

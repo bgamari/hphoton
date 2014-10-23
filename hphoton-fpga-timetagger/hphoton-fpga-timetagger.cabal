@@ -25,7 +25,7 @@ Library
                      vector,
                      filepath,
                      storable-endian,
-                     time,
+                     time >= 1.5,
                      old-locale,
                      bytestring,
                      aeson,
