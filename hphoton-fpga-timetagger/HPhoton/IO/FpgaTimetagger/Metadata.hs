@@ -19,7 +19,7 @@ import           Data.Map (Map)
 import           Data.Text (Text, pack, unpack)
 import qualified Data.Text.IO as TIO
 
-import           Data.Time.Format (parseTime, defaultTimeLocale)
+import           Data.Time.Format (parseTimeM, defaultTimeLocale)
 import           Data.Time.LocalTime (LocalTime)
 
 type Freq = Int  -- ^ in Hertz
@@ -47,7 +47,7 @@ iso8601Format = "%FT%T%Q"
 
 readIso8601 :: MonadPlus m => Text -> m LocalTime
 readIso8601 v =
-    case parseTime defaultTimeLocale iso8601Format $ unpack v of
+    case parseTimeM True defaultTimeLocale iso8601Format (unpack v) of
         Nothing -> mzero
         Just t  -> return t
 
