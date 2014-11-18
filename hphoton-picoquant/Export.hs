@@ -61,7 +61,7 @@ histogramOpts =
     histogram <$> argument str ( help "Input file"
                               <> metavar "FILE"
                                )
-              <*> option (pure . Just)
+              <*> option (Just <$> str)
                          ( help "Output file"
                         <> metavar "FILE"
                         <> short 'o'
