@@ -63,7 +63,7 @@ instance Enum SubMode where
     toEnum 2               = TRES
     toEnum _               = error "Unknown sub-mode"
 
-data Range = BaseResolution | ResX2 | Resx4 | ResX8 | ResX16 | ResX32 | ResX64 | ResX128
+data Range = BaseResolution | ResX2 | ResX4 | ResX8 | ResX16 | ResX32 | ResX64 | ResX128
            deriving (Show, Read, Eq, Ord, Enum, Bounded, Typeable, Generic)
 
 data LinLog = Linear | Log
@@ -101,7 +101,7 @@ data BinaryHdr = BinaryHdr { _nCurves          :: Word32
                            , _measurementMode  :: MeasurementMode
                            , _subMode          :: SubMode
                            , _rangeNo          :: Range
-                           , _offset           :: Word32
+                           , _offset           :: Word32 -- ^ in nanoseconds
                            , _acqTime          :: Word32
                            , _stopAt           :: Word32
                            , _stopOnOverflow   :: Bool
@@ -191,7 +191,7 @@ data BoardHdr = BoardHdr { _hardwareIdent      :: ByteString
                          , _hardwareSerial     :: Word32
                          , _syncDivider        :: Word32
                          , _cfdChannels        :: Vector CfdChannel
-                         , _resolution         :: Float
+                         , _resolution         :: Float  -- ^ In nanoseconds
                          , _routerModelCode    :: Word32
                          , _routerEnabled      :: Bool
                          , _routerChannels     :: Vector RouterChannel
