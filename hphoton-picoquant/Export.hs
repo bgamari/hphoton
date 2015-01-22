@@ -82,16 +82,16 @@ histogramOpts =
 
 helpOpts :: Parser (IO ())
 helpOpts =
-    pure $ print $ Help.parserHelp (prefs idm) opts
+    pure $ print $ Help.parserHelp (prefs showHelpOnError) opts
 
 opts :: Parser (IO ())
 opts =
     subparser
-      $ command "histogram" (info histogramOpts (progDesc "Export a histogram"))
+      $ command "histogram" (info (helper <*> histogramOpts) (progDesc "Export a histogram"))
      <> command "help" (info helpOpts (progDesc "Display this help message"))
 
 main = do
-    action <- execParser $ info opts
+    action <- execParser $ info (helper <*> opts)
                          $ fullDesc
                         <> progDesc "Export data from various Picoquant formats"
     action
