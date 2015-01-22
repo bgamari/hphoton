@@ -27,18 +27,16 @@ import           HPhoton.IO.Picoquant.PT3 as PT3
 import           HPhoton.IO.Picoquant.Types
 
 -- | Time in picoseconds
--- Converting from Float to Double incurs precision loss, therefore we
--- keep things in Float.
-type Time = Float
+type Time = Int
 type Histogram = V.Vector (Time, Int)
 
 binStarts :: Phd.CurveHdr -> V.Vector Time
 binStarts curve =
     V.generate (curve ^. curveChannels . to fromIntegral)
-    $ \i->1000 * offset + 1000 * res * realToFrac i
+    $ \i->1000 * offset + 1000 * res * fromIntegral i `div` 10
   where
-    offset = curve ^.curveOffset . to realToFrac
-    res = curve ^. curveResolution
+    offset = curve ^. curveOffset . to fromIntegral :: Time
+    res = round (curve ^. curveResolution * 10000) :: Time
 
 encodeOpts :: Csv.EncodeOptions
 encodeOpts =
@@ -113,7 +111,9 @@ readT3Histogram input ch =
         h = hist $ mapMaybe eventOfChannel
                  $ VS.toList $ pt3 ^. pt3Records
         Just res = preview (pt3Boards . ix 0 . resolution) pt3
-        lags = V.map (\i->realToFrac i * 1000 * res) $ V.enumFromTo 0 (2^12)
+        -- We round the resolution to 100 fs to give final lags in ps
+        resRounded = round (1000*10*res) :: Time
+        lags = V.map (\i->i * resRounded `div` 10) $ V.enumFromTo 0 (2^12)
     in Right $ V.zip lags (V.convert h)
 
 modify :: (PrimMonad m, VU.Unbox a)
