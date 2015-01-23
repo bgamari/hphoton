@@ -43,7 +43,7 @@ argsChannel (PlotArgs {channel=ch}) =
 
 plotArgs = PlotArgs
     <$> strArgument ( help "Input file" <> action "file" )
-    <*> option (pure . Just)
+    <*> option (Just <$> str)
                ( long "model" <> short 'm' <> action "file"
               <> value Nothing)
     <*> option auto
