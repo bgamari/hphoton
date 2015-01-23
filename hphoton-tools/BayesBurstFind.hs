@@ -26,7 +26,7 @@ data BurstFind = BurstFind { fname :: FilePath
 
 burstFind :: Parser BurstFind
 burstFind = BurstFind
-    <$> argument Just ( help "Input file" <> action "file" )
+    <$> strArgument ( help "Input file" <> action "file" )
     <*> option auto
                ( long "bg-rate" <> short 'b' <> value 1000
               <> help "Background count rate (Hz)" )

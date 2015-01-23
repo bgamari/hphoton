@@ -81,7 +81,7 @@ fretAnalysis = FretAnalysis
               <> metavar "FREQ"
               <> help "Timetagger clockrate (Hz)"
                )
-    <*> many (argument Just ( help "Input files" <> action "file" ))
+    <*> many (strArgument ( help "Input files" <> action "file" ))
     <*> option auto
                ( long "bin-width" <> short 'w'
               <> value 1e-3
@@ -106,24 +106,20 @@ fretAnalysis = FretAnalysis
               <> metavar "N"
               <> help "Number of bins in the FRET efficiency histogram"
                )
-    <*> option (pure . Just)
+    <*> option (Just <$> str)
                ( long "donly-file" <> short 'D'
               <> value Nothing
               <> help "Donor only file to use for gamma and crosstalk estimation; uses donor-only population of current file by default"
                )
-    <*> option (\s->if s == "auto"
-                       then pure $ Nothing
-                       else fmap Just $ auto s
-               )
+    <*> option (let autoOption = eitherReader $ \s->if s == "auto" then pure Nothing else empty
+                in autoOption <|> fmap Just auto)
                ( long "gamma" <> short 'g'
               <> value (Just 1)
               <> metavar "[N]"
               <> help "Gamma correct resulting histogram. If 'auto' is given, gamma will be estimated from the slope of the Donor-Acceptor population."
                )
-    <*> option (\s->if s == "auto"
-                       then pure Nothing
-                       else Just <$> auto s
-               )
+    <*> option (let autoOption = eitherReader $ \s->if s == "auto" then pure Nothing else empty
+                in autoOption <|> fmap Just auto)
                ( long "crosstalk" <> short 't'
               <> value (Just 0)
               <> metavar "[E]"
