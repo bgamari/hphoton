@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 import           Control.Lens hiding (each, argument)
 import qualified Data.Foldable as F
@@ -87,7 +88,7 @@ alexAnalysis = AlexAnalysis
               <> metavar "FREQ"
               <> help "Timetagger clockrate (Hz)"
                )
-    <*> many (argument Just ( help "Input files" <> action "file" ))
+    <*> many (strArgument ( help "Input files" <> action "file" ))
     <*> option auto
                ( long "bin-width" <> short 'w'
               <> value 1e-3
@@ -121,19 +122,15 @@ alexAnalysis = AlexAnalysis
     <*> switch ( long "use-cache" <> short 'C'
               <> help "Use trimmed delta cache"
                )
-    <*> option (\s->if s == "auto"
-                        then pure $ Nothing
-                        else fmap Just $ auto s
-               )
+    <*> option (let autoOption = eitherReader $ \s->if s == "auto" then pure Nothing else empty
+                in autoOption <|> fmap Just auto)
                ( long "gamma" <> short 'g'
               <> value (Just 1)
               <> metavar "[N]"
               <> help "Gamma correct resulting histogram. If 'auto' is given, gamma will be estimated from the slope of the Donor-Acceptor population."
                )
-    <*> option (\s->if s == "auto"
-                       then pure Nothing
-                       else Just <$> auto s
-               )
+    <*> option (let autoOption = eitherReader $ \s->if s == "auto" then pure Nothing else empty
+                in autoOption <|> fmap Just auto)
                ( long "crosstalk" <> short 't'
               <> value (Just 0)
               <> metavar "[N]"
@@ -262,12 +259,11 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                                  ]) bgCountMoments
             rows [ ["Number of background bins", show $ VB.length bgBins] ]
 
-    liftIO $ renderableToFile fileOpts
+    liftIO $ renderableToFile fileOpts (fname++"-uncorrected.svg")
         (layoutSE fname (nbins p) (VB.toList $ fmap stoiciometry bins)
                                   (VB.toList $ fmap proxRatio bins)
                                   (VB.toList $ fmap proxRatio bins)
                                   [])
-        (fname++"-uncorrected.svg")
     tellLog 20
         $ let ((muS,sigS), (muE,sigE)) =
                            (\(s,e)->(meanVariance s, meanVariance e))
@@ -331,8 +327,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                $ fretBins
         shotSigma2 = shotNoiseEVar (1/nInv) mu
 
-    liftIO $ renderableToFile fileOpts
-        (layoutSE fname (nbins p) (VB.toList s)
+    liftIO $ renderableToFile fileOpts (outputRoot++"-se.svg") $
+        layoutSE fname (nbins p) (VB.toList s)
                                   (VB.toList e)
                                   (VB.toList $ fmap (fretEff gamma') fretBins)
                   [ ("shot-limited", Beta $ paramFromMoments (mu,shotSigma2))
@@ -340,8 +336,6 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                   --  ("fit", Gaussian (mu, sigma2))
                   --, ("shot-limited", Gaussian (mu, shotSigma2))
                   ]
-        )
-        (outputRoot++"-se.svg")
 
     tellLog 2 $ H.section $ do
         H.h2 "Corrected FRET efficiency"
@@ -357,9 +351,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                   resamp = jackknife VarianceUnbiased (V.convert e)
               in "Bootstrap variance = "++show bootstrap
 
-    liftIO $ renderableToFile fileOpts
-        (layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA $ VB.toList bins)
-        (outputRoot++"-bins.svg")
+    liftIO $ renderableToFile fileOpts (outputRoot++"-bins.svg")
+        $ layoutThese plotBinTimeseries (Alex "AA" "AD" "DD" "DA") $ T.sequenceA $ VB.toList bins
     return ()
 
 meanHtml x = "〈"++x++"〉"
