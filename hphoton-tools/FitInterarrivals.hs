@@ -67,12 +67,12 @@ fitArgs = FitArgs
     <*> switch  ( long "all-chains" <> short 'a'
                <> help "Show statistics from all chains"
                 )
-    <*> option  (pure . Just)
+    <*> option  (Just <$> str)
                 ( long "model" <> short 'm'
                <> metavar "MODEL" <> value Nothing
                <> help "Model file"
                 )
-    <*> argument pure ( metavar "FILE" <> help "Input file" )
+    <*> strArgument ( metavar "FILE" <> help "Input file" )
     <*> strOption  ( long "output" <> short 'o'
                   <> metavar "FILE" <> help "Output model to file"
                    )

@@ -42,7 +42,7 @@ argsChannel (PlotArgs {channel=ch}) =
         otherwise -> error "Invalid channel"
 
 plotArgs = PlotArgs
-    <$> argument Just ( help "Input file" <> action "file" )
+    <$> strArgument ( help "Input file" <> action "file" )
     <*> option (pure . Just)
                ( long "model" <> short 'm' <> action "file"
               <> value Nothing)
