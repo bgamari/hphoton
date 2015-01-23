@@ -93,9 +93,8 @@ plotParamSample samples paramSample = do
                   Nothing -> []
                   Just s -> let dist x = sum $ map (\(w,p)->w * realToFrac (prob p x)) $ VB.toList s
                             in [dist]
-  renderableToFile (FileOptions (640,480) PDF)
+  renderableToFile (FileOptions (640,480) PDF) "all.pdf"
                    (toRenderable $ plotFit samples (1e-7,longTime) fits)
-                   "all.pdf"
   return ()
 
 main = do
