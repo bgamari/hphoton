@@ -441,7 +441,7 @@ layoutFret title eBins e fretEs fits =
                 $ defaultFloatPlotHist
         unitAxis = scaledAxis def (0,1) :: AxisFn Double
     in toRenderable
-       $ layout_plots .~ ([]++zipWith (\p color->fit p color)
+       $ layout_plots .~ ([eHist]++zipWith (\p color->fit p color)
                                                fits (colors $ length fits))
        $ layout_x_axis . laxis_title    .~ "Proximity Ratio"
        $ layout_x_axis . laxis_generate .~ unitAxis
