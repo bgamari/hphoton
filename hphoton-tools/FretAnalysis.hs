@@ -197,10 +197,9 @@ readFretBins fretChannels binTime fname = do
 getFretBins :: FilePath -> Fret Channel -> Time -> FilePath -> HtmlLogT IO (VB.Vector (Fret Double))
 getFretBins outputRoot fretChannels binTime fname = do
     bins <- liftIO $ readFretBins fretChannels binTime fname
-    liftIO $ renderableToFile fileOpts
+    liftIO $ renderableToFile fileOpts (outputRoot++"-bins.svg")
         (layoutThese plotBinTimeseries (Fret "Acceptor" "Donor")
          $ unflipFrets $ take 10000 $ VB.toList bins)
-        (outputRoot++"-bins.svg")
     return bins
 
 summarizeCountStatistics :: Monad m => VB.Vector (Fret Double) -> VB.Vector (Fret Double) -> HtmlLogT m ()
@@ -251,7 +250,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     liftIO $ let names = Fret "acceptor" "donor"
                  colours = flip withOpacity 0.5 <$> Fret red green
                  layout = layoutCountingHist fname 100 names colours (fmap V.fromList $ unflipFrets $ V.toList fgBins)
-             in renderableToFile fileOpts layout (outputRoot++"-pch.svg")
+             in renderableToFile fileOpts (outputRoot++"-pch.svg") layout
     tellLog 15 $ H.section $ do
         H.h2 "Photon Counting Histogram"
         H.img H.! HA.src (H.toValue $ fname++"-pch.svg")
@@ -260,9 +259,8 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
     summarizeCountStatistics bgBins fgBins
 
     liftIO $ let e = fmap proximityRatio fgBins
-             in renderableToFile fileOpts
+             in renderableToFile fileOpts (outputRoot++"-uncorrected.svg")
                 (layoutFret fname (nbins p) (V.toList e) (V.toList e) [])
-                (outputRoot++"-uncorrected.svg")
 
     let bgRate = mean . VU.fromList <$> unflipFrets (VB.toList bgBins)
     (dOnlyBins, fretBins) <- case dOnlyFile p of
@@ -338,7 +336,7 @@ fitFretHistogram p outputRoot title nComps gamma bins = do
                    Nothing -> []
 
     liftIO $ let layout = layoutFret title (nbins p) fretEffs fretEffs fits
-             in renderableToFile fileOpts layout (outputRoot++"-se.svg")
+             in renderableToFile fileOpts (outputRoot++"-se.svg") layout
     return ()
 
 analyzeBins :: FretAnalysis -> FilePath -> String
