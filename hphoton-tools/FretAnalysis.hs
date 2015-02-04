@@ -86,7 +86,7 @@ fretAnalysis = FretAnalysis
                ( long "bin-width" <> short 'w'
               <> value 1e-3
               <> metavar "TIME"
-              <> help "Width of temporal bins"
+              <> help "Width of temporal bins (seconds)"
                )
     <*> option auto
                ( long "burst-size" <> short 's'
@@ -298,9 +298,9 @@ fitFretHistogram p outputRoot title nComps gamma bins = do
                                 , H.toHtml $ varHtml "N_A", H.toHtml $ varHtml "N_D"
                                 , H.toHtml $ meanHtml "E", "N_A / N"
                                 ]
-              forM_ (zip [0..] $ V.toList params) $ \(i, (w,(a,b)))->H.tr $ do
-                let (mu,sigma2) = paramToMoments (a,b)
-                    mode = paramToMode (a,b)
+              forM_ (zip [0..] $ V.toList params) $ \(i, (w,BetaParam a b))->H.tr $ do
+                let (mu,sigma2) = paramToMoments (BetaParam a b)
+                    mode = paramToMode (BetaParam a b)
                     assignments = filter (\bin->classify params (fretEfficiency gamma bin) == i) bins
                     Fret na nd = getSum <$> F.foldMap (fmap Sum) assignments
                 mapM_ (H.td . H.toHtml) $
@@ -328,11 +328,10 @@ fitFretHistogram p outputRoot title nComps gamma bins = do
                        let mkBetas (w,p) =
                                let (mu,sigma2) = paramToMoments p
                                    mode = paramToMode p
+                                   shotLimitedParams = paramFromMoments mu shotSigma2
                                in [ (printf "fit <E>=%1.2f" mu, \e->w * realToFrac (betaProb p e)) ]
-                                 ++ if mode >= 0 && mode <= 1
-                                      then [("shot-limited", \e->w * realToFrac (betaProb (paramFromMoments (mu,shotSigma2)) e))]
-                                      else []
-                       in concatMap mkBetas $ VU.toList ps
+                                 ++ F.foldMap (\p->[("shot-limited", \e->w * realToFrac (betaProb p e))]) shotLimitedParams
+                       in concatMap mkBetas $ V.toList ps
                    Nothing -> []
 
     liftIO $ let layout = layoutFret title (nbins p) fretEffs fretEffs fits

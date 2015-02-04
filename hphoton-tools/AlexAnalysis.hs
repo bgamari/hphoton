@@ -330,13 +330,12 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
 
     liftIO $ renderableToFile fileOpts (outputRoot++"-se.svg") $
         layoutSE fname (nbins p) (VB.toList s)
-                                  (VB.toList e)
-                                  (VB.toList $ fmap (fretEff gamma') fretBins)
-                  [ ("shot-limited", Beta $ paramFromMoments (mu,shotSigma2))
-                  , (printf "fit 〈E〉=%1.2f" mu, Beta $ paramFromMoments (mu, sigma2))
+                                 (VB.toList e)
+                                 (VB.toList $ fmap (fretEff gamma') fretBins)
+                  $  F.foldMap (\p->[("shot-limited", Beta p)]) (paramFromMoments mu shotSigma2)
+                  ++ F.foldMap (\p->[(printf "fit 〈E〉=%1.2f" mu, Beta p)]) (paramFromMoments mu sigma2)
                   --  ("fit", Gaussian (mu, sigma2))
                   --, ("shot-limited", Gaussian (mu, shotSigma2))
-                  ]
 
     tellLog 2 $ H.section $ do
         H.h2 "Corrected FRET efficiency"
