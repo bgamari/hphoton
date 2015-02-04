@@ -264,6 +264,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
                                   (VB.toList $ fmap proxRatio bins)
                                   (VB.toList $ fmap proxRatio bins)
                                   [])
+    when (V.null bins) $ fail "No bins"
     tellLog 20
         $ let ((muS,sigS), (muE,sigE)) =
                            (\(s,e)->(meanVariance s, meanVariance e))
