@@ -12,6 +12,7 @@ import qualified Data.Vector.Unboxed     as VU
 import           Data.Word
 import           Data.Maybe (fromMaybe)
 import           Control.Parallel.Strategies
+import           System.Exit
 
 import           HPhoton.Corr.PackedVec  (PackedVec)
 import           HPhoton.Corr.SparseCorr
@@ -115,7 +116,9 @@ checkMonotonic v =
 main = do
     result <- runEitherT main'
     case result of
-      Left err  -> putStrLn $ "Error: "++err
+      Left err  -> do
+        hPutStrLn stderr $ "Error: "++err
+        exitWith $ ExitFailure 1
       Right _   -> return ()
 
 main' :: EitherT String IO ()
