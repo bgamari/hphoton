@@ -42,20 +42,24 @@ opts :: Parser Args
 opts = Args
     <$> strOption ( help "File containing timestamps"
                  <> short 'x'
+                 <> metavar "FILE"
                   )
     <*> option    auto
                   ( help "Channel"
                  <> short 'X'
+                 <> metavar "CHANNEL"
                  <> value 0
                   )
     <*> option    (Just <$> auto)
                   ( help "File containing timestamps"
                  <> value Nothing
                  <> short 'y'
+                 <> metavar "FILE"
                   )
     <*> option    auto
                   ( help "Channel"
                  <> short 'Y'
+                 <> metavar "CHANNEL"
                  <> value 0
                   )
     <*> option    (Just <$> auto)
