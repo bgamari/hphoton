@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module HPhoton.IO ( ReadError(..)
                   , module HPhoton.IO.Metadata
                   , Channel

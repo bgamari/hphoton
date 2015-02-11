@@ -20,7 +20,7 @@ library
   exposed-modules:     HPhoton.Corr.PackedVec, HPhoton.Corr.SparseCorr
   other-extensions:    FlexibleContexts, BangPatterns, FlexibleInstances, TupleSections
   ghc-options:         -O2
-  build-depends:       base >=4.6 && <4.8,
+  build-depends:       base >=4.6 && <4.9,
                        errors >=1.4 && <1.5,
                        vector >=0.10 && <0.11,
                        parallel >=3.2 && <3.3,
