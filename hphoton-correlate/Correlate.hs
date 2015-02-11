@@ -87,6 +87,7 @@ opts = Args
                   ( help "Number of lags to compute per octave"
                  <> long "nbins"
                  <> short 'n'
+                 <> metavar "N"
                  <> value 20
                   )
     <*> switch    ( help "Enable verbose output"
