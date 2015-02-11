@@ -50,7 +50,7 @@ opts = Args
                  <> metavar "CHANNEL"
                  <> value 0
                   )
-    <*> option    (Just <$> auto)
+    <*> option    (Just <$> str)
                   ( help "File containing timestamps"
                  <> value Nothing
                  <> short 'y'
