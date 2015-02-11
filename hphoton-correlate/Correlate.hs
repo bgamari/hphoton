@@ -48,7 +48,7 @@ opts = Args
                  <> short 'X'
                  <> value 0
                   )
-    <*> option    (pure . Just)
+    <*> option    (Just <$> auto)
                   ( help "File containing timestamps"
                  <> value Nothing
                  <> short 'y'
@@ -58,7 +58,7 @@ opts = Args
                  <> short 'Y'
                  <> value 0
                   )
-    <*> option    (\s->Just <$> auto s)
+    <*> option    (Just <$> auto)
                   ( help "Override timestamp timebase period"
                  <> long "jiffy"
                  <> short 'j'
