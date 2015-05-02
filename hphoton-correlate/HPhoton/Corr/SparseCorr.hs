@@ -164,12 +164,12 @@ trimShiftData longlag a b lag =
 
 -- | Multi-tau correlation
 logCorr :: (V.Vector v (t, Int), Integral t)
-        => (t, t)                -- ^ Minimum and maximum lags
+        => t                     -- ^ Maximum lag
         -> Int                   -- ^ Number of lags per octave
         -> BinnedVec v t Int     -- ^ First vector
         -> BinnedVec v t Int     -- ^ Second (shifted) vector
         -> [(t, Double, Double)] -- ^ Correlation function samples
-logCorr (minLag, maxLag) lagsPerOctave a b =
+logCorr maxLag lagsPerOctave a b =
     let binResizes = replicate (2*lagsPerOctave) 1
                   ++ cycle (take lagsPerOctave $ 2:repeat 1)
 

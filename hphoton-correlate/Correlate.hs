@@ -163,7 +163,8 @@ main' = do
                   long = realTimeToTime clk (longlag args)
                   maybeError = fromMaybe (error "Empty vector")
               in withStrategy (parList rdeepseq)
-                 $ logCorr (short, long) (nlags args)
+                 $ filter (\(t,_,_)->t > short)
+                 $ logCorr long (nlags args)
                            (maybeError $ unsafeVecFromStamps a)
                            (maybeError $ unsafeVecFromStamps b)
 
