@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, FlexibleInstances, TupleSections #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, TupleSections #-}
 
 module HPhoton.Corr.SparseCorr ( corr
                                , rebin
@@ -11,21 +11,22 @@ module HPhoton.Corr.SparseCorr ( corr
 
 import qualified Data.Vector.Generic as V
 import Data.Foldable (foldl')
+import Data.Maybe (fromMaybe)
 import Control.Applicative ((<$>))
 import Control.Monad
 import           Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
 import           Data.Vector.Fusion.Stream.Size
 
-import HPhoton.Types       
+import HPhoton.Types
 import HPhoton.Corr.PackedVec (PackedVec(..))
 import qualified HPhoton.Corr.PackedVec as PV
-       
+
 data Binned t a = Binned t a
                 deriving (Show, Eq)
-     
+
 instance Functor (Binned t) where
     fmap f (Binned t a) = Binned t (f a)
-     
+
 binnedWidth :: Binned t a -> t
 binnedWidth (Binned t _) = t
 {-# INLINEABLE binnedWidth #-}
@@ -110,7 +111,7 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
 
         -- experiment length in bins
         t = fromIntegral (min ta tb) / realToFrac binWidth :: Double
-    
+
         (dot,ss) = case PV.dotSqr sa sb of (a,b) -> (realToFrac a, realToFrac b)
         count = realToFrac . PV.sum
         norm_denom = (count sa / t) * (count sb / t) :: Double
@@ -138,23 +139,23 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
 --              𝑡=0    ↓ 𝑡=startT              ↓ 𝑡=endT
 --    Channel A  |     ────════════════════════
 --    Channel B  |     ────════════════════════
--- 
+--
 --  Shifted by 𝛥𝑡
 --              𝑡=0
 --    Channel A  |     ────════════════════════
 --    Channel B  |         ════════════════════────
---  
+--
 trimShiftData
     :: (Ord t, Num t, Real a, V.Vector v (t,a))
     => t -> PackedVec v t a -> PackedVec v t a -> t -> (PackedVec v t a, PackedVec v t a)
 trimShiftData longlag a b lag =
         let startT = max (PV.startIdx a) (PV.startIdx b)
             endT = min (PV.endIdx a) (PV.endIdx b)
-            a' = maybe (error "a empty") id
+            a' = fromMaybe (error "a empty")
                $   PV.takeWhileIdx (<= endT)
                <=< PV.dropWhileIdx (<  (startT + longlag))
                $   a
-            b' = maybe (error "b empty") id
+            b' = fromMaybe (error "b empty")
                $ PV.takeWhileIdx (<= endT)
                <=< PV.dropWhileIdx (<  (startT + longlag))
                $ PV.shiftVec lag b
