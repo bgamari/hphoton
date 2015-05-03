@@ -62,7 +62,7 @@ rebin 1 v = v
 rebin n (Binned oldWidth v) =
     case PV.unsafePackedVec $ V.unstream
          $ rebinStream width
-         $ V.stream $ getPackedVec v of
+         $ PV.stream v of
       Nothing -> error "rebinStream broken length invariant"
       Just v' -> Binned width v'
   where

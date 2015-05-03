@@ -5,6 +5,7 @@
 
 module HPhoton.Corr.PackedVec ( Time
                               , PackedVec, getPackedVec
+                              , stream
                               , packedVec, unsafePackedVec
                               , index
                               , shiftVec
@@ -25,6 +26,7 @@ import qualified Data.Vector.Generic         as V
 import           Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
 import           Data.Vector.Fusion.Stream.Size
 import qualified Data.Vector.Fusion.Stream as S
+import qualified Data.Vector.Fusion.Util as S
 import           HPhoton.Types
 import           Prelude                     hiding (map, head, last, sum)
 
@@ -54,8 +56,8 @@ unsafePackedVec v
 izipWith :: (Ord i, V.Vector v (i,a), V.Vector v (i,b), V.Vector v (i,c))
          => (i -> a -> b -> c)
          -> PackedVec v i a -> PackedVec v i b -> PackedVec v i c
-izipWith f (PVec as) (PVec bs) =
-    PVec $ V.unstream $ izipStreamsWith f (V.stream as) (V.stream bs)
+izipWith f as bs =
+    PVec $ V.unstream $ izipStreamsWith f (stream as) (stream bs)
 {-# INLINE izipWith #-}
 
 data ZipState sa sb i a b
@@ -72,7 +74,7 @@ izipStreamsWith f (Stream stepa sa0 na) (Stream stepb sb0 nb) =
   where
     step (ZipStart sa sb) = do
       r <- stepa sa
-      return $ case r of 
+      return $ case r of
         Yield (vi, va) sa' -> Skip (ZipAdvanceR sa' sb vi va)
         Skip sa'           -> Skip (ZipStart sa' sb)
         Done               -> Done
@@ -106,14 +108,20 @@ dot as bs = sum $ izipWith (const (*)) as bs
 -- | Strict pair
 data Pair a b = Pair !a !b
 
+-- | Produce a stream of the elements in the vector
+stream :: (V.Vector v (i,a)) => PackedVec v i a -> Stream S.Id (i,a)
+stream (PVec as) = V.stream as
+{-# INLINE stream #-}
+
 dotSqr :: (Ord i, Eq i, Num a, V.Vector v (i,a))
        => PackedVec v i a -> PackedVec v i a -> (a,a)
-dotSqr (PVec as) (PVec bs) =
+dotSqr as bs =
     pairToTuple
     $ S.foldl' (\(Pair a b) (c,d) -> Pair (a+c) (b+d)) (Pair 0 0)
     $ S.map snd
-    $ izipStreamsWith (\_ a b->(a*b, a^2 * b^2)) (V.stream as) (V.stream bs)
-  where pairToTuple (Pair a b) = (a, b)
+    $ izipStreamsWith (\_ a b->(a*b, a^2 * b^2)) (stream as) (stream bs)
+  where
+    pairToTuple (Pair a b) = (a, b)
 {-# INLINE dotSqr #-}
 
 -- | Fetch element i
@@ -142,15 +150,15 @@ dropWhileIdx f (PVec v) = unsafePackedVec $ V.dropWhile (f . fst) v
 -- | Map operation
 -- Note that this will only map non-zero entries
 map :: (V.Vector v (i,a), V.Vector v (i,b))
-    => (a -> b) -> PackedVec v i a -> PackedVec v i b 
+    => (a -> b) -> PackedVec v i a -> PackedVec v i b
 map f (PVec v) = PVec $ V.map (\(x,y)->(x, f y)) v
 {-# INLINE map #-}
 
-startIdx :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> i
+startIdx :: (V.Vector v (i,a)) => PackedVec v i a -> i
 startIdx (PVec v) = fst $ V.head v
 {-# INLINE startIdx #-}
 
-endIdx :: (Ord i, V.Vector v (i,a)) => PackedVec v i a -> i
+endIdx :: (V.Vector v (i,a)) => PackedVec v i a -> i
 endIdx (PVec v) = fst $ V.last v
 {-# INLINE endIdx #-}
 
@@ -159,7 +167,7 @@ sum (PVec v) = V.foldl' (\accum (_,a)->accum+a) 0 v
 {-# INLINE sum #-}
 
 -- | The range of indicies covered by the vector
-extent :: (Num i, V.Vector v (i,a)) => PackedVec v i a -> (i,i)
-extent (PVec v) = (fst $ V.head v, fst $ V.last v)
+extent :: (V.Vector v (i,a)) => PackedVec v i a -> (i,i)
+extent p = (startIdx p, endIdx p)
 {-# INLINE extent #-}
 
