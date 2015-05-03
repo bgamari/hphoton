@@ -6,6 +6,7 @@ module HPhoton.Corr.SparseCorr ( corr
                                , PackedVec
                                , BinnedVec
                                , vecFromStamps, unsafeVecFromStamps
+                               , Point(..)
                                , logCorr
                                ) where
 
@@ -162,13 +163,19 @@ trimShiftData longlag a b lag =
         in (a', b')
 {-# INLINE trimShiftData #-}
 
+data Point t a = Point { ptLag  :: !t
+                       , ptCorr :: !a
+                       , ptVar  :: !a
+                       }
+               deriving (Show)
+
 -- | Multi-tau correlation
 logCorr :: (V.Vector v (t, Int), Integral t)
         => t                     -- ^ Maximum lag
         -> Int                   -- ^ Number of lags per octave
         -> BinnedVec v t Int     -- ^ First vector
         -> BinnedVec v t Int     -- ^ Second (shifted) vector
-        -> [(t, Double, Double)] -- ^ Correlation function samples
+        -> [Point t Double]      -- ^ Correlation function samples
 logCorr maxLag lagsPerOctave a b =
     let binResizes = replicate (2*lagsPerOctave) 1
                   ++ cycle (take lagsPerOctave $ 2:repeat 1)
@@ -178,8 +185,7 @@ logCorr maxLag lagsPerOctave a b =
           | otherwise         =
             let (gee, bar) = either (\err->error $ "logCorr: Something went wrong: "++err) id
                              $ corr maxLag a b lag'
-            in seq (gee `seq` bar)
-               $ (lag', gee, bar)
+            in Point lag' gee bar
                : f rest ((lag+1) `div` fromIntegral binSz) (rebin binSz a) (rebin binSz b)
           where
             lag' = fromIntegral lag * binnedWidth a

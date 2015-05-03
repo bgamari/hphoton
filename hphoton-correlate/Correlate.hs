@@ -162,13 +162,13 @@ main' = do
     let pts = let short = realTimeToTime clk (shortlag args)
                   long = realTimeToTime clk (longlag args)
                   maybeError = fromMaybe (error "Empty vector")
-              in withStrategy (parList rdeepseq)
-                 $ filter (\(t,_,_)->t > short)
+              in withStrategy (parList rseq)
+                 $ filter (\(Point lag _ _) -> lag > short)
                  $ logCorr long (nlags args)
                            (maybeError $ unsafeVecFromStamps a)
                            (maybeError $ unsafeVecFromStamps b)
 
-    liftIO $ forM_ pts $ \(lag, gee, bar) -> do
+    liftIO $ forM_ pts $ \(Point lag gee bar) -> do
         printf "%1.4e\t%1.8f\t%1.8e\n" (timeToRealTime clk lag) gee (bar^2)
         hFlush stdout
 
