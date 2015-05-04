@@ -100,17 +100,18 @@ rebin n (Binned oldWidth v)
 -- | Compute the value of the cross-correlation function between two vectors
 corr :: (Num t, Integral t, Ord t, Real a, V.Vector v (t,a))
      => t                 -- ^ largest expected lag
+     -> t                 -- ^ longest expected grain size
      -> BinnedVec v t a   -- ^ first vector
      -> BinnedVec v t a   -- ^ second (shifted) vector
      -> t                 -- ^ lag to compute
      -> Either String (Double, Double)
-corr longlag (Binned ta a) (Binned tb b) lag
+corr longLag _ (Binned ta a) (Binned tb b) lag
   | ta /= tb                = Left "Can't correlate vectors of different bin widths"
   | lag < ta                = Left "Lag must be larger than bin time"
-  | lag > longlag           = Left "Lag must be less than longlag"
+  | lag > longLag           = Left "Lag must be less than longlag"
   | lag `mod` ta /= 0       = Left "Lag must be multiple of bin time"
-corr longlag (Binned binWidth a) (Binned _ b) lag =
-    let (sa,sb) = trimShiftData longlag a b lag
+corr longLag largeGrain (Binned binWidth a) (Binned _ b) lag =
+    let (sa,sb) = trimShiftData longLag largeGrain a b lag
         ta = timespan sa
         tb = timespan sb
 
@@ -167,23 +168,26 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
 trimShiftData
     :: (Ord t, Integral t, Real a, V.Vector v (t,a))
     => t     -- ^ the longest lag we will be computing the correlation of
+    -> t     -- ^ the largest grain size we will be computing the correlation with
     -> PackedVec v t a  -- ^ first timeseries
     -> PackedVec v t a  -- ^ second timeseries
     -> t     -- ^ the lag
     -> (PackedVec v t a, PackedVec v t a) -- ^ the trimmed and shifted timeseries
-trimShiftData longLag a b lag =
+trimShiftData longLag longGrain a b lag =
     let startT = max (PV.startIdx a) (PV.startIdx b)
         endT = min (PV.endIdx a) (PV.endIdx b)
+        -- zone size must be divisible by the longest grain size
+        endT' = endT `div` longGrain * longGrain
         checkNull err v
             | PV.null v = error $ "HPhoton.Corr.SparseCorr.trimShiftData: "++err
             | otherwise = v
         a' = checkNull "a empty"
-            $ PV.takeWhileIdx (<= endT)
-            $ PV.dropWhileIdx (<  (startT + longlag))
+            $ PV.takeWhileIdx (<= endT')
+            $ PV.dropWhileIdx (<  (startT + longLag))
             $ a
         b' = checkNull "b empty"
-            $ PV.takeWhileIdx (<= endT)
-            $ PV.dropWhileIdx (<  (startT + longlag))
+            $ PV.takeWhileIdx (<= endT')
+            $ PV.dropWhileIdx (<  (startT + longLag))
             $ PV.shiftVec lag b
     in (a', b')
 {-# INLINE trimShiftData #-}
@@ -205,14 +209,24 @@ logCorr maxLag lagsPerOctave a b =
     let binResizes = replicate (2*lagsPerOctave) 1
                   ++ cycle (take lagsPerOctave $ 2:repeat 1)
 
+        lags = takeWhile (< maxLag)
+               $ let go binWidth lag (resize:rest) =
+                       (lag*binWidth) : go (binWidth * fromIntegral resize) ((lag+1) `div` fromIntegral resize) rest
+                 in go 1 1 binResizes
+
+        realMaxLag = last lags
+
+        largestGrain = fromIntegral $ foldl' (*) 1 $ map snd $ zip lags binResizes
+
         f (binSz:rest) lag a b
           | lag' > maxLag     = []
           | otherwise         =
             let (gee, bar) = either (\err->error $ "logCorr: Something went wrong: "++err) id
-                             $ corr maxLag a b lag'
+                             $ corr realMaxLag largestGrain a b lag'
             in Point lag' gee bar
-               : f rest ((lag+1) `div` fromIntegral binSz) (rebin binSz a) (rebin binSz b)
+               : f rest nextLag (rebin binSz a) (rebin binSz b)
           where
             lag' = fromIntegral lag * binnedWidth a
+            nextLag = (lag + 1) `div` fromIntegral binSz
     in f binResizes 1 a b
 {-# INLINE logCorr #-}
