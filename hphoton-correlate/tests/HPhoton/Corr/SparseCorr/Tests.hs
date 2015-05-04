@@ -30,8 +30,8 @@ instance (Num i, Ord i, V.Vector v a, V.Vector v (i,a), Arbitrary i, Arbitrary a
 
 prop_rebin_counts_invar
     :: (Num i, Integral i, Ord i, V.Vector v (i,a), Num a, Eq a, Show a, Show i)
-    => Positive Int -> BinnedVec v i a -> Result
-prop_rebin_counts_invar (Positive width) bv@(Binned _ v) =
+    => BinnedVec v i a -> Positive Int -> Result
+prop_rebin_counts_invar bv@(Binned _ v) (Positive width) =
     if initial == final
       then succeeded
       else failed {reason="Initial="++show initial++" final="++show (final-initial)}
@@ -42,8 +42,8 @@ prop_rebin_counts_invar (Positive width) bv@(Binned _ v) =
 
 prop_rebin_monotonic
     :: (Num i, Integral i, Ord i, V.Vector v (i,a), V.Vector v i, Num a, Eq a, Show (v i))
-    => Positive Int -> BinnedVec v i a -> Result
-prop_rebin_monotonic (Positive width) bv =
+    => BinnedVec v i a -> Positive Int -> Result
+prop_rebin_monotonic bv (Positive width) =
     let Binned _ pv' = rebin width bv
         v' = PV.toVector pv'
         dts = V.zipWith ((-) `on` fst) (V.tail v') v'
@@ -58,11 +58,14 @@ rebin_test1 = assertEqual "Case 1" res (rebin 10 ts)
           res = Binned 10 $ PV.unsafePackedVec $ VU.fromList [(0,3), (1000,3)]
                :: BinnedVec VU.Vector Int Int
 
+-- | Disambiguate types
+withBV :: (BinnedVec VU.Vector Int Int -> a) -> BinnedVec VU.Vector Int Int -> a
+withBV = id
+
 tests =
     [ testProperty "Total counts invariant on rebinning"
-        (prop_rebin_counts_invar
-         :: Positive Int -> BinnedVec VU.Vector Time Int -> Result)
+        (withBV prop_rebin_counts_invar)
     , testProperty "Bin times monotonic"
-        (prop_rebin_monotonic :: Positive Int -> BinnedVec VU.Vector Time Int -> Result)
+        (withBV prop_rebin_monotonic)
     , testCase "Rebinning test" rebin_test1
     ]
