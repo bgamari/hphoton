@@ -59,12 +59,13 @@ rebin :: (Num t, Ord t, Integral t, V.Vector v (t,a), Num a, Eq a)
       => Int -> BinnedVec v t a -> BinnedVec v t a
 rebin n v | n <= 0 = error "Invalid rebin size"
 rebin 1 v = v
-rebin n (Binned oldWidth v) =
-    case PV.unsafePackedVec $ V.unstream
-         $ rebinStream width
-         $ PV.stream v of
-      v' | PV.null v' -> error "rebinStream broken length invariant"
-         | otherwise  -> Binned width v'
+rebin n (Binned oldWidth v)
+  | PV.null v = Binned width PV.empty
+  | otherwise =
+        Binned width
+        $ PV.unsafePackedVec $ V.unstream
+        $ rebinStream width
+        $ PV.stream v
   where
     width = oldWidth * fromIntegral n
     binStart width t = (t `div` width) * width
