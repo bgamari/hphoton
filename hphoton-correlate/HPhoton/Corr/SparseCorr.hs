@@ -18,8 +18,8 @@ import Data.Foldable (foldl')
 import Data.Maybe (fromMaybe)
 import Control.Applicative ((<$>))
 import Control.Monad
-import           Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
-import           Data.Vector.Fusion.Stream.Size
+import Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
+import Data.Vector.Fusion.Stream.Size
 
 import HPhoton.Types
 import HPhoton.Corr.PackedVec (PackedVec(..))
