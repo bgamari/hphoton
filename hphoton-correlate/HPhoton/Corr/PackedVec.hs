@@ -67,8 +67,8 @@ unsafePackedVec v =
          , startPos = 0
          , length = V.length v
          }
-{-# INLINE unsafePackedVec #-}
---{-# RULES "constructPackedVec" unsafePackedVec (toVector x) = x #-}
+{-# INLINE [1] unsafePackedVec #-}
+{-# RULES "constructPackedVec" forall x. unsafePackedVec (toVector x) = x #-}
 
 -- | Zip elements with matching indices with the given function
 izipWith :: (Num i, Ord i, V.Vector v (i,a), V.Vector v (i,b), V.Vector v (i,c))
