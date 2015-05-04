@@ -165,20 +165,20 @@ trimShiftData
     :: (Ord t, Num t, Real a, V.Vector v (t,a))
     => t -> PackedVec v t a -> PackedVec v t a -> t -> (PackedVec v t a, PackedVec v t a)
 trimShiftData longlag a b lag =
-        let startT = max (PV.startIdx a) (PV.startIdx b)
-            endT = min (PV.endIdx a) (PV.endIdx b)
-            checkNull err v
-              | PV.null v = error $ "HPhoton.Corr.SparseCorr.trimShiftData: "++err
-              | otherwise = v
-            a' = checkNull "a empty"
-               $ PV.takeWhileIdx (<= endT)
-               $ PV.dropWhileIdx (<  (startT + longlag))
-               $ a
-            b' = checkNull "b empty"
-               $ PV.takeWhileIdx (<= endT)
-               $ PV.dropWhileIdx (<  (startT + longlag))
-               $ PV.shiftVec lag b
-        in (a', b')
+    let startT = max (PV.startIdx a) (PV.startIdx b)
+        endT = min (PV.endIdx a) (PV.endIdx b)
+        checkNull err v
+            | PV.null v = error $ "HPhoton.Corr.SparseCorr.trimShiftData: "++err
+            | otherwise = v
+        a' = checkNull "a empty"
+            $ PV.takeWhileIdx (<= endT)
+            $ PV.dropWhileIdx (<  (startT + longlag))
+            $ a
+        b' = checkNull "b empty"
+            $ PV.takeWhileIdx (<= endT)
+            $ PV.dropWhileIdx (<  (startT + longlag))
+            $ PV.shiftVec lag b
+    in (a', b')
 {-# INLINE trimShiftData #-}
 
 data Point t a = Point { ptLag  :: !t
