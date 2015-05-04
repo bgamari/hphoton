@@ -169,7 +169,10 @@ takeWhileIdx f pvec = pvec { length = S.length (S.takeWhile (f . fst) (stream pv
 
 dropWhileIdx :: (Num i, V.Vector v (i,a))
              => (i -> Bool) -> PackedVec v i a -> PackedVec v i a
-dropWhileIdx f pvec = pvec { startPos = startPos pvec + S.length (S.takeWhile (f . fst) (stream pvec)) }
+dropWhileIdx f pvec = pvec { startPos = startPos pvec + delta
+                           , length = length pvec - delta
+                           }
+  where delta = S.length (S.takeWhile (f . fst) (stream pvec))
 {-# INLINE dropWhileIdx #-}
 
 -- | Check whether a 'PackedVec' is empty
