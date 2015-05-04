@@ -133,7 +133,7 @@ stream = V.stream . toVector
 
 toVector :: (Num i, V.Vector v (i,a)) => PackedVec v i a -> v (i,a)
 toVector (PVec shift as startPos length) =
-    V.map (\(i,v) -> (i+shift, v)) $ V.drop startPos $ V.take length as
+    V.map (\(i,v) -> (i+shift, v)) $ V.take length $ V.drop startPos as
 {-# INLINE toVector #-}
 
 dotSqr :: (Num i, Ord i, Eq i, Num a, V.Vector v (i,a))
