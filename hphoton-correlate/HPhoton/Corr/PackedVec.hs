@@ -8,6 +8,7 @@ module HPhoton.Corr.PackedVec
       PackedVec, getPackedVec
       -- * Construction
     , packedVec, unsafePackedVec
+    , empty
       -- * Queries
     , null
     , index
@@ -175,6 +176,11 @@ null :: (Num i, V.Vector v (i,a))
      => PackedVec v i a -> Bool
 null = S.null . stream
 {-# INLINE null #-}
+
+-- | An empty 'PackedVec'
+empty :: (V.Vector v (i,a), Num i) => PackedVec v i a
+empty = unsafePackedVec V.empty
+{-# INLINE empty #-}
 
 -- | Map operation
 -- Note that this will only map non-zero entries
