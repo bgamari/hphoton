@@ -5,7 +5,7 @@
 
 module HPhoton.Corr.PackedVec
     ( -- * Types
-      PackedVec, getPackedVec
+      PackedVec
       -- * Construction
     , packedVec, unsafePackedVec
     , empty

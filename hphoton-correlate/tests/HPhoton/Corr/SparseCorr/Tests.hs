@@ -26,7 +26,7 @@ instance (Num i, Ord i, V.Vector v a, V.Vector v (i,a), Arbitrary i, Arbitrary a
     arbitrary = do Positive width <- arbitrary
                    pv <- arbitrary
                    return $ Binned width $ PV.unsafePackedVec
-                          $ V.map (\(x,y)->(x*width,y)) $ PV.getPackedVec pv
+                          $ V.map (\(x,y)->(x*width,y)) $ PV.toVector pv
 
 prop_rebin_counts_invar
     :: (Num i, Integral i, Ord i, V.Vector v (i,a), Num a, Eq a, Show a, Show i)
@@ -45,7 +45,7 @@ prop_rebin_monotonic
     => Positive Int -> BinnedVec v i a -> Result
 prop_rebin_monotonic (Positive width) bv =
     let Binned _ pv' = rebin width bv
-        v' = PV.getPackedVec pv'
+        v' = PV.toVector pv'
         dts = V.zipWith ((-) `on` fst) (V.tail v') v'
     in case () of
            _ | V.length v' < 2  -> rejected

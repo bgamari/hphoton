@@ -11,7 +11,7 @@ import           Test.Framework.Providers.QuickCheck2 (testProperty)
 import           Test.QuickCheck
 import           Test.QuickCheck.Modifiers
 
-import           HPhoton.Corr.PackedVec
+import           HPhoton.Corr.PackedVec as PV
 
 prop_shift_unshift_invar :: (Num i, V.Vector v (i,a), Eq (PackedVec v i a))
                          => PackedVec v i a -> i -> Bool
@@ -36,7 +36,7 @@ prop_dot_mag :: (V.Vector v a, V.Vector v (i,a), Num i, Ord i, Num a, Eq a, Show
              => PackedVec v i a -> Property
 prop_dot_mag x =
     let mag1 = dot x x
-        mag2 = V.sum $ V.map (^2) $ V.map snd $ getPackedVec x
+        mag2 = V.sum $ V.map (^2) $ V.map snd $ PV.toVector x
     in counterexample ("initial="++show mag1++" final="++show mag2) (mag1==mag2)
 
 prop_dense_dot_mag :: (V.Vector v a, V.Vector v (Int,a), Num a, Eq a, Show a)
