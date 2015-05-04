@@ -162,9 +162,13 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
 --    Channel B  |         ════════════════════────
 -- @
 trimShiftData
-    :: (Ord t, Num t, Real a, V.Vector v (t,a))
-    => t -> PackedVec v t a -> PackedVec v t a -> t -> (PackedVec v t a, PackedVec v t a)
-trimShiftData longlag a b lag =
+    :: (Ord t, Integral t, Real a, V.Vector v (t,a))
+    => t     -- ^ the longest lag we will be computing the correlation of
+    -> PackedVec v t a  -- ^ first timeseries
+    -> PackedVec v t a  -- ^ second timeseries
+    -> t     -- ^ the lag
+    -> (PackedVec v t a, PackedVec v t a) -- ^ the trimmed and shifted timeseries
+trimShiftData longLag a b lag =
     let startT = max (PV.startIdx a) (PV.startIdx b)
         endT = min (PV.endIdx a) (PV.endIdx b)
         checkNull err v
