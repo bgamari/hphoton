@@ -167,7 +167,7 @@ shiftVec s pvec = pvec { shift = s + shift pvec }
 -- We implement these explicit with 'Stream's to avoid duplicating the vector
 takeWhileIdx :: (Num i, V.Vector v (i,a))
              => (i -> Bool) -> PackedVec v i a -> PackedVec v i a
-takeWhileIdx f pvec = pvec { length = S.length (S.takeWhile (f . fst) (stream pvec)) }
+takeWhileIdx f pvec = pvec { length = S.length $ S.takeWhile (f . fst) (stream pvec) }
 {-# INLINE takeWhileIdx #-}
 
 dropWhileIdx :: (Num i, V.Vector v (i,a))
@@ -175,7 +175,7 @@ dropWhileIdx :: (Num i, V.Vector v (i,a))
 dropWhileIdx f pvec = pvec { startPos = startPos pvec + delta
                            , length = length pvec - delta
                            }
-  where delta = S.length (S.takeWhile (f . fst) (stream pvec))
+  where delta = S.length $ S.takeWhile (f . fst) (stream pvec)
 {-# INLINE dropWhileIdx #-}
 
 -- | Check whether a 'PackedVec' is empty
@@ -189,7 +189,7 @@ empty :: (V.Vector v (i,a), Num i) => PackedVec v i a
 empty = unsafePackedVec V.empty
 {-# INLINE empty #-}
 
--- | Map operation
+-- | Map the non-zero elements of a 'PackedVec'
 -- Note that this will only map non-zero entries
 map :: (Num i, V.Vector v (i,a), V.Vector v (i,b))
     => (a -> b) -> PackedVec v i a -> PackedVec v i b
