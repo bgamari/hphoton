@@ -48,7 +48,8 @@ data PackedVec v i a = PVec { shift :: !i
 --   * length is the number of packed vector elements after startPos to be considered
 
 deriving instance (Show i, Show (v (i,a))) => Show (PackedVec v i a)
-deriving instance (Eq i, Eq (v (i,a))) => Eq (PackedVec v i a)
+instance (V.Vector v (i,a), Num i, Eq i, Eq a) => Eq (PackedVec v i a) where
+    a == b = stream a == stream b
 
 -- | Construct a 'PackedVec' from 'Vector', ensuring that the entries are sorted.
 packedVec :: (Num i, Ord i, V.Vector v (i,a)) => v (i,a) -> PackedVec v i a
