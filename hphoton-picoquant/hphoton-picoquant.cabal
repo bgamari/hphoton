@@ -21,7 +21,7 @@ library
   other-extensions:    DeriveGeneric
                        DeriveDataTypeable
                        TemplateHaskell
-  build-depends:       base >=4.6 && <4.8,
+  build-depends:       base >=4.6 && <4.9,
                        binary >=0.7 && <0.8,
                        bytestring >=0.10 && <0.11,
                        vector >=0.10 && <0.11,
@@ -31,14 +31,14 @@ library
 
 executable picoquant-export
   main-is:             Export.hs
-  build-depends:       base >=4.6 && <4.8,
+  build-depends:       base >=4.6 && <4.9,
                        binary >=0.7 && <0.8,
                        bytestring >=0.10 && <0.11,
                        vector >=0.10 && <0.11,
                        lens >=3.9 && <5.0,
                        data-binary-ieee754,
-                       primitive >=0.5 && <0.6,
-                       filepath >=1.3 && <1.4,
+                       primitive >=0.5 && <0.7,
+                       filepath >=1.3 && <1.5,
                        optparse-applicative,
                        cassava >= 0.3
   default-language:    Haskell2010
