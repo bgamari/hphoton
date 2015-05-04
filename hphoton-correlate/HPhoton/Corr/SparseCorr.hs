@@ -1,14 +1,17 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, TupleSections #-}
 
-module HPhoton.Corr.SparseCorr ( corr
-                               , rebin
-                               , Binned(..), binnedWidth, unBinned
-                               , PackedVec
-                               , BinnedVec
-                               , vecFromStamps, unsafeVecFromStamps
-                               , Point(..)
-                               , logCorr
-                               ) where
+module HPhoton.Corr.SparseCorr
+    ( -- * Computing correlation functions
+      corr
+    , logCorr
+    , Point(..)
+      -- * Binning photon timeseries
+    , Binned(..), binnedWidth, unBinned
+    , vecFromStamps, unsafeVecFromStamps
+    , rebin
+    , BinnedVec
+    , PackedVec
+    ) where
 
 import qualified Data.Vector.Generic as V
 import Data.Foldable (foldl')
