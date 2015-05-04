@@ -39,13 +39,13 @@ unBinned (Binned _ a) = a
 type BinnedVec v t a = Binned t (PackedVec v t a)
 
 vecFromStamps :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
-              => v t -> Maybe (Binned t (PackedVec v t a))
-vecFromStamps v = Binned 1 <$> PV.packedVec (V.map (,1) v)
+              => v t -> Binned t (PackedVec v t a)
+vecFromStamps = Binned 1 . PV.packedVec . V.map (,1)
 {-# INLINEABLE vecFromStamps #-}
 
 unsafeVecFromStamps :: (Num t, Ord t, V.Vector v t, V.Vector v (t,a), Num a)
-                    => v t -> Maybe (Binned t (PackedVec v t a))
-unsafeVecFromStamps v = Binned 1 <$> PV.unsafePackedVec (V.map (,1) v)
+                    => v t -> Binned t (PackedVec v t a)
+unsafeVecFromStamps = Binned 1 . PV.unsafePackedVec . V.map (,1)
 {-# INLINEABLE unsafeVecFromStamps #-}
 
 data ReBinState s t a
@@ -63,8 +63,8 @@ rebin n (Binned oldWidth v) =
     case PV.unsafePackedVec $ V.unstream
          $ rebinStream width
          $ PV.stream v of
-      Nothing -> error "rebinStream broken length invariant"
-      Just v' -> Binned width v'
+      v' | PV.null v' -> error "rebinStream broken length invariant"
+         | otherwise  -> Binned width v'
   where
     width = oldWidth * fromIntegral n
     binStart width t = (t `div` width) * width
@@ -152,13 +152,16 @@ trimShiftData
 trimShiftData longlag a b lag =
         let startT = max (PV.startIdx a) (PV.startIdx b)
             endT = min (PV.endIdx a) (PV.endIdx b)
-            a' = fromMaybe (error "a empty")
+            checkNull err v
+              | PV.null v = error err
+              | otherwise = v
+            a' = checkNull "a empty"
                $   PV.takeWhileIdx (<= endT)
-               <=< PV.dropWhileIdx (<  (startT + longlag))
+               $ PV.dropWhileIdx (<  (startT + longlag))
                $   a
-            b' = fromMaybe (error "b empty")
+            b' = checkNull "b empty"
                $ PV.takeWhileIdx (<= endT)
-               <=< PV.dropWhileIdx (<  (startT + longlag))
+               $ PV.dropWhileIdx (<  (startT + longlag))
                $ PV.shiftVec lag b
         in (a', b')
 {-# INLINE trimShiftData #-}
