@@ -114,12 +114,15 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
         ta = timespan sa
         tb = timespan sb
 
+        inBins :: Integral t => t -> Double
+        inBins t = fromIntegral t / realToFrac binWidth
+
         -- experiment length in bins
-        t = fromIntegral (min ta tb) / realToFrac binWidth :: Double
+        t = inBins (min ta tb)
 
         (dot,ss) = case PV.dotSqr sa sb of (a,b) -> (realToFrac a, realToFrac b)
         count = realToFrac . PV.sum
-        norm_denom = (count sa / t) * (count sb / t) :: Double
+        norm_denom = (count sa / inBins ta) * (count sb / inBins tb) :: Double
         g = dot / norm_denom / t
         bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
     in Right (g, sqrt bar2)
