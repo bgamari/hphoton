@@ -125,28 +125,39 @@ corr longlag (Binned binWidth a) (Binned _ b) lag =
     timespan pv = case PV.extent pv of (a,b) -> b - a
 {-# INLINE corr #-}
 
--- | Here we try to ensure that the zone is sized such that the same amount
+-- | @trimShiftData longLag a b lag@ computes the subsets of 'PackedVec's @a@ and @b@
+-- for computing a correlation at @lag@ with the intention of computing lags no larger
+-- that @longLag@.
+--
+-- Here we ensure that the we use the same amount
 -- of data is used in the correlation over various lags. This requires that
 -- we know the longest lag for which we intend on calculating the correlation
--- function
+-- function.
 --
 -- We use the following scheme,
+--
+-- @
 --
 --  Legend:  ─ Ignored data
 --           ═ Data used in correlation function
 --
---  With a longlag of 5 character cells
+--  With longLag = 4 character cells
 --
 --  Unshifted
---              𝑡=0    ↓ 𝑡=startT              ↓ 𝑡=endT
+--              𝑡=0    ↓ 𝑡=startT               ↓ 𝑡=endT
 --    Channel A  |     ────════════════════════
 --    Channel B  |     ────════════════════════
 --
---  Shifted by 𝛥𝑡
+--  Shifted by 𝛥𝑡=2 cells
+--              𝑡=0
+--    Channel A  |     ────════════════════════
+--    Channel B  |       ──════════════════════──
+--
+--  Shifted by 𝛥𝑡=longLag=4 cells
 --              𝑡=0
 --    Channel A  |     ────════════════════════
 --    Channel B  |         ════════════════════────
---
+-- @
 trimShiftData
     :: (Ord t, Num t, Real a, V.Vector v (t,a))
     => t -> PackedVec v t a -> PackedVec v t a -> t -> (PackedVec v t a, PackedVec v t a)
@@ -157,9 +168,9 @@ trimShiftData longlag a b lag =
               | PV.null v = error err
               | otherwise = v
             a' = checkNull "a empty"
-               $   PV.takeWhileIdx (<= endT)
+               $ PV.takeWhileIdx (<= endT)
                $ PV.dropWhileIdx (<  (startT + longlag))
-               $   a
+               $ a
             b' = checkNull "b empty"
                $ PV.takeWhileIdx (<= endT)
                $ PV.dropWhileIdx (<  (startT + longlag))
