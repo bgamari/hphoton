@@ -39,6 +39,26 @@ prop_dot_mag x =
         mag2 = V.sum $ V.map (^2) $ V.map snd $ PV.toVector x
     in counterexample ("initial="++show mag1++" final="++show mag2) (mag1==mag2)
 
+prop_dropWhileIdx :: ( V.Vector v a, V.Vector v (i,a)
+                     , Num a, Eq a, Show a
+                     , Show i, Num i, Ord i
+                     , Show (v (i,a)), Eq (v (i,a)))
+                  => PackedVec v i a -> Blind (i -> Bool) -> Property
+prop_dropWhileIdx xs (Blind f) =
+    let a = PV.unsafePackedVec $ V.dropWhile (\(i,_) -> f i) $ PV.toVector xs
+        b = PV.dropWhileIdx f xs
+    in counterexample ("good="++show a++" bad="++show b) (a == b)
+
+prop_takeWhileIdx :: ( V.Vector v a, V.Vector v (i,a)
+                     , Num a, Eq a, Show a
+                     , Show i, Num i, Ord i
+                     , Show (v (i,a)), Eq (v (i,a)))
+                  => PackedVec v i a -> Blind (i -> Bool) -> Property
+prop_takeWhileIdx xs (Blind f) =
+    let a = PV.unsafePackedVec $ V.takeWhile (\(i,_) -> f i) $ PV.toVector xs
+        b = PV.takeWhileIdx f xs
+    in counterexample ("good="++show a++" bad="++show b) (a == b)
+
 prop_dense_dot_mag :: (V.Vector v a, V.Vector v (Int,a), Num a, Eq a, Show a)
                    => v a -> v a -> Property
 prop_dense_dot_mag xs ys =
@@ -59,5 +79,7 @@ tests =
                    (prop_dense_dot_mag :: VU.Vector Int -> VU.Vector Int -> Property)
     , testProperty "Dot product shift invariant" (withPV prop_dot_shift_invar)
     , testProperty "Shift/unshift is identity" (withPV prop_shift_unshift_invar)
+    , testProperty "dropWhileIdx works" (withPV prop_dropWhileIdx)
+    , testProperty "takeWhileIdx works" (withPV prop_takeWhileIdx)
     ]
 
