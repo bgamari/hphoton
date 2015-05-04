@@ -3,22 +3,28 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-module HPhoton.Corr.PackedVec ( Time
-                              , PackedVec, getPackedVec
-                              , stream
-                              , packedVec, unsafePackedVec
-                              , null
-                              , index
-                              , shiftVec
-                              , map
-                              , dot, dotSqr
-                              , izipWith
-                              , dropWhileIdx
-                              , takeWhileIdx
-                              , startIdx, endIdx
-                              , extent
-                              , sum
-                              ) where
+module HPhoton.Corr.PackedVec
+    ( -- * Types
+      PackedVec, getPackedVec
+      -- * Construction
+    , packedVec, unsafePackedVec
+      -- * Queries
+    , null
+    , index
+    , dot, dotSqr
+    , sum
+    , startIdx, endIdx
+    , extent
+      -- * Conversion
+    , stream
+    , toVector
+      -- * Manipulation
+    , shiftVec
+    , map
+    , izipWith
+    , dropWhileIdx
+    , takeWhileIdx
+    ) where
 
 import           Control.Monad.ST
 import           Data.Function               (on)
@@ -28,7 +34,6 @@ import           Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
 import           Data.Vector.Fusion.Stream.Size
 import qualified Data.Vector.Fusion.Stream as S
 import qualified Data.Vector.Fusion.Util as S
-import           HPhoton.Types
 import           Prelude                     hiding (map, head, last, sum, null, length)
 
 -- | A sparse vector
