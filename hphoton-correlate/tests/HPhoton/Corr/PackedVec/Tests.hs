@@ -14,13 +14,13 @@ import           Test.QuickCheck.Modifiers
 import           HPhoton.Corr.PackedVec
 
 prop_shift_unshift_invar :: (Num i, V.Vector v (i,a), Eq (PackedVec v i a))
-                         => i -> PackedVec v i a -> Bool
-prop_shift_unshift_invar shift xs =
+                         => PackedVec v i a -> i -> Bool
+prop_shift_unshift_invar xs shift =
     shiftVec (-shift) (shiftVec shift xs) == xs
 
 prop_dot_shift_invar :: (Num i, Ord i, Num a, Eq a, V.Vector v (i,a), Show a)
-                     => i -> PackedVec v i a -> PackedVec v i a -> Property
-prop_dot_shift_invar shift x y =
+                     => PackedVec v i a -> PackedVec v i a -> i -> Property
+prop_dot_shift_invar x y shift =
     let dot1 = dot x y
         dot2 = dot (shiftVec shift x) (shiftVec shift y)
     in counterexample ("initial="++show dot1++" final="++show dot2) (dot1==dot2)
@@ -49,14 +49,15 @@ prop_dense_dot_mag xs ys =
 instance (VU.Unbox a, Arbitrary a) => Arbitrary (VU.Vector a) where
     arbitrary = sized $ \n->V.replicateM n arbitrary
 
+-- | Disambiguate types
+withPV :: (PackedVec VU.Vector Int Int -> a) -> PackedVec VU.Vector Int Int -> a
+withPV = id
+
 tests =
-    [ testProperty "Dot product magnitude"
-                   (prop_dot_mag :: PackedVec VU.Vector Int Int -> Property)
+    [ testProperty "Dot product magnitude" (withPV prop_dot_mag)
     , testProperty "Dense dot product magnitude"
                    (prop_dense_dot_mag :: VU.Vector Int -> VU.Vector Int -> Property)
-    , testProperty "Dot product shift invariant"
-                   (prop_dot_shift_invar :: Int -> PackedVec VU.Vector Int Int -> PackedVec VU.Vector Int Int -> Property)
-    , testProperty "Shift/unshift is identity"
-                   (prop_shift_unshift_invar :: Int -> PackedVec VU.Vector Int Int -> Bool)
+    , testProperty "Dot product shift invariant" (withPV prop_dot_shift_invar)
+    , testProperty "Shift/unshift is identity" (withPV prop_shift_unshift_invar)
     ]
 
