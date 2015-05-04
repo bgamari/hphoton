@@ -99,10 +99,10 @@ rebin n (Binned oldWidth v)
 
 -- | Compute the value of the cross-correlation function between two vectors
 corr :: (Num t, Integral t, Ord t, Real a, V.Vector v (t,a))
-     => t                 -- ^ Largest expected lag
+     => t                 -- ^ largest expected lag
      -> BinnedVec v t a   -- ^ first vector
      -> BinnedVec v t a   -- ^ second (shifted) vector
-     -> t                 -- ^ Lag to compute
+     -> t                 -- ^ lag to compute
      -> Either String (Double, Double)
 corr longlag (Binned ta a) (Binned tb b) lag
   | ta /= tb                = Left "Can't correlate vectors of different bin widths"
@@ -168,7 +168,7 @@ trimShiftData longlag a b lag =
         let startT = max (PV.startIdx a) (PV.startIdx b)
             endT = min (PV.endIdx a) (PV.endIdx b)
             checkNull err v
-              | PV.null v = error err
+              | PV.null v = error $ "HPhoton.Corr.SparseCorr.trimShiftData: "++err
               | otherwise = v
             a' = checkNull "a empty"
                $ PV.takeWhileIdx (<= endT)

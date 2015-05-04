@@ -127,7 +127,7 @@ dot as bs = sum $ izipWith (const (*)) as bs
 -- | Strict pair
 data Pair a b = Pair !a !b
 
--- | Produce a stream of the elements in the vector
+-- | Produce a 'Stream' of the non-zero elements in the vector
 stream :: (Num i, V.Vector v (i,a)) => PackedVec v i a -> Stream S.Id (i,a)
 stream = V.stream . toVector
 {-# INLINE stream #-}
