@@ -110,7 +110,7 @@ data Pair a b = Pair !a !b
 
 -- | Produce a stream of the elements in the vector
 stream :: (V.Vector v (i,a)) => PackedVec v i a -> Stream S.Id (i,a)
-stream (PVec as) = V.stream as
+stream = V.stream . getPackedVec
 {-# INLINE stream #-}
 
 dotSqr :: (Ord i, Eq i, Num a, V.Vector v (i,a))
@@ -134,36 +134,36 @@ index (PVec v) i =
 
 -- | Shift the abscissas in a sparse vector
 shiftVec :: (Num i, V.Vector v (i,a)) => i -> PackedVec v i a -> PackedVec v i a
-shiftVec shift (PVec v) = PVec $ V.map (\(a,o)->(a+shift, o)) v
+shiftVec shift = PVec . V.map (\(a,o)->(a+shift, o)) . getPackedVec
 {-# INLINE shiftVec #-}
 
 takeWhileIdx :: (Ord i, V.Vector v (i,a))
              => (i -> Bool) -> PackedVec v i a -> Maybe (PackedVec v i a)
-takeWhileIdx f (PVec v) = unsafePackedVec $ V.takeWhile (f . fst) v
+takeWhileIdx f = unsafePackedVec . V.takeWhile (f . fst) . getPackedVec
 {-# INLINE takeWhileIdx #-}
 
 dropWhileIdx :: (Ord i, V.Vector v (i,a))
              => (i -> Bool) -> PackedVec v i a -> Maybe (PackedVec v i a)
-dropWhileIdx f (PVec v) = unsafePackedVec $ V.dropWhile (f . fst) v
+dropWhileIdx f = unsafePackedVec . V.dropWhile (f . fst) . getPackedVec
 {-# INLINE dropWhileIdx #-}
 
 -- | Map operation
 -- Note that this will only map non-zero entries
 map :: (V.Vector v (i,a), V.Vector v (i,b))
     => (a -> b) -> PackedVec v i a -> PackedVec v i b
-map f (PVec v) = PVec $ V.map (\(x,y)->(x, f y)) v
+map f = PVec . V.map (\(x,y)->(x, f y)) . getPackedVec
 {-# INLINE map #-}
 
 startIdx :: (V.Vector v (i,a)) => PackedVec v i a -> i
-startIdx (PVec v) = fst $ V.head v
+startIdx = fst . V.head . getPackedVec
 {-# INLINE startIdx #-}
 
 endIdx :: (V.Vector v (i,a)) => PackedVec v i a -> i
-endIdx (PVec v) = fst $ V.last v
+endIdx = fst . V.last . getPackedVec
 {-# INLINE endIdx #-}
 
 sum :: (Num a, V.Vector v (i,a)) => PackedVec v i a -> a
-sum (PVec v) = V.foldl' (\accum (_,a)->accum+a) 0 v
+sum = V.foldl' (\accum (_,a)->accum+a) 0 . getPackedVec
 {-# INLINE sum #-}
 
 -- | The range of indicies covered by the vector
