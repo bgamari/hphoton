@@ -118,6 +118,7 @@ izipStreamsWith f (Stream stepa sa0 na) (Stream stepb sb0 nb) =
     {-# INLINE [0] go #-}
 {-# INLINE [1] izipStreamsWith #-}
 
+-- | The dot product of two 'PackedVec's
 dot :: (Num i, Ord i, Eq i, Num a, V.Vector v (i,a))
     => PackedVec v i a -> PackedVec v i a -> a
 dot as bs = sum $ izipWith (const (*)) as bs
@@ -131,11 +132,13 @@ stream :: (Num i, V.Vector v (i,a)) => PackedVec v i a -> Stream S.Id (i,a)
 stream = V.stream . toVector
 {-# INLINE stream #-}
 
+-- | Produce a vector of the index-value pairs of the non-zero elements of a 'PackedVec'
 toVector :: (Num i, V.Vector v (i,a)) => PackedVec v i a -> v (i,a)
 toVector (PVec shift as startPos length) =
     V.map (\(i,v) -> (i+shift, v)) $ V.take length $ V.drop startPos as
 {-# INLINE toVector #-}
 
+-- | The dot product and squared-dot product of two 'PackedVec's
 dotSqr :: (Num i, Ord i, Eq i, Num a, V.Vector v (i,a))
        => PackedVec v i a -> PackedVec v i a -> (a,a)
 dotSqr as bs =
@@ -193,16 +196,19 @@ map :: (Num i, V.Vector v (i,a), V.Vector v (i,b))
 map f = unsafePackedVec . V.map (\(x,y)->(x, f y)) . toVector
 {-# INLINE map #-}
 
+-- | The index of the first non-zero element
 startIdx :: (Num i, V.Vector v (i,a)) => PackedVec v i a -> i
 startIdx pvec = idx $ getPackedVec pvec V.! startPos pvec
   where idx (i,_) = i + shift pvec
 {-# INLINE startIdx #-}
 
+-- | The index of the last non-zero element
 endIdx :: (Num i, V.Vector v (i,a)) => PackedVec v i a -> i
 endIdx pvec = idx $ getPackedVec pvec V.! (length pvec - 1)
   where idx (i,_) = i + shift pvec
 {-# INLINE endIdx #-}
 
+-- | The sum of the elements
 sum :: (Num i, Num a, V.Vector v (i,a)) => PackedVec v i a -> a
 sum = S.foldl' (\accum (_,a)->accum+a) 0 . stream
 {-# INLINE sum #-}
