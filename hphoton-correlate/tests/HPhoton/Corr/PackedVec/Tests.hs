@@ -23,28 +23,28 @@ prop_dot_shift_invar :: (Num i, Ord i, Num a, Eq a, V.Vector v (i,a), Show a)
 prop_dot_shift_invar shift x y =
     let dot1 = dot x y
         dot2 = dot (shiftVec shift x) (shiftVec shift y)
-    in printTestCase ("initial="++show dot1++" final="++show dot2) (dot1==dot2)
+    in counterexample ("initial="++show dot1++" final="++show dot2) (dot1==dot2)
 
 instance (Num i, Ord i, Arbitrary i, Arbitrary a, V.Vector v (i,a)) =>
          Arbitrary (PackedVec v i a) where
     arbitrary = do dxs <- arbitrary
-                   let xs = scanl1 (+) $ fmap getPositive $ filter (<2^25) dxs
+                   let xs = scanl1 (+) $ filter (<2^25) $ fmap getPositive dxs
                    ys <- arbitrary
                    return $ unsafePackedVec $ V.fromList $ zip xs ys
 
-prop_dot_mag :: (V.Vector v a, V.Vector v (i,a), Ord i, Num a, Eq a, Show a)
+prop_dot_mag :: (V.Vector v a, V.Vector v (i,a), Num i, Ord i, Num a, Eq a, Show a)
              => PackedVec v i a -> Property
 prop_dot_mag x =
     let mag1 = dot x x
         mag2 = V.sum $ V.map (^2) $ V.map snd $ getPackedVec x
-    in printTestCase ("initial="++show mag1++" final="++show mag2) (mag1==mag2)
+    in counterexample ("initial="++show mag1++" final="++show mag2) (mag1==mag2)
 
 prop_dense_dot_mag :: (V.Vector v a, V.Vector v (Int,a), Num a, Eq a, Show a)
                    => v a -> v a -> Property
 prop_dense_dot_mag xs ys =
     let mag1 = dot (unsafePackedVec $ V.indexed xs) (unsafePackedVec $ V.indexed ys)
         mag2 = V.sum $ V.zipWith (*) xs ys
-    in printTestCase ("initial="++show mag1++" final="++show mag2) (mag1==mag2)
+    in counterexample ("initial="++show mag1++" final="++show mag2) (mag1==mag2)
 
 instance (VU.Unbox a, Arbitrary a) => Arbitrary (VU.Vector a) where
     arbitrary = sized $ \n->V.replicateM n arbitrary
