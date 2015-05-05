@@ -71,7 +71,7 @@ trimShiftData_test1 =
     xs = PV.packedVec $ V.fromList $ map (\t->(t,1)) [0,10..1000]
 
     resA = PV.toVector $ PV.packedVec $ V.fromList $ map (\t->(t,1)) [maxLag,10+maxLag..1000]
-    resB lag = PV.toVector $ PV.packedVec $ V.fromList $ map (\t->(t,1)) [maxLag-lag,maxLag-lag+10..1000-lag]
+    resB lag = PV.toVector $ PV.packedVec $ V.fromList $ map (\t->(t,1)) [maxLag,maxLag+10..1000]
 
 -- | Disambiguate types
 withBV :: (BinnedVec VU.Vector Int Int -> a) -> BinnedVec VU.Vector Int Int -> a
