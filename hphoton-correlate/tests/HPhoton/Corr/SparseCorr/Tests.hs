@@ -64,7 +64,7 @@ trimShiftData_test1 =
             assertEqual "Case 1" resA (PV.toVector testA)
             assertEqual "Case 2" (resB lag) (PV.toVector testB)
 
-      where (testA, testB) = trimShiftData maxLag 10 xs xs lag
+      where (testA, testB, zone) = trimShiftData maxLag 10 xs xs lag
 
     maxLag = 100
     xs :: PV.PackedVec VU.Vector Int Int

@@ -113,7 +113,7 @@ corr longLag _ (Binned ta a) (Binned tb b) lag
   | lag > longLag           = Left "Lag must be less than longlag"
   | lag `mod` ta /= 0       = Left "Lag must be multiple of bin time"
 corr longLag largeGrain (Binned binWidth a) (Binned _ b) lag =
-    let (sa,sb) = trimShiftData longLag largeGrain a b lag
+    let (sa,sb,zone) = trimShiftData longLag largeGrain a b lag
         ta = timespan sa
         tb = timespan sb
 
@@ -121,11 +121,11 @@ corr longLag largeGrain (Binned binWidth a) (Binned _ b) lag =
         inBins t = fromIntegral t / realToFrac binWidth
 
         -- experiment length in bins
-        t = inBins (min ta tb)
+        t = inBins zone :: Double
 
         (dot,ss) = case PV.dotSqr sa sb of (a,b) -> (realToFrac a, realToFrac b)
         count = realToFrac . PV.sum
-        norm_denom = (count sa / inBins ta) * (count sb / inBins tb) :: Double
+        norm_denom = (count sa / t) * (count sb / t) :: Double
         g = dot / norm_denom / t
         bar2 = (ss / t - (dot / t)^2) / t / norm_denom^2
     in Right (g, sqrt bar2)
@@ -174,7 +174,7 @@ trimShiftData
     -> PackedVec v t a  -- ^ first timeseries
     -> PackedVec v t a  -- ^ second timeseries
     -> t     -- ^ the lag
-    -> (PackedVec v t a, PackedVec v t a) -- ^ the trimmed and shifted timeseries
+    -> (PackedVec v t a, PackedVec v t a, t) -- ^ the trimmed and shifted timeseries and the zone size
 trimShiftData longLag _         _ _ lag | lag > longLag =
     error "HPhoton.Corr.SparseCor.trimShiftData: lag > longLag"
 trimShiftData longLag longGrain a b lag =
@@ -193,7 +193,7 @@ trimShiftData longLag longGrain a b lag =
             $ PV.takeWhileIdx (<= endT')
             $ PV.dropWhileIdx (<  (startT + longLag))
             $ PV.shiftVec lag b
-    in (a', b')
+    in (a', b', endT' - startT)
 {-# INLINE trimShiftData #-}
 
 data Point t a = Point { ptLag  :: !t
