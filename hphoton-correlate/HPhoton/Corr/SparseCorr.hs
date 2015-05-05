@@ -175,6 +175,8 @@ trimShiftData
     -> PackedVec v t a  -- ^ second timeseries
     -> t     -- ^ the lag
     -> (PackedVec v t a, PackedVec v t a) -- ^ the trimmed and shifted timeseries
+trimShiftData longLag _         _ _ lag | lag > longLag =
+    error "HPhoton.Corr.SparseCor.trimShiftData: lag > longLag"
 trimShiftData longLag longGrain a b lag =
     let startT = max (PV.startIdx a) (PV.startIdx b)
         endT = min (PV.endIdx a) (PV.endIdx b)
