@@ -11,6 +11,8 @@ module HPhoton.Corr.SparseCorr
     , rebin
     , BinnedVec
     , PackedVec
+      -- * Internal
+    , trimShiftData
     ) where
 
 import qualified Data.Vector.Generic as V
