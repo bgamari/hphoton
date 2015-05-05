@@ -178,7 +178,7 @@ trimShiftData
 trimShiftData longLag _         _ _ lag | lag > longLag =
     error "HPhoton.Corr.SparseCor.trimShiftData: lag > longLag"
 trimShiftData longLag longGrain a b lag =
-    let startT = max (PV.startIdx a) (PV.startIdx b)
+    let startT = max (PV.startIdx a) (PV.startIdx b) + longLag
         endT = min (PV.endIdx a) (PV.endIdx b)
         -- zone size must be divisible by the longest grain size
         endT' = startT + ((endT - startT) `div` longGrain) * longGrain
@@ -187,11 +187,11 @@ trimShiftData longLag longGrain a b lag =
             | otherwise = v
         a' = checkNull "a empty"
             $ PV.takeWhileIdx (<= endT')
-            $ PV.dropWhileIdx (<  (startT + longLag))
+            $ PV.dropWhileIdx (<  startT)
             $ a
         b' = checkNull "b empty"
             $ PV.takeWhileIdx (<= endT')
-            $ PV.dropWhileIdx (<  (startT + longLag))
+            $ PV.dropWhileIdx (<  startT)
             $ PV.shiftVec lag b
     in (a', b', endT' - startT)
 {-# INLINE trimShiftData #-}
