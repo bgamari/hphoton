@@ -151,16 +151,16 @@ corr longLag largeGrain (Binned binWidth a) (Binned _ b) lag =
 --  With longLag = 4 character cells
 --
 --  Unshifted
---              𝑡=0    ↓ 𝑡=startT               ↓ 𝑡=endT
+--              τ=0    ↓ 𝑡=startT               ↓ 𝑡=endT
 --    Channel A  |     ────════════════════════
 --    Channel B  |     ────════════════════════
 --
---  Shifted by 𝛥𝑡=2 cells
+--  Shifted by τ=2 cells
 --              𝑡=0
 --    Channel A  |     ────════════════════════
 --    Channel B  |       ──════════════════════──
 --
---  Shifted by 𝛥𝑡=longLag=4 cells
+--  Shifted by τ=longLag=4 cells
 --              𝑡=0
 --    Channel A  |     ────════════════════════
 --    Channel B  |         ════════════════════────
