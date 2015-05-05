@@ -177,7 +177,7 @@ trimShiftData longLag longGrain a b lag =
     let startT = max (PV.startIdx a) (PV.startIdx b)
         endT = min (PV.endIdx a) (PV.endIdx b)
         -- zone size must be divisible by the longest grain size
-        endT' = endT `div` longGrain * longGrain
+        endT' = startT + ((endT - startT) `div` longGrain) * longGrain
         checkNull err v
             | PV.null v = error $ "HPhoton.Corr.SparseCorr.trimShiftData: "++err
             | otherwise = v
