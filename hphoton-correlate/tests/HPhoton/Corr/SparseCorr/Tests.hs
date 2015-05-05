@@ -54,18 +54,24 @@ rebin_test1 = assertEqual "Case 1" res (rebin 10 ts)
           res = Binned 10 $ PV.unsafePackedVec $ VU.fromList [(0,3), (1000,3)]
                :: BinnedVec VU.Vector Int Int
 
-trimShiftData_test1 :: Test
+trimShiftData_test1 :: TestTree
 trimShiftData_test1 =
-    TestList $ map testLag [0, 10, 100]
+    testGroup "trimShiftData" $ map testLag [0, 10, maxLag]
   where
-    testLag :: Int -> Test
-    testLag lag = TestCase $ assertEqual "Case 1" (resA, resB lag) (trimShiftData 1000 10 xs xs lag)
+    testLag :: Int -> TestTree
+    testLag lag =
+        testCase ("lag="++show lag) $ do
+            assertEqual "Case 1" resA (PV.toVector testA)
+            assertEqual "Case 2" (resB lag) (PV.toVector testB)
 
+      where (testA, testB) = trimShiftData maxLag 10 xs xs lag
+
+    maxLag = 100
     xs :: PV.PackedVec VU.Vector Int Int
-    xs = PV.packedVec $ V.fromList $ map (\t->(t,1)) [0,10..100000]
+    xs = PV.packedVec $ V.fromList $ map (\t->(t,1)) [0,10..1000]
 
-    resA = PV.packedVec $ V.fromList $ map (\t->(t,1)) [1000,1010..100000]
-    resB lag = PV.packedVec $ V.fromList $ map (\t->(t,1)) [lag,10+lag..100000+lag]
+    resA = PV.toVector $ PV.packedVec $ V.fromList $ map (\t->(t,1)) [maxLag,10+maxLag..1000]
+    resB lag = PV.toVector $ PV.packedVec $ V.fromList $ map (\t->(t,1)) [maxLag-lag,maxLag-lag+10..1000-lag]
 
 -- | Disambiguate types
 withBV :: (BinnedVec VU.Vector Int Int -> a) -> BinnedVec VU.Vector Int Int -> a
@@ -77,4 +83,5 @@ tests = testGroup "SparseCorr"
     , testProperty "Bin times monotonic"
         (withBV prop_rebin_monotonic)
     , testCase "Rebinning test" rebin_test1
+    , trimShiftData_test1
     ]
