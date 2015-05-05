@@ -7,12 +7,13 @@ import           Data.Function                        (on)
 import qualified Data.Vector.Generic                  as V
 import qualified Data.Vector.Unboxed                  as VU
 
-import           Test.Framework.Providers.QuickCheck2 (testProperty)
+import           Test.Tasty
+import           Test.Tasty.QuickCheck
 import           Test.QuickCheck.Arbitrary
 import           Test.QuickCheck.Modifiers
-import           Test.QuickCheck.Property
+import           Test.QuickCheck.Property (Result, succeeded, failed, rejected)
 
-import           Test.Framework.Providers.HUnit (testCase)
+import           Test.Tasty.HUnit (testCase)
 import           Test.HUnit
 
 import           HPhoton.Corr.PackedVec               (PackedVec (..))
@@ -30,11 +31,9 @@ instance (Num i, Ord i, V.Vector v a, V.Vector v (i,a), Arbitrary i, Arbitrary a
 
 prop_rebin_counts_invar
     :: (Num i, Integral i, Ord i, V.Vector v (i,a), Num a, Eq a, Show a, Show i)
-    => BinnedVec v i a -> Positive Int -> Result
+    => BinnedVec v i a -> Positive Int -> Property
 prop_rebin_counts_invar bv@(Binned _ v) (Positive width) =
-    if initial == final
-      then succeeded
-      else failed {reason="Initial="++show initial++" final="++show (final-initial)}
+    counterexample ("Initial="++show initial++" final="++show (final-initial)) (initial == final)
   where
     Binned _ v' = rebin width bv
     initial = PV.sum v
@@ -42,15 +41,12 @@ prop_rebin_counts_invar bv@(Binned _ v) (Positive width) =
 
 prop_rebin_monotonic
     :: (Num i, Integral i, Ord i, V.Vector v (i,a), V.Vector v i, Num a, Eq a, Show (v i))
-    => BinnedVec v i a -> Positive Int -> Result
+    => BinnedVec v i a -> Positive Int -> Property
 prop_rebin_monotonic bv (Positive width) =
     let Binned _ pv' = rebin width bv
         v' = PV.toVector pv'
         dts = V.zipWith ((-) `on` fst) (V.tail v') v'
-    in case () of
-           _ | V.length v' < 2  -> rejected
-           _ | V.all (>0) dts   -> succeeded
-           _ | otherwise        -> failed { reason=show dts }
+    in counterexample (show dts) $ (V.length v' < 2) ==> V.all (>0) dts
 
 rebin_test1 = assertEqual "Case 1" res (rebin 10 ts)
     where ts = vecFromStamps $ VU.fromList [1,2,3, 1001, 1002, 1003]
@@ -75,7 +71,7 @@ trimShiftData_test1 =
 withBV :: (BinnedVec VU.Vector Int Int -> a) -> BinnedVec VU.Vector Int Int -> a
 withBV = id
 
-tests =
+tests = testGroup "SparseCorr"
     [ testProperty "Total counts invariant on rebinning"
         (withBV prop_rebin_counts_invar)
     , testProperty "Bin times monotonic"

@@ -7,8 +7,8 @@ import           Data.Function                        (on)
 import qualified Data.Vector.Generic                  as V
 import qualified Data.Vector.Unboxed                  as VU
 
-import           Test.Framework.Providers.QuickCheck2 (testProperty)
-import           Test.QuickCheck
+import           Test.Tasty
+import           Test.Tasty.QuickCheck
 import           Test.QuickCheck.Modifiers
 
 import           HPhoton.Corr.PackedVec as PV
@@ -88,7 +88,7 @@ instance (VU.Unbox a, Arbitrary a) => Arbitrary (VU.Vector a) where
 withPV :: (PackedVec VU.Vector Int Int -> a) -> PackedVec VU.Vector Int Int -> a
 withPV = id
 
-tests =
+tests = testGroup "PackedVec"
     [ testProperty "Dot product magnitude" (withPV prop_dot_mag)
     , testProperty "Dense dot product magnitude"
                    (prop_dense_dot_mag :: VU.Vector Int -> VU.Vector Int -> Property)

@@ -54,8 +54,8 @@ test-suite Main
                      vector,
                      mwc-random,
                      QuickCheck,
-                     test-framework,
-                     test-framework-quickcheck2,
-                     test-framework-hunit,
+                     tasty,
+                     tasty-quickcheck,
+                     tasty-hunit,
                      HUnit,
                      hphoton
