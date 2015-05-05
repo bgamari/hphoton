@@ -46,7 +46,7 @@ prop_rebin_monotonic bv (Positive width) =
     let Binned _ pv' = rebin width bv
         v' = PV.toVector pv'
         dts = V.zipWith ((-) `on` fst) (V.tail v') v'
-    in counterexample (show dts) $ (V.length v' < 2) ==> V.all (>0) dts
+    in counterexample (show dts) $ (V.length v' > 2) ==> V.all (>0) dts
 
 rebin_test1 = assertEqual "Case 1" res (rebin 10 ts)
     where ts = vecFromStamps $ VU.fromList [1,2,3, 1001, 1002, 1003]
