@@ -20,10 +20,10 @@ module HPhoton.Types ( -- * Time
                      ) where
 
 import Data.Word
-import Data.Foldable hiding (maximum, minimum)   
-import Data.Traversable 
+import Data.Foldable hiding (maximum, minimum)
+import Data.Traversable
 import qualified Data.Vector.Unboxed as V
-  
+
 import Test.QuickCheck
 import Data.List (sort)
 
@@ -31,7 +31,7 @@ import Data.List (sort)
 type Time = Word64
 -- | A difference between times in instrument-dependent ticks
 type TimeDelta = Word64
-                 
+
 -- | A real time given in seconds
 type RealTime = Double
 -- | A frequency in Hertz
@@ -45,15 +45,15 @@ type Rate = Double
 -- | `Clock` denotes a clockrate
 newtype Clock = Clock Freq deriving (Show, Eq)
 
--- | Construct a Clock from a frequency              
+-- | Construct a Clock from a frequency
 clockFromFreq :: Freq -> Clock
-clockFromFreq freq = Clock freq
+clockFromFreq = Clock
 
 -- | Construct a Clock from a period
 clockFromJiffy :: RealTime -> Clock
 clockFromJiffy jiffy = Clock $ round $ 1/jiffy
 
--- | `freq clock` is the frequency of `clock`               
+-- | `freq clock` is the frequency of `clock`
 freq :: Clock -> Freq
 freq (Clock f) = f
 
@@ -63,18 +63,18 @@ jiffy (Clock freq) = 1 / realToFrac freq
 
 checkEmpty :: String -> [a] -> [a]
 checkEmpty e [] = error $ e++": Empty list"
-checkEmpty _ a  = a          
+checkEmpty _ a  = a
 
--- | Gets the start time of a set of timestamps           
+-- | Gets the start time of a set of timestamps
 startTime :: [V.Vector Time] -> Time
-startTime [] = error "startTime: No start time of empty list of timeseries"        
+startTime [] = error "startTime: No start time of empty list of timeseries"
 startTime stamps = minimum $ checkEmpty "startTime" $ foldMap head stamps
   where head x | V.null x  = []
                | otherwise = [V.head x]
-          
--- | Gets the end time of a set of timestamps           
+
+-- | Gets the end time of a set of timestamps
 endTime :: [V.Vector Time] -> Time
-endTime [] = error "endTime: No end time of empty list of timeseries"        
+endTime [] = error "endTime: No end time of empty list of timeseries"
 endTime stamps = maximum $ checkEmpty "endTime" $ foldMap last stamps
   where last x | V.null x  = []
                | otherwise = [V.last x]
@@ -113,4 +113,3 @@ spanDuration (a,b) = b-a
 -- | Real duration of a span
 realSpanDuration :: Clock -> Span -> RealTime
 realSpanDuration clk = timeToRealTime clk . spanDuration
-
