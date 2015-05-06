@@ -11,5 +11,5 @@ data Metadata = Jiffy Double
               | CreationTime UTCTime
 makePrisms ''Metadata
 
-lookupMetadata :: (Prism' Metadata a) -> [Metadata] -> Maybe a
+lookupMetadata :: Prism' Metadata a -> [Metadata] -> Maybe a
 lookupMetadata p = firstOf (traverse . p)

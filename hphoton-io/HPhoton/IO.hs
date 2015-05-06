@@ -1,9 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module HPhoton.IO ( ReadError(..)
-                  , module HPhoton.IO.Metadata
-                  , Channel
+module HPhoton.IO ( -- * Reading timestamps
+                    Channel
                   , readStamps
+                  , ReadError(..)
+                    -- * Metadata
+                  , module HPhoton.IO.Metadata
                   ) where
 
 import Data.List
@@ -31,12 +33,12 @@ type Channel = Int
 readStamps :: FilePath -> Channel
            -> EitherT ReadError IO (VU.Vector Time, [Metadata])
 readStamps = readStamps' formats
-    
+
 readStamps' :: [Format] -> FilePath -> Channel
             -> EitherT ReadError IO (VU.Vector Time, [Metadata])
 readStamps' [] _ _ = left UnrecognizedFormat
 readStamps' (reader:rest) fname channel
-  | (fmtIdentify reader) fname = do
+  | fmtIdentify reader fname = do
       res <- lift $ runEitherT $ (fmtReader reader) fname channel
       case res of
         Left UnrecognizedFormat   -> readStamps' rest fname channel
