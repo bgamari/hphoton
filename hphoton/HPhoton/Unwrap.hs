@@ -7,7 +7,6 @@ module HPhoton.Unwrap ( unwrapTimes
 
 import           Control.Monad.Trans.State
 import qualified Data.Vector.Generic         as G
-import           HPhoton.Types
 
 data UnwrapState a = US { offset :: !a
                         , lastT  :: !a
