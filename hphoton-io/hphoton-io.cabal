@@ -18,6 +18,9 @@ library
                        vector-mmap >=0.0 && <0.1,
                        time >=1.4 && <2.0,
                        lens >= 3.0 && <5.0,
+                       pipes >= 4.1 && < 5.0,
+                       pipes-vector >= 0.6 && <1.0,
+                       pipes-bytestring >= 2.1 && <3.0,
                        hphoton,
                        hphoton-fpga-timetagger
   default-language:    Haskell2010

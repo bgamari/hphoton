@@ -18,8 +18,15 @@ import Control.Error
 import Control.Applicative
 import Control.Lens
 import HPhoton.Types
+
+import System.IO (withFile, IOMode(ReadMode))
+import Pipes
+import qualified Pipes.Prelude as PP
+import qualified Pipes.ByteString as PBS
+import qualified Pipes.Vector as PV
+
 import qualified HPhoton.IO.RawTimestamps as Raw
-import qualified HPhoton.IO.FpgaTimetagger as Fpga
+import qualified HPhoton.IO.FpgaTimetagger.Pipes as Fpga
 import HPhoton.IO.Metadata
 
 data ReadError = ReadIOException IOException
@@ -66,9 +73,17 @@ fpgaTimetagger = Format (hasExtension [".timetag"]) reader
   where
     reader fname channel = do
       ch <- maybe (left InvalidChannel) right $ toEnum' channel
-      records <- liftIO $ Fpga.readRecords fname
+
+      times <- liftIO $ withFile fname ReadMode $ \h ->
+        runEffect $ PV.runToVectorP
+        $ PBS.fromHandle h
+        >-> Fpga.decodeRecords
+        >-> Fpga.unwrapRecords
+        >-> PP.filter (\(c,t) -> c == ch)
+        >-> PP.map snd
+        >-> PV.toVector
       mdata <- either (const []) convertMeta <$> lift (runEitherT $ Fpga.getMetadata fname)
-      return (Fpga.unwrapTimes $ Fpga.strobeTimes records ch, mdata)
+      return (times, mdata)
     convertMeta m =
       [
         Jiffy $ 1 / realToFrac (Fpga.ttClockrate m)
