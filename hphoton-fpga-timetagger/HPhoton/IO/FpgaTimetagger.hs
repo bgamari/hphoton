@@ -59,6 +59,7 @@ newtype Record = Record Word64 deriving (Eq)
 
 record :: Iso' Word64 Record
 record = iso Record (\(Record r)->r)
+{-# INLINE record #-}
 
 instance Show Record where
   show r = "mkRecord"
@@ -69,14 +70,17 @@ instance Show Record where
              ++" "++views recLost show r
 
 zeroRecord = Record 0
+{-# INLINE zeroRecord #-}
 
 -- | Is the record a delta record
 recDelta :: Lens' Record Bool
 recDelta = from record . bitAt 45
+{-# INLINE recDelta #-}
 
 -- | Is the record a strobe record
 recStrobe :: Lens' Record Bool
 recStrobe = recDelta . iso not not
+{-# INLINE recStrobe #-}
 
 -- | The type of a record
 data RecType = Delta | Strobe deriving (Show, Eq, Enum, Bounded)
@@ -88,23 +92,28 @@ recType = recDelta . iso to from
         to False    = Strobe
         from Delta  = True
         from Strobe = False
+{-# INLINE recType #-}
 
 -- | The wrap bit of a record
 recWrap :: Lens' Record Bool
 recWrap = from record . bitAt 46
+{-# INLINE recWrap #-}
 
 -- | The "records lost" bit of a record
 recLost :: Lens' Record Bool
 recLost = from record . bitAt 47
+{-# INLINE recLost #-}
 
 -- | The time field of a record
 recTime :: Lens' Record Time
 recTime = from record . lens (.&. recTimeMask)  set
   where set r t | t > recTimeMask  = error "FpgaTimetagger: Time too large"
                 | otherwise        = (r .&. complement recTimeMask) .|. t
+{-# INLINE recTime #-}
 
 -- | A mask of a record's time field
 recTimeMask = 0xfffffffff :: Time
+{-# INLINE recTimeMask #-}
 
 -- | Is the given channel's bit set
 recChannel :: Channel -> Lens' Record Bool
@@ -113,10 +122,12 @@ recChannel ch = from record . bitAt bit
                            Ch1 -> 37
                            Ch2 -> 38
                            Ch3 -> 39
+{-# INLINE recChannel #-}
 
 -- | All of the channel bits set in a record
 recChannels :: Record -> [Channel]
 recChannels r = filter (\ch->view (recChannel ch) r) $ enumFrom minBound
+{-# INLINE recChannels #-}
 
 derivingUnbox "Record"
     [t| Record -> Word64 |]
@@ -156,16 +167,20 @@ decodeRecord bs
                                , byte 0 `shift` 40
                                ]
     where byte i = fromIntegral $ bs `BSU.unsafeIndex` i
+{-# INLINE decodeRecord #-}
 
 -- | Encode a single record to a bytestring
 encodeRecord :: Record -> BS.ByteString
 encodeRecord (Record r) =
     BS.pack [ fromIntegral (r `shiftR` (8*i)) | i <- [5,4..0] ]
+{-# INLINE encodeRecord #-}
 
 instance Binary Record where
   get = do r <- decodeRecord <$> getByteString 6
            maybe (fail "Parse error") return r
+  {-# INLINE get #-}
   put = putByteString . encodeRecord
+  {-# INLINE put #-}
 
 -- | Fix timing wraparounds
 unwrapTimes :: Vector Time -> Vector Time
