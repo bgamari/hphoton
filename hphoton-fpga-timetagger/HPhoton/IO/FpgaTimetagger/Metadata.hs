@@ -55,7 +55,7 @@ readIso8601 v =
 metadataForFile f | ".meta" `isSuffixOf` f  = f
                   | otherwise               = f<>".meta"
 
-getMetadata :: FilePath -> EitherT String IO TimetagMetadata
+getMetadata :: FilePath -> ExceptT String IO TimetagMetadata
 getMetadata f = do
     a <- fmapLT show $ tryIO $ readFile $ metadataForFile f
     hoistEither $ eitherDecode a

@@ -38,24 +38,24 @@ data ReadError = ReadIOException IOException
 type Channel = Int
 
 readStamps :: FilePath -> Channel
-           -> EitherT ReadError IO (VU.Vector Time, [Metadata])
+           -> ExceptT ReadError IO (VU.Vector Time, [Metadata])
 readStamps = readStamps' formats
 
 readStamps' :: [Format] -> FilePath -> Channel
-            -> EitherT ReadError IO (VU.Vector Time, [Metadata])
-readStamps' [] _ _ = left UnrecognizedFormat
+            -> ExceptT ReadError IO (VU.Vector Time, [Metadata])
+readStamps' [] _ _ = throwE UnrecognizedFormat
 readStamps' (reader:rest) fname channel
   | fmtIdentify reader fname = do
-      res <- lift $ runEitherT $ (fmtReader reader) fname channel
+      res <- lift $ runExceptT $ (fmtReader reader) fname channel
       case res of
         Left UnrecognizedFormat   -> readStamps' rest fname channel
-        Left err                  -> left err
+        Left err                  -> throwE err
         Right ret                 -> return ret
   | otherwise = readStamps' rest fname channel
 
 data Format = Format { fmtIdentify :: FilePath -> Bool
                      , fmtReader   :: FilePath -> Channel
-                                   -> EitherT ReadError IO (VU.Vector Time, [Metadata])
+                                   -> ExceptT ReadError IO (VU.Vector Time, [Metadata])
                      }
 
 formats :: [Format]
@@ -72,7 +72,7 @@ fpgaTimetagger :: Format
 fpgaTimetagger = Format (hasExtension [".timetag"]) reader
   where
     reader fname channel = do
-      ch <- maybe (left InvalidChannel) right $ toEnum' channel
+      ch <- maybe (throwE InvalidChannel) return $ toEnum' channel
 
       times <- liftIO $ withFile fname ReadMode $ \h ->
         runEffect $ PV.runToVectorP
@@ -82,7 +82,7 @@ fpgaTimetagger = Format (hasExtension [".timetag"]) reader
         >-> PP.filter (\(c,t) -> c == ch)
         >-> PP.map snd
         >-> PV.toVector
-      mdata <- either (const []) convertMeta <$> lift (runEitherT $ Fpga.getMetadata fname)
+      mdata <- either (const []) convertMeta <$> lift (runExceptT $ Fpga.getMetadata fname)
       return (times, mdata)
     convertMeta m =
       [

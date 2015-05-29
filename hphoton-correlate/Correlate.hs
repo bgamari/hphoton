@@ -105,23 +105,23 @@ description = intercalate "\n"
     , "and its variance over the requested range of lag times."
     ]
 
-checkMonotonic :: Monad m => Stamps -> EitherT String m ()
+checkMonotonic :: Monad m => Stamps -> ExceptT String m ()
 checkMonotonic v =
     let f (l,t) t' | t > t'      = (t:l,t')
                    | otherwise   = (l,t')
     in case V.foldl' f ([],0) v of
             ([],_) -> return ()
-            (l,_)  -> left $ "Non-monotonic:" ++ show l
+            (l,_)  -> throwE $ "Non-monotonic:" ++ show l
 
 main = do
-    result <- runEitherT main'
+    result <- runExceptT main'
     case result of
       Left err  -> do
         hPutStrLn stderr $ "Error: "++err
         exitWith $ ExitFailure 1
       Right _   -> return ()
 
-main' :: EitherT String IO ()
+main' :: ExceptT String IO ()
 main' = do
     args <- lift $ execParser $ info (helper <*> opts)
         ( fullDesc
@@ -138,12 +138,12 @@ main' = do
 
     jiffy' <- case (jiffy_ args, lookupMetadata _Jiffy metaA, lookupMetadata _Jiffy metaB) of
       (Just j, _, _)           -> return j
-      (_ , Nothing, Nothing)   -> left "Could't infer jiffy. Specify manually with --jiffy"
-      (_ , Just ja, Nothing)   -> right ja
-      (_ , Nothing, Just jb)   -> right jb
+      (_ , Nothing, Nothing)   -> throwE "Could't infer jiffy. Specify manually with --jiffy"
+      (_ , Just ja, Nothing)   -> return ja
+      (_ , Nothing, Just jb)   -> return jb
       (_ , Just ja, Just jb)
-        | ja /= jb  -> left "Incompatible jiffys"
-        | otherwise -> right ja
+        | ja /= jb  -> throwE "Incompatible jiffys"
+        | otherwise -> return ja
 
     checkMonotonic a
     checkMonotonic b
@@ -154,9 +154,9 @@ main' = do
     let clk = clockFromJiffy jiffy'
         expDur = duration [a,b]
     when (10 * realTimeToTime clk (longlag args) > expDur)
-      $ left "--max-lag is too long for data set"
+      $ throwE "--max-lag is too long for data set"
     when (realTimeToTime clk (shortlag args) < 10)
-      $ left "--min-lag is too short for data set"
+      $ throwE "--min-lag is too short for data set"
 
 
     let pts = let short = realTimeToTime clk (shortlag args)

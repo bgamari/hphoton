@@ -21,7 +21,7 @@ library
   other-extensions:    FlexibleContexts, BangPatterns, FlexibleInstances, TupleSections
   ghc-options:         -O2
   build-depends:       base >=4.6 && <4.9,
-                       errors >=1.4 && <1.5,
+                       errors >=2.0 && <2.1,
                        vector >=0.10 && <0.11,
                        parallel >=3.2 && <3.3,
                        optparse-applicative >=0.5 && <1.0,
