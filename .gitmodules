@@ -1,15 +1,3 @@
-[submodule "chart-histogram"]
-	path = chart-histogram
-	url = git@github.com:bgamari/chart-histogram.git
 [submodule "mixture-model"]
 	path = mixture-model
 	url = git@github.com:bgamari/mixture-model.git
-[submodule "logfloat-unboxed"]
-	path = logfloat-unboxed
-	url = git@github.com:bgamari/logfloat-unboxed.git
-[submodule "pipes-bytestring"]
-	path = pipes-bytestring
-	url = git://github.com/Gabriel439/Haskell-Pipes-ByteString-Library.git
-[submodule "pipes-vector"]
-	path = pipes-vector
-	url = git@github.com:bgamari/pipes-vector.git
