@@ -63,7 +63,6 @@ test-suite Main
                      transformers,
                      statistics,
                      Chart >=1.0,
-                     chart-histogram,
                      QuickCheck,
                      test-framework,
                      test-framework-quickcheck2,
