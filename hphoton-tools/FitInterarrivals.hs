@@ -6,6 +6,7 @@ import qualified Data.Vector.Unboxed as V
 import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.Trans.Writer
+import           Data.Semigroup ((<>))
 import           Data.Random
 import           Data.Random.Distribution.Beta
 import           Data.Random.Distribution.Categorical

@@ -6,6 +6,7 @@ import           Data.Char
 import           Data.Maybe (mapMaybe)
 import           Data.Foldable as F
 import           Data.Traversable as T
+import           Data.Semigroup ((<>))
 import           System.FilePath (takeExtension)
 
 import           Options.Applicative

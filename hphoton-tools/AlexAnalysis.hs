@@ -52,7 +52,7 @@ import           Numeric.SpecFunctions (logFactorial)
 import           Numeric.Log hiding (sum)
 import           Statistics.Types
 import           Statistics.Sample
-import           Statistics.Resampling
+import           Statistics.Resampling as R
 import           Statistics.Resampling.Bootstrap
 import           Statistics.LinearRegression
 
@@ -347,7 +347,7 @@ goFile p fname = writeHtmlLogT (fname++".html") $ do
             H.li $ H.toHtml $ "Shot-noise variance = "++showFFloat (Just 4) shotSigma2 ""
             H.li $ H.toHtml $
               let e = fmap (fretEff gamma') fretBins
-                  bootstrap = bootstrapBCA 0.9 (V.convert e) [VarianceUnbiased] [Resample resamp]
+                  bootstrap = bootstrapBCA cl90 (V.convert e) [(VarianceUnbiased, Bootstrap (R.estimate VarianceUnbiased (V.convert e)) resamp)]
                   resamp = jackknife VarianceUnbiased (V.convert e)
               in "Bootstrap variance = "++show bootstrap
 
@@ -414,7 +414,7 @@ layoutSE title eBins s e fretEs fits =
                  $ def
         eHist = histToPlot
                 $ plot_hist_bins .~ eBins
-                $ plot_hist_values .~ V.fromList fretEs
+                $ plot_hist_values .~ fretEs
                 $ plot_hist_range .~ Just (0,1)
                 $ defaultFloatPlotHist
         unitAxis = scaledAxis def (0,1) :: AxisFn Double

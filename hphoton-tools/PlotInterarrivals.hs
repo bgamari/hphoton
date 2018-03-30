@@ -1,5 +1,6 @@
 import           Control.Monad
 import           Control.Applicative
+import           Data.Semigroup ((<>))
 import qualified Data.Vector as VB
 import qualified Data.Vector.Unboxed as V
 
@@ -68,7 +69,7 @@ longTime = 5e-2
 histPlot :: (Double, Double) -> V.Vector Sample -> Plot Sample Double
 histPlot range xs = histToPlot
               $ plot_hist_bins     .~ 4000
-              $ plot_hist_values   .~ V.convert xs
+              $ plot_hist_values   .~ V.toList xs
               $ plot_hist_range    .~ Just range
               $ plot_hist_no_zeros .~ True
               $ defaultNormedPlotHist

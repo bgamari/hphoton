@@ -1,4 +1,5 @@
 import Prelude hiding (sum)
+import Data.Semigroup ((<>))
 import HPhoton.BurstIdent.Bayes
 import HPhoton.Types
 import HPhoton.Fret

@@ -1,7 +1,7 @@
 {-# LANGUAGE PackageImports #-}
 
 import Control.Lens
-import Data.Default       
+import Data.Default
 import System.Environment
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as V
@@ -23,7 +23,7 @@ main = do
         bins = bin' width (VU.toList ts) Nothing (fromIntegral $ VU.head ts `quot` width) 0
         --bins = bin width ts
         hist = plot_hist_bins    .~ 150
-             $ plot_hist_values  .~ (V.fromList $ map realToFrac bins :: V.Vector Double)
+             $ plot_hist_values  .~ (map realToFrac bins :: [Double])
              $ plot_hist_range   .~ Just (0, 150)
              $ defaultPlotHist
         layout = layout_plots   .~ [histToPlot hist]

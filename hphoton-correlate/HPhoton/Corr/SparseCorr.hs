@@ -15,13 +15,14 @@ module HPhoton.Corr.SparseCorr
     , trimShiftData
     ) where
 
-import qualified Data.Vector.Generic as V
 import Data.Foldable (foldl')
 import Data.Maybe (fromMaybe)
 import Control.Applicative ((<$>))
 import Control.Monad
+import qualified Data.Vector.Generic as V
 import Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
-import Data.Vector.Fusion.Stream.Size
+import qualified Data.Vector.Fusion.Bundle.Monadic as B
+import Data.Vector.Fusion.Bundle.Size as Size
 
 import HPhoton.Types
 import HPhoton.Corr.PackedVec (PackedVec(..))
@@ -68,16 +69,17 @@ rebin n (Binned oldWidth v)
   | PV.null v = Binned width PV.empty
   | otherwise =
         Binned width
-        $ PV.unsafePackedVec $ V.unstream
+        $ PV.unsafePackedVec $ V.unstream $ flip B.fromStream Size.Unknown
         $ rebinStream width
         $ PV.stream v
   where
     width = oldWidth * fromIntegral n
     binStart width t = (t `div` width) * width
+
     rebinStream :: (Monad m, Ord t, Num t, Integral t, Num a)
                 => t -> Stream m (t,a) -> Stream m (t,a)
-    rebinStream width (Stream stepa sa0 na) =
-        Stream step (ReBinStart sa0) (toMax na)
+    rebinStream width (Stream stepa sa0) =
+        Stream step (ReBinStart sa0)
       where
         step (ReBinStart sa) = do
           r <- stepa sa

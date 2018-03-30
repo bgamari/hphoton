@@ -435,7 +435,7 @@ layoutFret title eBins e fretEs fits =
               $ def
         eHist = histToPlot
                 $ plot_hist_bins .~ eBins
-                $ plot_hist_values .~ V.fromList fretEs
+                $ plot_hist_values .~ fretEs
                 $ plot_hist_range .~ Just (0,1)
                 $ defaultFloatPlotHist
         unitAxis = scaledAxis def (0,1) :: AxisFn Double
@@ -464,7 +464,7 @@ layoutCountingHist title maxBins names colours bins =
             -- $ plot_hist_bins .~ maxBins
             $ defaultPlotHist
     in toRenderable
-       $ layout_plots .~ (F.toList $ plot <$> names <*> colours <*> bins)
+       $ layout_plots .~ (F.toList $ plot <$> names <*> colours <*> fmap F.toList bins)
        $ layout_x_axis . laxis_title .~ "counts"
        $ layout_y_axis . laxis_title .~ "occurrences"
        $ def

@@ -11,6 +11,7 @@ import           Prelude hiding (readFile)
 import           Control.Applicative
 import           Control.Error
 import           Control.Monad
+import           Control.Monad.Trans.Except
 import           Data.Monoid ((<>))
 
 import           Data.Aeson
@@ -55,7 +56,7 @@ readIso8601 v =
 metadataForFile f | ".meta" `isSuffixOf` f  = f
                   | otherwise               = f<>".meta"
 
-getMetadata :: FilePath -> EitherT String IO TimetagMetadata
+getMetadata :: FilePath -> ExceptT String IO TimetagMetadata
 getMetadata f = do
     a <- fmapLT show $ tryIO $ readFile $ metadataForFile f
     hoistEither $ eitherDecode a

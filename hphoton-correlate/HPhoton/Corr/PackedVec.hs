@@ -32,8 +32,10 @@ import           Data.Function               (on)
 import qualified Data.Vector.Algorithms.Heap as VA
 import qualified Data.Vector.Generic         as V
 import           Data.Vector.Fusion.Stream.Monadic (Step(..), Stream(..))
-import           Data.Vector.Fusion.Stream.Size
-import qualified Data.Vector.Fusion.Stream as S
+import qualified Data.Vector.Fusion.Stream.Monadic as S
+import qualified Data.Vector.Fusion.Bundle as B
+import qualified Data.Vector.Fusion.Bundle.Monadic as B
+import           Data.Vector.Fusion.Bundle.Size as Size
 import qualified Data.Vector.Fusion.Util as S
 import           Prelude                     hiding (map, head, last, sum, null, length)
 
@@ -48,8 +50,8 @@ data PackedVec v i a = PVec { shift :: !i
 --   * length is the number of packed vector elements after startPos to be considered
 
 deriving instance (Show i, Show (v (i,a))) => Show (PackedVec v i a)
-instance (V.Vector v (i,a), Num i, Eq i, Eq a) => Eq (PackedVec v i a) where
-    a == b = stream a == stream b
+instance (V.Vector v (i,a), Eq (v (i,a)), Num i, Eq i, Eq a) => Eq (PackedVec v i a) where
+    a == b = toVector a == toVector b
 
 -- | Construct a 'PackedVec' from 'Vector', ensuring that the entries are sorted.
 packedVec :: (Num i, Ord i, V.Vector v (i,a)) => v (i,a) -> PackedVec v i a
@@ -75,7 +77,7 @@ izipWith :: (Num i, Ord i, V.Vector v (i,a), V.Vector v (i,b), V.Vector v (i,c))
          => (i -> a -> b -> c)
          -> PackedVec v i a -> PackedVec v i b -> PackedVec v i c
 izipWith f as bs =
-    unsafePackedVec $ V.unstream $ izipStreamsWith f (stream as) (stream bs)
+    unsafePackedVec $ V.unstream $ flip B.fromStream Size.Unknown $ izipStreamsWith f (stream as) (stream bs)
 {-# INLINE izipWith #-}
 
 data ZipState sa sb i a b
@@ -87,8 +89,8 @@ izipStreamsWith
     :: (Monad m, Ord i)
     => (i -> a -> b -> c)
     -> Stream m (i,a) -> Stream m (i,b) -> Stream m (i,c)
-izipStreamsWith f (Stream stepa sa0 na) (Stream stepb sb0 nb) =
-    Stream step (ZipStart sa0 sb0) (smaller na nb)
+izipStreamsWith f (Stream stepa sa0) (Stream stepb sb0) =
+    Stream step (ZipStart sa0 sb0)
   where
     step (ZipStart sa sb) = do
       r <- stepa sa
@@ -129,7 +131,7 @@ data Pair a b = Pair !a !b
 
 -- | Produce a 'Stream' of the non-zero elements in the vector
 stream :: (Num i, V.Vector v (i,a)) => PackedVec v i a -> Stream S.Id (i,a)
-stream = V.stream . toVector
+stream = B.elements . V.stream . toVector
 {-# INLINE stream #-}
 
 -- | Produce a vector of the index-value pairs of the non-zero elements of a 'PackedVec'
@@ -143,6 +145,7 @@ dotSqr :: (Num i, Ord i, Eq i, Num a, V.Vector v (i,a))
        => PackedVec v i a -> PackedVec v i a -> (a,a)
 dotSqr as bs =
     pairToTuple
+    $ S.unId
     $ S.foldl' (\(Pair a b) (c,d) -> Pair (a+c) (b+d)) (Pair 0 0)
     $ S.map snd
     $ izipStreamsWith (\_ a b->(a*b, a^2 * b^2)) (stream as) (stream bs)
@@ -154,7 +157,7 @@ dotSqr as bs =
 index :: (Num i, Eq i, Ord i, Num a, V.Vector v (i,a))
       => PackedVec v i a -> i -> a
 index pvec i =
-    case S.find (\(x,_)->x==i) $ S.take 1 $ S.dropWhile (\(i',_) -> i' < i) $ stream pvec of
+    case V.find (\(x,_)->x==i) $ V.take 1 $ V.dropWhile (\(i',_) -> i' < i) $ toVector pvec of
      Just (_,y) -> y
      Nothing    -> 0
 {-# INLINE index #-}
@@ -167,7 +170,7 @@ shiftVec s pvec = pvec { shift = s + shift pvec }
 -- We implement these explicit with 'Stream's to avoid duplicating the vector
 takeWhileIdx :: (Num i, V.Vector v (i,a))
              => (i -> Bool) -> PackedVec v i a -> PackedVec v i a
-takeWhileIdx f pvec = pvec { length = S.length $ S.takeWhile (f . fst) (stream pvec) }
+takeWhileIdx f pvec = pvec { length = V.length $ V.takeWhile (f . fst) (toVector pvec) }
 {-# INLINE takeWhileIdx #-}
 
 dropWhileIdx :: (Num i, V.Vector v (i,a))
@@ -175,13 +178,13 @@ dropWhileIdx :: (Num i, V.Vector v (i,a))
 dropWhileIdx f pvec = pvec { startPos = startPos pvec + delta
                            , length = length pvec - delta
                            }
-  where delta = S.length $ S.takeWhile (f . fst) (stream pvec)
+  where delta = V.length $ V.takeWhile (f . fst) (toVector pvec)
 {-# INLINE dropWhileIdx #-}
 
 -- | Check whether a 'PackedVec' is empty
 null :: (Num i, V.Vector v (i,a))
      => PackedVec v i a -> Bool
-null = S.null . stream
+null = V.null . toVector
 {-# INLINE null #-}
 
 -- | An empty 'PackedVec'
@@ -210,7 +213,7 @@ endIdx pvec = idx $ getPackedVec pvec V.! (length pvec - 1)
 
 -- | The sum of the elements
 sum :: (Num i, Num a, V.Vector v (i,a)) => PackedVec v i a -> a
-sum = S.foldl' (\accum (_,a)->accum+a) 0 . stream
+sum = V.foldl' (\accum (_,a)->accum+a) 0 . toVector
 {-# INLINE sum #-}
 
 -- | The range of indicies covered by the vector
